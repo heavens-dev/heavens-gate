@@ -16,7 +16,7 @@ bot = Bot(cfg.token)
 
 @dp.message(CommandStart())
 async def cmd_start(message: Message) -> None:
-    await message.answer("go fuck yourself")
+    await message.answer("go fuck yourself nigger")
 
 @dp.message(Command("reboot"))
 async def reboot(message: Message) -> None:
