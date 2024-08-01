@@ -4,7 +4,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.types import Message
 from aiogram.filters import Command, CommandStart
 
-from bot.handlers.admin_commands import user_commands_router
+from bot.handlers.admin_commands import admin_commands_router
 
 def get_bot(token: str) -> Bot:
     return Bot(token)
@@ -12,7 +12,7 @@ def get_bot(token: str) -> Bot:
 def prepare_bot(bot: Bot):
     dp = Dispatcher()
 
-    dp.include_routers(user_commands_router)
+    dp.include_routers(admin_commands_router)
 
     @dp.message(CommandStart())
     async def cmd_start(message: Message) -> None:
