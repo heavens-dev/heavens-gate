@@ -11,6 +11,7 @@ pydantic = "^2.8.2"
 aiogram = "^3.10.0"
 wgconfig = "^1.0.4"
 peewee = "^3.17.6"
+peewee-migrate = "^1.13.0"
 
 
 [build-system]
