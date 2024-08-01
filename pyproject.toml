@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "heavens-gate"
+version = "0.1.0"
+description = ""
+authors = ["CreativeeBlackWolf <maksim271202@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pydantic = "^2.8.2"
+aiogram = "^3.10.0"
+wgconfig = "^1.0.4"
+peewee = "^3.17.6"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

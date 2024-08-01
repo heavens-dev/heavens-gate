@@ -1,0 +1,5 @@
+*.conf
+.idea
+test.*
+__pycache__
+.reboot
