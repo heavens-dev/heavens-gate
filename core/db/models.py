@@ -28,7 +28,7 @@ class UserModel(BaseModel):
 
 class ConnectionPeerModel(BaseModel):
     user = ForeignKeyField(UserModel, backref="peer")
-    private_key = CharField()
+    public_key = CharField()
     preshared_key = CharField()
     shared_ips = CharField()
 

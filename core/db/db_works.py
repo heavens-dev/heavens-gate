@@ -17,11 +17,11 @@ class Client(BaseModel):
     def create_client(self, name: str, **kwargs) -> UserModel:
         return UserModel.create(telegram_id=self.tg_id, name=name, **kwargs)
     
-    def add_peer(self, private_key: str, preshared_key: str, shared_ips: str):
+    def add_peer(self, public_key: str, preshared_key: str, shared_ips: str):
         client = self.get_client()
         return ConnectionPeerModel.create(
             user=client, 
-            private_key=private_key, 
+            public_key=public_key, 
             preshared_key=preshared_key, 
             shared_ips=shared_ips
         )
