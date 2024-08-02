@@ -11,7 +11,7 @@ class Config:
             raise FileNotFoundError(f"File was not found on path {path_to_config}")
         self.path = path_to_config
 
-        self.cfg = ConfigParser()
+        self.cfg = ConfigParser(strict=False)
         self.cfg.read(path_to_config)
 
     def get_bot_config(self):

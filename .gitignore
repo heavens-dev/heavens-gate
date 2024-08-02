@@ -1,4 +1,5 @@
 *.conf
+*.sqlite
 .idea
 test.*
 __pycache__
