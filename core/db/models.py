@@ -1,5 +1,5 @@
-from peewee import Model, BigIntegerField, CharField, DateTimeField, ForeignKeyField
-from playhouse.sqlite_ext import SqliteExtDatabase, AutoIncrementField
+from peewee import Model, CharField, DateTimeField, ForeignKeyField
+from playhouse.sqlite_ext import SqliteExtDatabase
 import datetime
 
 from core.db.enums import StatusChoices
@@ -13,9 +13,8 @@ class BaseModel(Model):
 
 
 class UserModel(BaseModel):
-    id = AutoIncrementField(primary_key=True)
+    telegram_id = CharField(primary_key=True)
     name = CharField(default=None)
-    telegram_id = CharField(unique=True)
     ip_address = CharField(default=None, null=True)
     active_time = DateTimeField(default=None, null=True)
     status = CharField(
@@ -28,7 +27,7 @@ class UserModel(BaseModel):
     registered_at = DateTimeField(default=datetime.datetime.now)
 
 class ConnectionPeerModel(BaseModel):
-    id = ForeignKeyField(UserModel, to_field="id", backref="peers")
+    user = ForeignKeyField(UserModel, backref="peer")
     private_key = CharField()
     preshared_key = CharField()
     shared_ips = CharField()
