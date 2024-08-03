@@ -19,6 +19,8 @@ async def admin_help(message: Message):
 async def reboot(message: Message) -> None:
     await message.answer("Бот перезапускается...")
 
+    await message.chat.do("choose_sticker")
+
     with open(".reboot", "w", encoding="utf-8") as f:
         f.write(str(message.chat.id))
 
