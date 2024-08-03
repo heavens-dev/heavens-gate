@@ -2,9 +2,10 @@ import os
 
 from aiogram import Bot, Dispatcher
 from aiogram.types import Message
-from aiogram.filters import Command, CommandStart
+from aiogram.filters import CommandStart
 
 from bot.handlers.admin_commands import admin_commands_router
+
 
 def get_bot(token: str) -> Bot:
     return Bot(token)
