@@ -25,7 +25,7 @@ class Config:
         return self.Database(
             path=self.cfg.get("db", "path", fallback="db.sqlite")
         )
-    
+
     def write_changes(self) -> bool:
         with open(self.path, "w", encoding="utf-8") as f:
             self.cfg.write(f)
