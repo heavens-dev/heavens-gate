@@ -1,4 +1,5 @@
 import os
+import random
 
 from aiogram import Bot, Dispatcher
 from aiogram.types import Message
@@ -24,6 +25,8 @@ def prepare_bot(bot: Bot):
         if os.path.exists(".reboot"):
             with open(".reboot", encoding="utf-8") as f:
                 chat_id = int(f.read())
+                stickerset = await bot.get_sticker_set("chunkytext")
+                await bot.send_sticker(chat_id, random.choice(stickerset.stickers).file_id)   
                 await bot.send_message(chat_id, "Бот перезапущен.")
             os.remove(".reboot")
 
