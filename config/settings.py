@@ -11,7 +11,7 @@ class Config:
             raise FileNotFoundError(f"File was not found on path {path_to_config}")
         self.path = path_to_config
 
-        self.cfg = ConfigParser()
+        self.cfg = ConfigParser(strict=False)
         self.cfg.read(path_to_config)
 
     def get_bot_config(self):
@@ -20,7 +20,12 @@ class Config:
             token=self.cfg.get("TelegramBot", "token", fallback=None),
             admins=self.cfg.get("TelegramBot", "admins", fallback="")
         )
-    
+
+    def get_database_config(self):
+        return self.Database(
+            path=self.cfg.get("db", "path", fallback="db.sqlite")
+        )
+
     def write_changes(self) -> bool:
         with open(self.path, "w", encoding="utf-8") as f:
             self.cfg.write(f)
@@ -45,3 +50,7 @@ class Config:
             self.__config_instance.write_changes()
 
             return True
+
+    class Database:
+        def __init__(self, path: str):
+            self.path = path

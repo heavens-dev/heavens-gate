@@ -427,6 +427,17 @@ files = [
 ]
 
 [[package]]
+name = "multimethod"
+version = "1.12"
+description = "Multiple argument dispatching."
+optional = false
+python-versions = ">=3.9"
+files = [
+    {file = "multimethod-1.12-py3-none-any.whl", hash = "sha256:fd0c473c43558908d97cc06e4d68e8f69202f167db46f7b4e4058893e7dbdf60"},
+    {file = "multimethod-1.12.tar.gz", hash = "sha256:8db8ef2a8d2a247e3570cc23317680892fdf903d84c8c1053667c8e8f7671a67"},
+]
+
+[[package]]
 name = "peewee"
 version = "3.17.6"
 description = "a little orm"
@@ -702,4 +713,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "04f84c7c6bdf23afaf9aa2758a72acef05c956bef09cebe5dfca6eff447973ae"
+content-hash = "eb17d8d8602b2ee66d82a4e8465592b5958af701100798a8ae70f8cc283afcc6"
