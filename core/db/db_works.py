@@ -21,13 +21,13 @@ class Client(BaseModel):
     def delete_client(self) -> bool:
         return UserModel.delete().where(UserModel.telegram_id == self.tg_id).execute() == 1
 
-    @multimethod 
+    @multimethod
     def delete_client(self, ip_address: str) -> bool:
         return UserModel.delete().where(UserModel.ip_address == ip_address).execute() == 1
 
     def get_client_model(self) -> UserModel:
         return UserModel.get(UserModel.telegram_id == self.tg_id)
-    
+
     def get_client(self) -> User:
         return User.model_validate(self.get_client_model())
 
@@ -47,9 +47,9 @@ class Client(BaseModel):
     def add_peer(self, public_key: str, preshared_key: str, shared_ips: str):
         client = self.get_client_model()
         return ConnectionPeerModel.create(
-            user=client, 
-            public_key=public_key, 
-            preshared_key=preshared_key, 
+            user=client,
+            public_key=public_key,
+            preshared_key=preshared_key,
             shared_ips=shared_ips
         )
 
