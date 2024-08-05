@@ -1,9 +1,12 @@
 from core.db.models import UserModel, ConnectionPeerModel
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from core.db.model_serializer import User
+from multimethod import multimethod
 
 
 class Client(BaseModel):
+    model_config = ConfigDict(ignored_types=(multimethod, ))
+
     tg_id: int
 
     def is_registered(self) -> bool:
@@ -14,9 +17,11 @@ class Client(BaseModel):
         """
         return UserModel.select().where(UserModel.telegram_id == self.tg_id).count() == 1
 
+    @multimethod
     def delete_client(self) -> bool:
         return UserModel.delete().where(UserModel.telegram_id == self.tg_id).execute() == 1
 
+    @multimethod 
     def delete_client(self, ip_address: str) -> bool:
         return UserModel.delete().where(UserModel.ip_address == ip_address).execute() == 1
 
@@ -52,6 +57,7 @@ class Client(BaseModel):
         client = self.get_client_model()
         return list(ConnectionPeerModel.select().where(ConnectionPeerModel.user == client))
 
+    @multimethod
     def delete_peer(self) -> bool:
         """Delete peers by `telegram_id`
 
@@ -60,6 +66,7 @@ class Client(BaseModel):
         """
         return ConnectionPeerModel.delete().where(UserModel.telegram_id == self.tg_id).execute() == 1
 
+    @multimethod
     def delete_peer(self, ip_address: str) -> bool:
         peers = self.get_peers()
         for peer in peers:
