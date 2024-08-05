@@ -1,10 +1,12 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import Optional
 from core.db.enums import StatusChoices
 
 
 class User(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     telegram_id: int
     name: str
     ip_address: Optional[str]
@@ -13,15 +15,11 @@ class User(BaseModel):
     expire_time: Optional[datetime]
     registered_at: datetime
 
-    class Meta:
-        orm_mode = True
-
 class ConnectionPeer(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     user_id: int
     public_key: str
     preshared_key: str
     shared_ips: str
-
-    class Meta:
-        orm_mode = True

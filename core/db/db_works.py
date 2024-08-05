@@ -1,5 +1,6 @@
 from core.db.models import UserModel, ConnectionPeerModel
 from pydantic import BaseModel
+from core.db.model_serializer import User
 
 
 class Client(BaseModel):
@@ -16,9 +17,15 @@ class Client(BaseModel):
     def delete_client(self) -> bool:
         return UserModel.delete().where(UserModel.telegram_id == self.tg_id).execute() == 1
 
-    def get_client(self) -> UserModel:
+    def delete_client(self, ip_address: str) -> bool:
+        return UserModel.delete().where(UserModel.ip_address == ip_address).execute() == 1
+
+    def get_client_model(self) -> UserModel:
         return UserModel.get(UserModel.telegram_id == self.tg_id)
     
+    def get_client(self) -> User:
+        return User.model_validate(self.get_client_model())
+
     def update_client(self, **kwargs):
         """Updates a user in database. Not ConnectionPeer
 
@@ -31,16 +38,34 @@ class Client(BaseModel):
 
     def create_client(self, name: str, **kwargs) -> UserModel:
         return UserModel.create(telegram_id=self.tg_id, name=name, **kwargs)
-    
 
     def add_peer(self, public_key: str, preshared_key: str, shared_ips: str):
-        client = self.get_client()
+        client = self.get_client_model()
         return ConnectionPeerModel.create(
             user=client, 
             public_key=public_key, 
             preshared_key=preshared_key, 
             shared_ips=shared_ips
         )
+
+    def get_peers(self) -> list[ConnectionPeerModel]:
+        client = self.get_client_model()
+        return list(ConnectionPeerModel.select().where(ConnectionPeerModel.user == client))
+
+    def delete_peer(self) -> bool:
+        """Delete peers by `telegram_id`
+
+        Returns:
+            bool: True if successfull. False otherwise
+        """
+        return ConnectionPeerModel.delete().where(UserModel.telegram_id == self.tg_id).execute() == 1
+
+    def delete_peer(self, ip_address: str) -> bool:
+        peers = self.get_peers()
+        for peer in peers:
+            if ip_address in peer.shared_ips:
+                return ConnectionPeerModel.delete().where(ConnectionPeerModel.shared_ips == ip_address).execute() == 1
+        return False
 
     class Meta:
         arbitrary_types_allowed=True
