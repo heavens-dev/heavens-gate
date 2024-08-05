@@ -1,4 +1,4 @@
-from peewee import Model, CharField, DateTimeField, ForeignKeyField
+from peewee import Model, CharField, DateTimeField, ForeignKeyField, IntegerField
 from playhouse.sqlite_ext import SqliteExtDatabase
 import datetime
 
@@ -17,7 +17,7 @@ class UserModel(BaseModel):
     name = CharField(default=None)
     ip_address = CharField(default=None, null=True)
     active_time = DateTimeField(default=None, null=True)
-    status = CharField(
+    status = IntegerField(
         default=StatusChoices.STATUS_CREATED.value,              
         choices=tuple(
             (status.value, status.name) for status in StatusChoices
