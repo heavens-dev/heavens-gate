@@ -27,14 +27,14 @@ class UserModel(BaseModel):
     registered_at = DateTimeField(default=datetime.datetime.now)
 
 class ConnectionPeerModel(BaseModel):
-    user = ForeignKeyField(UserModel, backref="peer")
+    user = ForeignKeyField(UserModel, backref="peer", on_delete="CASCADE")
     public_key = CharField()
     preshared_key = CharField()
     shared_ips = CharField()
 
 
 def init_db(path: str):
-    db.init(database=path)
+    db.init(database=path, pragmas={"foreign_keys": 1})
     db.connect()
     db.create_tables((UserModel, ConnectionPeerModel))
     return db
