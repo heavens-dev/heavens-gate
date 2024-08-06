@@ -31,7 +31,7 @@ class Client(BaseModel):
     def get_client(self) -> User:
         return User.model_validate(self.get_client_model())
 
-    def update_client(self, **kwargs):
+    def update_client(self, **kwargs) -> bool:
         """Updates a user in database. Not ConnectionPeer
 
         Args:
