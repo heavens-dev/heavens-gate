@@ -9,4 +9,4 @@ cfg = Config("config.conf")
 bot_cfg = cfg.get_bot_config()
 db_cfg = cfg.get_database_config()
 
-db = init_db(db_cfg.path)
+db_instance = init_db(db_cfg.path)

@@ -2,6 +2,7 @@ from aiogram import Router, F
 from aiogram.types import Message
 from aiogram.filters import Command
 from config.common import bot_cfg
+from core.db.db_works import Users
 import sys
 import os
 
@@ -25,3 +26,19 @@ async def reboot(message: Message) -> None:
         f.write(str(message.chat.id))
 
     os.execv(sys.executable, ['python'] + sys.argv)
+
+@admin_commands_router.message(Command("broadcast"))
+async def broadcast(message: Message):
+    """Broadcast message to ALL registered users"""
+    if len(message.text.split()) <= 1:
+        await message.answer("Сообщение должно содержать хотя бы какой-то текст для отправки.")
+        return
+    all_users = Users.get_users()
+    text = "✉️ <b>Рассылка от администрации</b>:\n\n"
+    text += " ".join(message.text.split()[1::])
+    # ? sooo we can get rate limited probably. fixme? maybe later.
+    for user in all_users:
+        if message.chat.id == user.telegram_id:
+            continue
+        await message.bot.send_message(user.telegram_id, text, parse_mode="HTML")
+    await message.answer("Сообщение транслировано всем пользователям.")
