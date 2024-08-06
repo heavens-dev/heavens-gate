@@ -6,7 +6,7 @@ def get_default_commands() -> list[BotCommand]:
     commands = [
         BotCommand(command="/start", description="(re)Start the bot."),
         BotCommand(command="/help", description="Get list of commands and their definitions"),
-        BotCommand(comamnd="/me", description="Info about yourself.")
+        BotCommand(command="/me", description="Info about yourself.")
     ]
 
     return commands
