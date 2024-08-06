@@ -5,6 +5,15 @@ from multimethod import multimethod
 
 
 class Client(BaseModel):
+    """
+    General class for operating with single client. 
+    All methods that perform I/O operations **should** be used with `atomic` context manager.
+
+    Example:
+        >>> client = Client(tg_id=<telegram_id>)
+        >>> with db.atomic():
+        ...    client.create_client()
+    """
     model_config = ConfigDict(ignored_types=(multimethod, ))
 
     tg_id: int
@@ -76,3 +85,14 @@ class Client(BaseModel):
 
     class Meta:
         arbitrary_types_allowed=True
+
+
+class Users:
+    """
+    Class for working with multiple users at the same time for implementing something...
+
+    _**NaStY**_
+    """
+    @staticmethod
+    def get_users() -> list[User]:
+        return [User.model_validate(i) for i in UserModel.select()]
