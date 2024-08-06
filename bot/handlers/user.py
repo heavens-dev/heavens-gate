@@ -11,7 +11,7 @@ user_router = Router()
 
 @user_router.message(Command("me"))
 async def me(message: Message):
-    client = Client(message.chat.id)
+    client = Client(tg_id=message.chat.id)
 
     info = client.get_client()
 
