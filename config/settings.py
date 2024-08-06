@@ -39,13 +39,18 @@ class Config:
             if not self.token:
                 raise ValueError("Token MUST be specified in config file. For God's sake!")
 
-            self.admins = [int(admin_id) for admin_id in admins.split(",")] if admins else []
+            self.__admins = [int(admin_id) for admin_id in admins.split(",")] if admins else []
             self.__config_instance = config_instance
+
+        @property
+        def admins(self) -> list[int]:
+            """List of user ids that have special rights"""
+            return self.__admins
 
         def add_admin(self, admin_id: int) -> bool:
             if admin_id in self.admins:
                 return False
-            self.admins.append(admin_id)
+            self.__admins.append(admin_id)
             self.__config_instance.cfg.set("TelegramBot", "admins", ",".join(str(i) for i in self.admins))
             self.__config_instance.write_changes()
 
