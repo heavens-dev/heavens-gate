@@ -9,7 +9,7 @@ from bot.commands import (get_admin_commands,
                           get_default_commands, 
                           set_admin_commands, 
                           set_user_commands)
-from bot.handlers import admin_router
+from bot.handlers import admin_router, user_router
 
 
 @bot_dispatcher.message(CommandStart())
@@ -46,7 +46,7 @@ async def on_startup(*args):
     print("started.")
 
 def main() -> None:
-    bot_dispatcher.include_routers(admin_router)
+    bot_dispatcher.include_routers(admin_router, user_router)
 
     asyncio.run(bot_dispatcher.run_polling(bot_instance))
 
