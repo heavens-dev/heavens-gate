@@ -1,22 +1,22 @@
 from aiogram import Router, F
 from aiogram.types import Message
 from aiogram.filters import Command
-from config.common import bot_cfg
+from config.loader import bot_cfg
 from core.db.db_works import Users
 import sys
 import os
 
 
-admin_commands_router = Router()
-admin_commands_router.message.filter(
+admin_router = Router()
+admin_router.message.filter(
     F.from_user.id.in_(bot_cfg.admins)
 )
 
-@admin_commands_router.message(Command("admin_help"))
+@admin_router.message(Command("admin_help"))
 async def admin_help(message: Message):
     await message.answer("Сам справишься.")
 
-@admin_commands_router.message(Command("reboot"))
+@admin_router.message(Command("reboot"))
 async def reboot(message: Message) -> None:
     await message.answer("Бот перезапускается...")
 
@@ -27,7 +27,7 @@ async def reboot(message: Message) -> None:
 
     os.execv(sys.executable, ['python'] + sys.argv)
 
-@admin_commands_router.message(Command("broadcast"))
+@admin_router.message(Command("broadcast"))
 async def broadcast(message: Message):
     """Broadcast message to ALL registered users"""
     if len(message.text.split()) <= 1:
