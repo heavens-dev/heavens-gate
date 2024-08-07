@@ -31,7 +31,7 @@ class Client(BaseModel):
     def get_client(self) -> User:
         return User.model_validate(self.get_client_model())
 
-    def update_client(self, **kwargs):
+    def update_client(self, **kwargs) -> bool:
         """Updates a user in database. Not ConnectionPeer
 
         Args:
@@ -76,3 +76,9 @@ class Client(BaseModel):
 
     class Meta:
         arbitrary_types_allowed=True
+
+
+class Users:
+    @staticmethod
+    def get_users() -> list[User]:
+        return [User.model_validate(i) for i in UserModel.select()]
