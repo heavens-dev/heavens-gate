@@ -10,7 +10,7 @@ from core.db.enums import StatusChoices
 class ClientFactory(BaseModel):
     model_config = ConfigDict(ignored_types=(multimethod, ))
 
-    tg_id: Optional[int]
+    tg_id: int
 
     def create_client(self, name: str, **kwargs) -> "Client":
         model = UserModel.create(telegram_id=self.tg_id, name=name, **kwargs)
@@ -44,6 +44,10 @@ class ClientFactory(BaseModel):
     @multimethod
     def delete_client(self) -> bool:
         return UserModel.delete_by_id(self.tg_id)
+    
+    @staticmethod
+    def count_clients() -> int:
+        return UserModel.select().count()
 
     class Meta:
         arbitrary_types_allowed=True
@@ -68,7 +72,9 @@ class Client(BaseModel):
         Returns:
             True if operation was successfull. False otherwise.
         """
-        return self.__model.update(**kwargs).where(UserModel.telegram_id == self.tg_id).execute() == 1
+        return (self.__model.update(**kwargs)
+                .where(UserModel.telegram_id == self.tg_id)
+                .execute()) == 1
 
     def set_ip_address(self, ip_address: str) -> bool:
         self.userdata.ip_address = ip_address
@@ -87,7 +93,8 @@ class Client(BaseModel):
         )
 
     def get_peers(self) -> list[ConnectionPeerModel]:
-        return list(ConnectionPeerModel.select().where(ConnectionPeerModel.user == self.__model))
+        return list(ConnectionPeerModel.select()
+                    .where(ConnectionPeerModel.user == self.__model))
 
     @multimethod
     def delete_peer(self) -> bool:
@@ -96,7 +103,9 @@ class Client(BaseModel):
         Returns:
             bool: True if successfull. False otherwise
         """
-        return ConnectionPeerModel.delete().where(UserModel.telegram_id == self.tg_id).execute() == 1
+        return (ConnectionPeerModel.delete()
+                .where(UserModel.telegram_id == self.userdata.telegram_id)
+                .execute()) == 1
 
     @multimethod
     def delete_peer(self, ip_address: str) -> bool:
@@ -108,7 +117,9 @@ class Client(BaseModel):
         peers = self.get_peers()
         for peer in peers:
             if ip_address in peer.shared_ips:
-                return ConnectionPeerModel.delete().where(ConnectionPeerModel.shared_ips == ip_address).execute() == 1
+                return (ConnectionPeerModel.delete()
+                        .where(ConnectionPeerModel.shared_ips == ip_address)
+                        .execute()) == 1
         return False
 
     class Meta:

@@ -46,3 +46,6 @@ class ClientFactory(BaseModel):
     @overload
     @staticmethod
     def delete_client(ip_address: str) -> bool: ...
+
+    @staticmethod
+    def count_clients() -> int: ...
