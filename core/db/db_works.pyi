@@ -1,39 +1,48 @@
-from typing import overload
-from core.db.models import UserModel, ConnectionPeerModel
+from typing import Optional, Union, overload
+from core.db.models import ConnectionPeerModel
 from core.db.model_serializer import User
+from core.db.enums import StatusChoices
+from pydantic import BaseModel
 
 
-class Client:
+class Client(BaseModel):
     """
     General class for operating with single client. 
-    All methods that perform I/O operations **should** be used with `atomic` context manager.
+    All methods that perform I/O operations (transactions) **should** be used with `atomic` context manager.
 
     Example:
-        >>> client = Client(tg_id=<telegram_id>)
+        >>> client = ClientFactory(tg_id=<telegram_id>).get_client() # -> Client
         >>> with db.atomic():
-        ...    client.create_client()
+        ...    client.set_ip_address()
     """
-    @overload
-    def delete_client(self) -> bool: ...
-    @overload
-    def delete_client(self, ip_address: str) -> bool: ...
+    user: User
     @overload
     def delete_peer(self) -> bool: ...
     @overload
     def delete_peer(self, ip_address: str) -> bool: ...
-    def is_registered(self) -> bool: ...
-    def get_client_model(self) -> UserModel: ...
-    def get_client(self) -> User: ...
-    def create_client(self, name: str, **kwargs) -> UserModel: ...
-    def update_client(self, **kwargs) -> bool: ...
     def add_peer(self, public_key: str, preshared_key: str, shared_ips: str): ...
     def get_peers(self) -> list[ConnectionPeerModel]: ...
+    def set_ip_address(self, ip_address: str) -> bool: ...
+    def set_status(self, status: StatusChoices) -> bool: ...
 
-
-class Users:
-    """
-    Class for working with multiple users at the same time for implementing something...
-
-    _**NaStY**_
-    """
-    def get_users() -> list[User]: ...
+class ClientFactory(BaseModel):
+    """Class for creating `Client`s."""
+    tg_id: Optional[int]
+    def create_client(self, name: str, **kwargs) -> "Client": ...
+    
+    @overload
+    def get_client(self) -> Union["Client", None]: ...
+    
+    @overload
+    @staticmethod
+    def get_client(ip_address: str) -> Union["Client", None]: ...
+    
+    @staticmethod
+    def select_clients() -> list["Client"]: ...
+    
+    @overload
+    def delete_client(self) -> bool: ...
+    
+    @overload
+    @staticmethod
+    def delete_client(ip_address: str) -> bool: ...
