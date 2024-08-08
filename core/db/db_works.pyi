@@ -15,7 +15,7 @@ class Client(BaseModel):
         >>> with db.atomic():
         ...    client.set_ip_address()
     """
-    user: User
+    userdata: User
     @overload
     def delete_peer(self) -> bool: ...
     @overload
