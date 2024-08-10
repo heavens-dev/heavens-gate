@@ -9,6 +9,7 @@ from core.db.db_works import ClientFactory, Client
 from core.utils.check import check_ip_address
 from core.db.enums import StatusChoices
 from config.loader import bot_cfg
+from pydantic import ValidationError
 
 
 admin_router = Router()
@@ -26,7 +27,10 @@ async def get_client_by_id_or_ip(message: Message) -> Optional[Client]:
     if check_ip_address(args[1]):
         client = ClientFactory.get_client(args[1])
     else:
-        client = ClientFactory(tg_id=args[1]).get_client()
+        try:
+            client = ClientFactory(tg_id=args[1]).get_client()
+        except ValidationError:
+            client = None
 
     if client is None:
         await message.answer(f"❌ Пользователь <code>{args[1]}</code> не найден.", parse_mode="HTML")
