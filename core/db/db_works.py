@@ -7,51 +7,6 @@ from core.db.model_serializer import User
 from core.db.enums import StatusChoices
 
 
-class ClientFactory(BaseModel):
-    model_config = ConfigDict(ignored_types=(multimethod, ))
-
-    tg_id: int
-
-    def create_client(self, name: str, **kwargs) -> "Client":
-        model = UserModel.create(telegram_id=self.tg_id, name=name, **kwargs)
-        return Client(model=model, userdata=User.model_validate(model))
-    
-    @multimethod
-    def get_client(self) -> Union["Client", None]:
-        try:
-            model = UserModel.get(UserModel.telegram_id == self.tg_id)
-            return Client(model=model, userdata=User.model_validate(model))
-        except DoesNotExist:
-            return None
-    
-    @multimethod
-    @staticmethod
-    def get_client(ip_address: str) -> Union["Client", None]:
-        model = UserModel.select().where(UserModel.ip_address == ip_address)
-        if not model:
-            return None
-        return Client(model=model, userdata=User.model_validate(model))
-
-    @staticmethod
-    def select_clients() -> list["Client"]:
-        return [Client(model=i, userdata=User.model_validate(i)) for i in UserModel.select()]
-    
-    @multimethod
-    @staticmethod
-    def delete_client(ip_address: str) -> bool:
-        return UserModel.delete().where(UserModel.ip_address.contains(ip_address)).execute() == 1
-
-    @multimethod
-    def delete_client(self) -> bool:
-        return UserModel.delete_by_id(self.tg_id)
-    
-    @staticmethod
-    def count_clients() -> int:
-        return UserModel.select().count()
-
-    class Meta:
-        arbitrary_types_allowed=True
-
 class Client(BaseModel):
     model_config = ConfigDict(ignored_types=(multimethod, ))
 
@@ -124,3 +79,49 @@ class Client(BaseModel):
 
     class Meta:
         arbitrary_types_allowed=True
+
+class ClientFactory(BaseModel):
+    model_config = ConfigDict(ignored_types=(multimethod, ))
+
+    tg_id: int
+
+    def create_client(self, name: str, **kwargs) -> Client:
+        model = UserModel.create(telegram_id=self.tg_id, name=name, **kwargs)
+        return Client(model=model, userdata=User.model_validate(model))
+    
+    @multimethod
+    def get_client(self) -> Optional[Client]:
+        try:
+            model = UserModel.get(UserModel.telegram_id == self.tg_id)
+            return Client(model=model, userdata=User.model_validate(model))
+        except DoesNotExist:
+            return None
+    
+    @multimethod
+    @staticmethod
+    def get_client(ip_address: str) -> Optional[Client]:
+        model = UserModel.select().where(UserModel.ip_address == ip_address)
+        if not model:
+            return None
+        return Client(model=model, userdata=User.model_validate(model))
+
+    @staticmethod
+    def select_clients() -> list[Client]:
+        return [Client(model=i, userdata=User.model_validate(i)) for i in UserModel.select()]
+    
+    @multimethod
+    @staticmethod
+    def delete_client(ip_address: str) -> bool:
+        return UserModel.delete().where(UserModel.ip_address.contains(ip_address)).execute() == 1
+
+    @multimethod
+    def delete_client(self) -> bool:
+        return UserModel.delete_by_id(self.tg_id)
+    
+    @staticmethod
+    def count_clients() -> int:
+        return UserModel.select().count()
+
+    class Meta:
+        arbitrary_types_allowed=True
+
