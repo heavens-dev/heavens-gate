@@ -26,7 +26,7 @@ async def get_client_by_id_or_ip(message: Message) -> Optional[Client]:
     if check_ip_address(args[1]):
         client = ClientFactory.get_client(ip_address=args[1])
     else:
-        client = ClientFactory(args[1]).get_client()
+        client = ClientFactory(tg_id=args[1]).get_client()
 
     if client is None:
         await message.answer(f"❌ Пользователь <code>{args[1]}</code> не найден.", parse_mode="HTML")
@@ -68,15 +68,19 @@ async def ban(message: Message):
     if not client: return
 
     client.set_status(StatusChoices.STATUS_ACCOUNT_BLOCKED)
-    await message.answer(f"✅ Пользователь <code>{client.userdata.name}:{client.userdata.telegram_id}:{client.userdata.ip_address}</code> заблокирован.")
+    await message.answer(
+        f"✅ Пользователь <code>{client.userdata.name}:{client.userdata.telegram_id}:{client.userdata.ip_address}</code> заблокирован.",
+        parse_mode="HTML")
     # TODO: notify user about blocking and reject any ongoing connections
 
-@admin_router.message(Command(("unban", "mercy", "anathem", "pardon")))
+@admin_router.message(Command("unban", "mercy", "anathem", "pardon"))
 async def unban(message: Message):
     client = await get_client_by_id_or_ip(message)
     
     if not client: return
 
     client.set_status(StatusChoices.STATUS_CREATED)
-    await message.answer(f"✅ Пользователь <code>{client.userdata.name}:{client.userdata.telegram_id}:{client.userdata.ip_address}</code> разблокирован.")
+    await message.answer(
+        f"✅ Пользователь <code>{client.userdata.name}:{client.userdata.telegram_id}:{client.userdata.ip_address}</code> разблокирован.",
+        parse_mode="HTML")
     # TODO: notify user about pardon

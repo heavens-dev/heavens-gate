@@ -28,7 +28,7 @@ class Client(BaseModel):
             True if operation was successfull. False otherwise.
         """
         return (self.__model.update(**kwargs)
-                .where(UserModel.telegram_id == self.tg_id)
+                .where(UserModel.telegram_id == self.userdata.telegram_id)
                 .execute()) == 1
 
     def set_ip_address(self, ip_address: str) -> bool:
@@ -88,7 +88,7 @@ class ClientFactory(BaseModel):
     def get_or_create_client(self, name: str, **kwargs) -> Client:
         """Retrieves or creates a record of the user in the database.
         Use this method when you're unsure whether the user already exists in the database or not."""
-        model = UserModel.get_or_create(telegram_id=self.tg_id, name=name, **kwargs)
+        model = UserModel.get_or_create(telegram_id=self.tg_id, name=name, **kwargs)[0]
         return Client(model=model, userdata=User.model_validate(model))
 
     @multimethod
