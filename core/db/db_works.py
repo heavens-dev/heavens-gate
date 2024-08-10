@@ -102,10 +102,11 @@ class ClientFactory(BaseModel):
     @multimethod
     @staticmethod
     def get_client(ip_address: str) -> Optional[Client]:
-        model = UserModel.select().where(UserModel.ip_address == ip_address)
-        if not model:
+        try:
+            model = UserModel.get(UserModel.ip_address == ip_address)
+            return Client(model=model, userdata=User.model_validate(model))
+        except DoesNotExist:
             return None
-        return Client(model=model, userdata=User.model_validate(model))
 
     @staticmethod
     def select_clients() -> list[Client]:

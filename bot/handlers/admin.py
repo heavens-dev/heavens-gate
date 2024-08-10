@@ -24,7 +24,7 @@ async def get_client_by_id_or_ip(message: Message) -> Optional[Client]:
         return None
     
     if check_ip_address(args[1]):
-        client = ClientFactory.get_client(ip_address=args[1])
+        client = ClientFactory.get_client(args[1])
     else:
         client = ClientFactory(tg_id=args[1]).get_client()
 
