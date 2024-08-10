@@ -6,7 +6,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 path_to_config = "config.conf"
 
-cfg = Config("config.conf")
+cfg = Config(path_to_config)
 
 bot_cfg = cfg.get_bot_config()
 bot_instance = Bot(token=bot_cfg.token)
