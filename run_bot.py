@@ -4,7 +4,7 @@ import os
 from aiogram.filters import CommandStart, Command
 from aiogram.types import Message
 
-from config.loader import bot_instance, bot_dispatcher, bot_cfg
+from config.loader import bot_instance, bot_dispatcher, bot_cfg, db_instance
 from bot.commands import (get_admin_commands, 
                           get_default_commands, 
                           set_admin_commands, 
@@ -20,9 +20,11 @@ async def cmd_start(message: Message) -> None:
     else:
         await set_user_commands(message.chat.id)
 
-    ClientFactory(tg_id=message.chat.id).get_or_create_client(
-        name=message.chat.full_name # ? retrieving a @username will be a better option, maybe
-    )
+    with db_instance.atomic():
+        # just in case.
+        ClientFactory(tg_id=message.chat.id).get_or_create_client(
+            name=message.chat.full_name # ? retrieving a @username will be a better option, maybe
+        )
 
     await message.answer("Привет. Не знаю, как ты здесь оказался.")
 
