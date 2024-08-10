@@ -8,7 +8,8 @@ def get_admin_commands() -> list[BotCommand]:
 
     commands.extend([
         BotCommand(command="/broadcast", description="Broadcast message to ALL registered users."),
-        BotCommand(command="/ban", description="Block user by telegram id.")
+        BotCommand(command="/ban", description="Block user by telegram ID or IP."),
+        BotCommand(command="/unban", description="Unblock user by telegram ID or IP. Aliases: pardon, anathem, mercy")
     ])
 
     return commands
