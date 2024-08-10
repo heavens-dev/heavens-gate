@@ -10,6 +10,7 @@ from bot.commands import (get_admin_commands,
                           set_admin_commands, 
                           set_user_commands)
 from bot.handlers import admin_router, user_router
+from core.db.db_works import ClientFactory
 
 
 @bot_dispatcher.message(CommandStart())
@@ -18,6 +19,11 @@ async def cmd_start(message: Message) -> None:
         await set_admin_commands(message.chat.id)
     else:
         await set_user_commands(message.chat.id)
+
+    ClientFactory(tg_id=message.chat.id).get_or_create_client(
+        name=message.chat.full_name # ? retrieving a @username will be a better option, maybe
+    )
+
     await message.answer("Привет. Не знаю, как ты здесь оказался.")
 
 @bot_dispatcher.message(Command("help"))

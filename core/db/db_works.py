@@ -85,10 +85,12 @@ class ClientFactory(BaseModel):
 
     tg_id: int
 
-    def create_client(self, name: str, **kwargs) -> Client:
-        model = UserModel.create(telegram_id=self.tg_id, name=name, **kwargs)
+    def get_or_create_client(self, name: str, **kwargs) -> Client:
+        """Retrieves or creates a record of the user in the database.
+        Use this method when you're unsure whether the user already exists in the database or not."""
+        model = UserModel.get_or_create(telegram_id=self.tg_id, name=name, **kwargs)
         return Client(model=model, userdata=User.model_validate(model))
-    
+
     @multimethod
     def get_client(self) -> Optional[Client]:
         try:
