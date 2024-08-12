@@ -1,4 +1,3 @@
-from typing import Optional
 import sys
 import os
 from aiogram.filters import Command
