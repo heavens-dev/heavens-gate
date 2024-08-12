@@ -5,37 +5,16 @@ from aiogram.filters import Command
 from aiogram.types import Message
 from aiogram import Router, F
 
-from core.db.db_works import ClientFactory, Client
-from core.utils.check import check_ip_address
+from bot.utils.user_helper import get_client_by_id_or_ip
+from config.loader import bot_cfg, bot_instance
+from core.db.db_works import ClientFactory
 from core.db.enums import StatusChoices
-from config.loader import bot_cfg
-from pydantic import ValidationError
 
 
 admin_router = Router()
 admin_router.message.filter(
     F.from_user.id.in_(bot_cfg.admins)
 )
-
-async def get_client_by_id_or_ip(message: Message) -> Optional[Client]:
-    """Not a command"""
-    args = message.text.split()
-    if len(args) <= 1:
-        await message.answer("❌ Сообщение должно содержать IP адрес пользователя или его Telegram ID.")
-        return None
-    
-    if check_ip_address(args[1]):
-        client = ClientFactory.get_client(args[1])
-    else:
-        try:
-            client = ClientFactory(tg_id=args[1]).get_client()
-        except ValidationError:
-            client = None
-
-    if client is None:
-        await message.answer(f"❌ Пользователь <code>{args[1]}</code> не найден.", parse_mode="HTML")
-        return None
-    return client
 
 @admin_router.message(Command("reboot"))
 async def reboot(message: Message) -> None:
@@ -88,3 +67,21 @@ async def unban(message: Message):
         f"✅ Пользователь <code>{client.userdata.name}:{client.userdata.telegram_id}:{client.userdata.ip_address}</code> разблокирован.",
         parse_mode="HTML")
     # TODO: notify user about pardon
+
+@admin_router.message(Command("whisper"))
+async def whisper(message: Message):
+    client = await get_client_by_id_or_ip(message)
+
+    if not client: return
+
+    args = message.text.split()
+    if len(args) <= 2:
+        await message.answer("❌ Сообщение должно содержать хотя бы какой-то текст для отправки.")
+        return
+
+    await bot_instance.send_message(
+        client.userdata.telegram_id, 
+        text="🤫 <b>Сообщение от администрации</b>:\n\n" + "".join(i for i in message.text.split()[2::]),
+        parse_mode="HTML"
+    )
+    await message.answer("✅ Сообщение отправлено.")

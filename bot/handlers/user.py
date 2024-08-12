@@ -1,9 +1,9 @@
-from aiogram import Router, F
+from aiogram import Router
 from aiogram.types import Message
 from aiogram.filters import Command
-from config.loader import bot_cfg
+
+from bot.utils.user_helper import get_user_data_string
 from core.db.db_works import ClientFactory
-from core.db.enums import StatusChoices
 
 
 user_router = Router()
@@ -13,7 +13,4 @@ user_router = Router()
 async def me(message: Message):
     client = ClientFactory(tg_id=message.chat.id).get_client()
 
-    await message.answer(f"""ℹ️ Информация об аккаунте:
-ID: {client.userdata.telegram_id}
-Текущий статус: {StatusChoices.to_string(client.userdata.status)}
-""")
+    await message.answer(get_user_data_string(client))
