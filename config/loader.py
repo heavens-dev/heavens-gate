@@ -20,7 +20,6 @@ admin_router.message.filter(
 user_router = Router()
 
 db_cfg = cfg.get_database_config()
-
 db_instance = init_db(db_cfg.path)
 
 server_cfg = cfg.get_server_config()

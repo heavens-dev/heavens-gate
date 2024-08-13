@@ -3,7 +3,8 @@ import os
 from aiogram.filters import Command
 from aiogram.types import Message
 
-from bot.utils.user_helper import get_client_by_id_or_ip
+from bot.utils.user_helper import get_client_by_id_or_ip, get_user_data_string
+from bot.handlers.keyboards import build_user_actions_keyboard
 from config.loader import bot_instance, admin_router
 from core.db.db_works import ClientFactory
 from core.db.enums import StatusChoices
@@ -78,3 +79,14 @@ async def whisper(message: Message):
         parse_mode="HTML"
     )
     await message.answer("✅ Сообщение отправлено.")
+
+@admin_router.message(Command("get_user"))
+async def get_user(message: Message):
+    client = await get_client_by_id_or_ip(message)
+    if not client: return
+
+    await message.answer(f"Пользователь: {client.userdata.name}")
+    await message.answer(
+        get_user_data_string(client), 
+        reply_markup=build_user_actions_keyboard(client)
+    )
