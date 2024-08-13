@@ -12,5 +12,5 @@ PrivateKey={server_cfg.private_key}
 PublicKey={peer.public_key}
 PresharedKey={peer.preshared_key}
 AllowedIPs=0.0.0.0/0
-Endpoint={server_cfg.endpoint_ip}
+Endpoint={server_cfg.endpoint_ip}:{server_cfg.endpoint_port}
 """
