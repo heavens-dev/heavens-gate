@@ -31,6 +31,7 @@ class ConnectionPeerModel(BaseModel):
     public_key = CharField()
     preshared_key = CharField()
     shared_ips = CharField()
+    peer_name = CharField(default=None, null=True)
 
 
 def init_db(path: str):
