@@ -26,6 +26,14 @@ class Config:
             path=self.cfg.get("db", "path", fallback="db.sqlite")
         )
 
+    def get_server_config(self):
+        return self.Server(
+            user_ip=self.cfg.get("Server", "IP", fallback="127.0.0"),
+            private_key=self.cfg.get("Server", "PrivateKey", fallback="@!ChAngEME!@"),
+            endpoint_ip=self.cfg.get("Server", "EndpointIP", fallback="192.168.27.27"),
+            endpoint_port=self.cfg.get("Server", "EndpointPort", fallback="10000")
+        )
+
     def write_changes(self) -> bool:
         with open(self.path, "w", encoding="utf-8") as f:
             self.cfg.write(f)
@@ -59,3 +67,10 @@ class Config:
     class Database:
         def __init__(self, path: str):
             self.path = path
+
+    class Server:
+        def __init__(self, user_ip: str, private_key: str, endpoint_ip: str, endpoint_port: str):
+            self.user_ip = user_ip
+            self.private_key = private_key
+            self.endpoint_ip = endpoint_ip
+            self.endpoint_port = endpoint_port

@@ -1,4 +1,5 @@
 *.conf
+!config_example.conf
 *.sqlite
 .idea
 test.*
