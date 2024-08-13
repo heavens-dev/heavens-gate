@@ -64,9 +64,17 @@ class Client(BaseModel):
             peer_name=peer_name
         ))
 
-    def get_peers(self) -> list[ConnectionPeerModel]:
+    def __get_peers(self) -> list[ConnectionPeerModel]:
+        """Private method for working with peers"""
         return list(ConnectionPeerModel.select()
                     .where(ConnectionPeerModel.user == self.__model))
+
+    def get_peers(self) -> list[ConnectionPeer]:
+        """Get validated peers model(s)"""
+        return [
+            ConnectionPeer.model_validate(model)
+            for model in self.__get_peers()
+        ]
 
     def change_peer_name(self, peer_id: int, peer_name: str):
         self.__update_peer(peer_id, peer_name=peer_name)
@@ -89,16 +97,13 @@ class Client(BaseModel):
         Returns:
             bool: True if successfull. False otherwise
         """
-        peers = self.get_peers()
+        peers = self.__get_peers()
         for peer in peers:
             if ip_address in peer.shared_ips:
                 return (ConnectionPeerModel.delete()
                         .where(ConnectionPeerModel.shared_ips == ip_address)
                         .execute()) == 1
         return False
-
-    class Meta:
-        arbitrary_types_allowed=True
 
 class ClientFactory(BaseModel):
     model_config = ConfigDict(ignored_types=(multimethod, ))
@@ -144,7 +149,3 @@ class ClientFactory(BaseModel):
     @staticmethod
     def count_clients() -> int:
         return UserModel.select().count()
-
-    class Meta:
-        arbitrary_types_allowed=True
-
