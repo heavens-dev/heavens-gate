@@ -4,12 +4,16 @@ import os
 from aiogram.filters import CommandStart, Command
 from aiogram.types import Message
 
-from config.loader import bot_instance, bot_dispatcher, bot_cfg, db_instance
+from config.loader import (bot_instance, 
+                           bot_dispatcher, 
+                           bot_cfg, 
+                           db_instance, 
+                           admin_router, 
+                           user_router)
 from bot.commands import (get_admin_commands, 
                           get_default_commands, 
                           set_admin_commands, 
                           set_user_commands)
-from bot.handlers import admin_router, user_router
 from core.db.db_works import ClientFactory
 
 
