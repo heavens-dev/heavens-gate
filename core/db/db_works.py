@@ -1,9 +1,9 @@
-from typing import Optional, Union
+from typing import Optional
 from pydantic import BaseModel, ConfigDict, PrivateAttr
 from multimethod import multimethod
 from peewee import DoesNotExist
 from core.db.models import UserModel, ConnectionPeerModel
-from core.db.model_serializer import User
+from core.db.model_serializer import User, ConnectionPeer
 from core.db.enums import StatusChoices
 
 
@@ -31,6 +31,18 @@ class Client(BaseModel):
                 .where(UserModel.telegram_id == self.tg_id)
                 .execute()) == 1
 
+    def __update_peer(self, peer_id: int, **kwargs) -> bool:
+        """Updates a ConnectionPeer by peer id.
+
+        Args:
+            kwargs: DB fields
+        Returns:
+            True if operation was successfull. False otherwise.
+        """
+        return (ConnectionPeerModel.update(**kwargs)
+                .where(ConnectionPeerModel.id == peer_id)
+                .execute()) == 1
+
     def set_ip_address(self, ip_address: str) -> bool:
         self.userdata.ip_address = ip_address
         return self.__update_client(ip_address=ip_address)
@@ -39,17 +51,25 @@ class Client(BaseModel):
         self.userdata.status = status
         return self.__update_client(status=status.value)
 
-    def add_peer(self, public_key: str, preshared_key: str, shared_ips: str):
-        return ConnectionPeerModel.create(
+    def add_peer(self, 
+                 public_key: str, 
+                 preshared_key: str, 
+                 shared_ips: str,
+                 peer_name: str = None) -> ConnectionPeer:
+        return ConnectionPeer.model_validate(ConnectionPeerModel.create(
             user=self.__model,
             public_key=public_key,
             preshared_key=preshared_key,
-            shared_ips=shared_ips
-        )
+            shared_ips=shared_ips,
+            peer_name=peer_name
+        ))
 
     def get_peers(self) -> list[ConnectionPeerModel]:
         return list(ConnectionPeerModel.select()
                     .where(ConnectionPeerModel.user == self.__model))
+
+    def change_peer_name(self, peer_id: int, peer_name: str):
+        self.__update_peer(peer_id, peer_name=peer_name)
 
     @multimethod
     def delete_peer(self) -> bool:

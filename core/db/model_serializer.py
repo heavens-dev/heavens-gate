@@ -23,3 +23,4 @@ class ConnectionPeer(BaseModel):
     public_key: str
     preshared_key: str
     shared_ips: str
+    peer_name: Optional[str]
