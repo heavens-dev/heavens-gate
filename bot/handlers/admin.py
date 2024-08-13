@@ -2,18 +2,12 @@ import sys
 import os
 from aiogram.filters import Command
 from aiogram.types import Message
-from aiogram import Router, F
 
 from bot.utils.user_helper import get_client_by_id_or_ip
-from config.loader import bot_cfg, bot_instance
+from config.loader import bot_instance, admin_router
 from core.db.db_works import ClientFactory
 from core.db.enums import StatusChoices
 
-
-admin_router = Router()
-admin_router.message.filter(
-    F.from_user.id.in_(bot_cfg.admins)
-)
 
 @admin_router.message(Command("reboot"))
 async def reboot(message: Message) -> None:

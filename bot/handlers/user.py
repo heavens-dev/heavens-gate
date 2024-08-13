@@ -1,6 +1,4 @@
-from aiogram import Router
 from aiogram.filters import Command
-from aiogram.types.input_media_document import InputMediaDocument
 from aiogram.types import Message, BufferedInputFile, CallbackQuery
 from aiogram.utils.media_group import MediaGroupBuilder
 
@@ -9,10 +7,7 @@ from bot.utils.callback_data import ConnectionPeerCallbackData
 from core.wg.wgconfig_helper import get_peer_config_str
 from bot.utils.user_helper import get_user_data_string
 from core.db.db_works import ClientFactory
-from config.loader import bot_instance
-
-
-user_router = Router()
+from config.loader import bot_instance, user_router
 
 
 @user_router.message(Command("me"))
@@ -67,7 +62,6 @@ async def select_peer_callback(callback: CallbackQuery, callback_data: Connectio
                 )
             )
             break
-
 
     await bot_instance.send_media_group(callback.from_user.id, media=media_group.build())
     await callback.answer()
