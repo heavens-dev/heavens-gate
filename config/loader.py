@@ -1,6 +1,8 @@
 from config.settings import Config
 from core.db.models import init_db
-from aiogram import Bot, Dispatcher, Router, F
+from aiogram import Bot, Dispatcher
+from aiogram.enums import ParseMode
+from aiogram.client.default import DefaultBotProperties
 from aiogram.fsm.storage.memory import MemoryStorage
 
 
@@ -9,15 +11,11 @@ path_to_config = "config.conf"
 cfg = Config(path_to_config)
 
 bot_cfg = cfg.get_bot_config()
-bot_instance = Bot(token=bot_cfg.token)
-bot_dispatcher = Dispatcher(storage=MemoryStorage())
-
-admin_router = Router()
-admin_router.message.filter(
-    F.from_user.id.in_(bot_cfg.admins)
+bot_instance = Bot(
+    token=bot_cfg.token,
+    default=DefaultBotProperties(parse_mode=ParseMode.HTML)
 )
-
-user_router = Router()
+bot_dispatcher = Dispatcher(storage=MemoryStorage())
 
 db_cfg = cfg.get_database_config()
 db_instance = init_db(db_cfg.path)

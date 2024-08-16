@@ -23,7 +23,7 @@ async def get_client_by_id_or_ip(message: Message) -> Optional[Client]:
             client = None
 
     if client is None:
-        await message.answer(f"❌ Пользователь <code>{args[1]}</code> не найден.", parse_mode="HTML")
+        await message.answer(f"❌ Пользователь <code>{args[1]}</code> не найден.")
         return None
     return client
 

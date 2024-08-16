@@ -1,11 +1,11 @@
-from aiogram import F
+from aiogram import F, Router
 from aiogram.utils.media_group import MediaGroupBuilder
 from aiogram.types import CallbackQuery, BufferedInputFile
 
 from bot.utils.callback_data import (ConnectionPeerCallbackData, 
                                      UserActionsCallbackData,
                                      UserActionsEnum)
-from config.loader import user_router, admin_router, bot_instance
+from config.loader import bot_instance
 from bot.handlers.keyboards import build_user_actions_keyboard
 from core.wg.wgconfig_helper import get_peer_config_str
 from bot.utils.user_helper import get_user_data_string
@@ -13,7 +13,10 @@ from core.db.db_works import ClientFactory
 from core.db.enums import StatusChoices
 
 
-@user_router.callback_query(ConnectionPeerCallbackData.filter())
+router = Router(name="callbacks")
+
+
+@router.callback_query(ConnectionPeerCallbackData.filter())
 async def select_peer_callback(callback: CallbackQuery, callback_data: ConnectionPeerCallbackData):
 
     client = ClientFactory(tg_id=callback.from_user.id).get_client()
@@ -43,7 +46,7 @@ async def select_peer_callback(callback: CallbackQuery, callback_data: Connectio
     await callback.message.delete()
     await callback.answer()
 
-@admin_router.callback_query(
+@router.callback_query(
     UserActionsCallbackData.filter(F.action == UserActionsEnum.BAN_USER)
 )
 async def ban_user_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
@@ -53,7 +56,7 @@ async def ban_user_callback(callback: CallbackQuery, callback_data: UserActionsC
     await callback.message.edit_text(get_user_data_string(client))
     await callback.message.edit_reply_markup(reply_markup=build_user_actions_keyboard(client))
 
-@admin_router.callback_query(
+@router.callback_query(
     UserActionsCallbackData.filter(F.action == UserActionsEnum.PARDON_USER)
 )
 async def pardon_user_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):

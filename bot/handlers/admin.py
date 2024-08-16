@@ -1,16 +1,23 @@
 import sys
 import os
+from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.types import Message
 
 from bot.utils.user_helper import get_client_by_id_or_ip, get_user_data_string
 from bot.handlers.keyboards import build_user_actions_keyboard
-from config.loader import bot_instance, admin_router
+from config.loader import bot_cfg, bot_instance
 from core.db.db_works import ClientFactory
 from core.db.enums import StatusChoices
 
 
-@admin_router.message(Command("reboot"))
+router = Router(name="admin")
+router.message.filter(
+    F.from_user.id.in_(bot_cfg.admins)
+)
+
+
+@router.message(Command("reboot"))
 async def reboot(message: Message) -> None:
     await message.answer("Бот перезапускается...")
 
@@ -21,7 +28,7 @@ async def reboot(message: Message) -> None:
 
     os.execv(sys.executable, ['python'] + sys.argv)
 
-@admin_router.message(Command("broadcast"))
+@router.message(Command("broadcast"))
 async def broadcast(message: Message):
     """Broadcast message to ALL registered users"""
     args = message.text.split()
@@ -35,10 +42,10 @@ async def broadcast(message: Message):
     for client in all_clients:
         if message.chat.id == client.userdata.telegram_id:
             continue
-        await message.bot.send_message(client.userdata.telegram_id, text, parse_mode="HTML")
+        await message.bot.send_message(client.userdata.telegram_id, text)
     await message.answer("Сообщение транслировано всем пользователям.")
 
-@admin_router.message(Command("ban"))
+@router.message(Command("ban"))
 async def ban(message: Message):
     client = await get_client_by_id_or_ip(message)
 
@@ -46,11 +53,11 @@ async def ban(message: Message):
 
     client.set_status(StatusChoices.STATUS_ACCOUNT_BLOCKED)
     await message.answer(
-        f"✅ Пользователь <code>{client.userdata.name}:{client.userdata.telegram_id}:{client.userdata.ip_address}</code> заблокирован.",
-        parse_mode="HTML")
+        f"✅ Пользователь <code>{client.userdata.name}:{client.userdata.telegram_id}:{client.userdata.ip_address}</code> заблокирован."
+    )
     # TODO: notify user about blocking and reject any ongoing connections
 
-@admin_router.message(Command("unban", "mercy", "anathem", "pardon"))
+@router.message(Command("unban", "mercy", "anathem", "pardon"))
 async def unban(message: Message):
     client = await get_client_by_id_or_ip(message)
     
@@ -58,11 +65,11 @@ async def unban(message: Message):
 
     client.set_status(StatusChoices.STATUS_CREATED)
     await message.answer(
-        f"✅ Пользователь <code>{client.userdata.name}:{client.userdata.telegram_id}:{client.userdata.ip_address}</code> разблокирован.",
-        parse_mode="HTML")
+        f"✅ Пользователь <code>{client.userdata.name}:{client.userdata.telegram_id}:{client.userdata.ip_address}</code> разблокирован."
+    )
     # TODO: notify user about pardon
 
-@admin_router.message(Command("whisper"))
+@router.message(Command("whisper"))
 async def whisper(message: Message):
     client = await get_client_by_id_or_ip(message)
 
@@ -75,12 +82,11 @@ async def whisper(message: Message):
 
     await bot_instance.send_message(
         client.userdata.telegram_id, 
-        text="🤫 <b>Сообщение от администрации</b>:\n\n" + "".join(i for i in message.text.split()[2::]),
-        parse_mode="HTML"
+        text="🤫 <b>Сообщение от администрации</b>:\n\n" + "".join(i for i in message.text.split()[2::])
     )
     await message.answer("✅ Сообщение отправлено.")
 
-@admin_router.message(Command("get_user"))
+@router.message(Command("get_user"))
 async def get_user(message: Message):
     client = await get_client_by_id_or_ip(message)
     if not client: return

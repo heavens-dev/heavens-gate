@@ -1,3 +1,4 @@
+from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message, BufferedInputFile
 
@@ -5,16 +6,17 @@ from bot.handlers.keyboards import build_peer_configs_keyboard
 from core.wg.wgconfig_helper import get_peer_config_str
 from bot.utils.user_helper import get_user_data_string
 from core.db.db_works import ClientFactory
-from config.loader import user_router
+
+router = Router(name="user")
 
 
-@user_router.message(Command("me"))
+@router.message(Command("me"))
 async def me(message: Message):
     client = ClientFactory(tg_id=message.chat.id).get_client()
 
     await message.answer(get_user_data_string(client))
 
-@user_router.message(Command("config"))
+@router.message(Command("config"))
 async def get_config(message: Message):
     client = ClientFactory(tg_id=message.from_user.id).get_client()
     peers = client.get_peers()

@@ -7,13 +7,13 @@ from aiogram.types import Message
 from config.loader import (bot_instance, 
                            bot_dispatcher, 
                            bot_cfg, 
-                           db_instance, 
-                           admin_router, 
-                           user_router)
+                           db_instance)
+
 from bot.commands import (get_admin_commands, 
                           get_default_commands, 
                           set_admin_commands, 
                           set_user_commands)
+from bot.handlers import get_handlers_router
 from core.db.db_works import ClientFactory
 
 
@@ -58,7 +58,7 @@ async def on_startup(*args):
     print("started.")
 
 def main() -> None:
-    bot_dispatcher.include_routers(admin_router, user_router)
+    bot_dispatcher.include_router(get_handlers_router())
 
     asyncio.run(bot_dispatcher.run_polling(bot_instance))
 
