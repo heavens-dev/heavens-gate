@@ -2,11 +2,11 @@ from aiogram import F, Router
 from aiogram.utils.media_group import MediaGroupBuilder
 from aiogram.types import CallbackQuery, BufferedInputFile
 
-from bot.utils.callback_data import (ConnectionPeerCallbackData, 
+from bot.utils.callback_data import (ConnectionPeerCallbackData,
                                      UserActionsCallbackData,
                                      UserActionsEnum)
 from config.loader import bot_instance
-from bot.handlers.keyboards import (build_user_actions_keyboard, 
+from bot.handlers.keyboards import (build_user_actions_keyboard,
                                     build_peer_configs_keyboard)
 from core.wg.wgconfig_helper import get_peer_config_str
 from bot.utils.user_helper import get_user_data_string

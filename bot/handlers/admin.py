@@ -60,7 +60,7 @@ async def ban(message: Message):
 @router.message(Command("unban", "mercy", "pardon"))
 async def unban(message: Message):
     client = await get_client_by_id_or_ip(message)
-    
+
     if not client: return
 
     client.set_status(StatusChoices.STATUS_CREATED)
@@ -81,7 +81,7 @@ async def whisper(message: Message):
         return
 
     await bot_instance.send_message(
-        client.userdata.telegram_id, 
+        client.userdata.telegram_id,
         text="🤫 <b>Сообщение от администрации</b>:\n\n" + "".join(i for i in message.text.split()[2::])
     )
     await message.answer("✅ Сообщение отправлено.")
@@ -93,6 +93,6 @@ async def get_user(message: Message):
 
     await message.answer(f"Пользователь: {client.userdata.name}")
     await message.answer(
-        get_user_data_string(client), 
+        get_user_data_string(client),
         reply_markup=build_user_actions_keyboard(client)
     )

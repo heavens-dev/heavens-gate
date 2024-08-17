@@ -18,7 +18,7 @@ class UserModel(BaseModel):
     ip_address = CharField(default=None, null=True)
     active_time = DateTimeField(default=None, null=True)
     status = IntegerField(
-        default=StatusChoices.STATUS_CREATED.value,              
+        default=StatusChoices.STATUS_CREATED.value,
         choices=tuple(
             (status.value, status.name) for status in StatusChoices
         )

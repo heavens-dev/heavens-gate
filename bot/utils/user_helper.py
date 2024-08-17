@@ -13,7 +13,7 @@ async def get_client_by_id_or_ip(message: Message) -> Optional[Client]:
     if len(args) <= 1:
         await message.answer("❌ Сообщение должно содержать IP-адрес пользователя или его Telegram ID.")
         return None
-    
+
     if check_ip_address(args[1]):
         client = ClientFactory.get_client(args[1])
     else:
@@ -28,7 +28,7 @@ async def get_client_by_id_or_ip(message: Message) -> Optional[Client]:
     return client
 
 def get_user_data_string(client: Client) -> str:
-    """Returns human-readable data about User. 
+    """Returns human-readable data about User.
     Recommended to use `parse_mode="HTML"`."""
     return f"""ℹ️ Информация об аккаунте:
 ID: {client.userdata.telegram_id}

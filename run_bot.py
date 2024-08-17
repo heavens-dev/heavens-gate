@@ -4,14 +4,14 @@ import os
 from aiogram.filters import CommandStart, Command
 from aiogram.types import Message
 
-from config.loader import (bot_instance, 
-                           bot_dispatcher, 
-                           bot_cfg, 
+from config.loader import (bot_instance,
+                           bot_dispatcher,
+                           bot_cfg,
                            db_instance)
 
-from bot.commands import (get_admin_commands, 
-                          get_default_commands, 
-                          set_admin_commands, 
+from bot.commands import (get_admin_commands,
+                          get_default_commands,
+                          set_admin_commands,
                           set_user_commands)
 from bot.handlers import get_handlers_router
 from core.db.db_works import ClientFactory
@@ -52,7 +52,7 @@ async def on_startup(*args):
         with open(".reboot", encoding="utf-8") as f:
             chat_id = int(f.read())
             stickerset = await bot_instance.get_sticker_set("chunkytext")
-            await bot_instance.send_sticker(chat_id, random.choice(stickerset.stickers).file_id)   
+            await bot_instance.send_sticker(chat_id, random.choice(stickerset.stickers).file_id)
             await bot_instance.send_message(chat_id, "Бот перезапущен.")
         os.remove(".reboot")
     print("started.")
