@@ -5,6 +5,8 @@ from enum import StrEnum
 class UserActionsEnum(StrEnum):
     BAN_USER = "ban"
     PARDON_USER = "pardon"
+    GET_CONFIGS = "configs"
+    TERMINATE_CONNECTION = "terconn" # TODO
 
 
 class ConnectionPeerCallbackData(CallbackData, prefix="peer"):
