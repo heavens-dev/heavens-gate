@@ -101,7 +101,7 @@ class Client(BaseModel):
         return (ConnectionPeerModel.delete()
                 .where(ConnectionPeerModel.shared_ips.regexp(
                     rf"(?:[, ]|^){ip_address.replace('.', '\\.')}(?:[, ]|$)"
-                ))
+                ) & ConnectionPeerModel.user == self.__model)
                 .execute()) == 1
 
 class ClientFactory(BaseModel):
