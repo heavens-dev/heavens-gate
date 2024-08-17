@@ -97,13 +97,10 @@ class Client(BaseModel):
         Returns:
             bool: True if successfull. False otherwise
         """
-        peers = self.__get_peers()
-        for peer in peers:
-            if ip_address in peer.shared_ips:
-                return (ConnectionPeerModel.delete()
-                        .where(ConnectionPeerModel.shared_ips == ip_address)
-                        .execute()) == 1
-        return False
+        
+        return (ConnectionPeerModel.delete()
+                .where(ConnectionPeerModel.shared_ips.contains(ip_address))
+                .execute()) == 1
 
 class ClientFactory(BaseModel):
     model_config = ConfigDict(ignored_types=(multimethod, ))
