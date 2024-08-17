@@ -11,7 +11,7 @@ async def get_client_by_id_or_ip(message: Message) -> Optional[Client]:
     """Not a command"""
     args = message.text.split()
     if len(args) <= 1:
-        await message.answer("❌ Сообщение должно содержать IP адрес пользователя или его Telegram ID.")
+        await message.answer("❌ Сообщение должно содержать IP-адрес пользователя или его Telegram ID.")
         return None
     
     if check_ip_address(args[1]):
