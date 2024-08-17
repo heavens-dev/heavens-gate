@@ -5,7 +5,7 @@ import datetime
 from core.db.enums import StatusChoices
 
 
-db = SqliteExtDatabase(None)
+db = SqliteExtDatabase(None, regexp_function=True)
 
 class BaseModel(Model):
     class Meta:

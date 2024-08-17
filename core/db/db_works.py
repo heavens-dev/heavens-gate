@@ -28,7 +28,7 @@ class Client(BaseModel):
             True if operation was successfull. False otherwise.
         """
         return (self.__model.update(**kwargs)
-                .where(UserModel.telegram_id == self.tg_id)
+                .where(UserModel.telegram_id == self.userdata.telegram_id)
                 .execute()) == 1
 
     def __update_peer(self, peer_id: int, **kwargs) -> bool:
@@ -64,9 +64,17 @@ class Client(BaseModel):
             peer_name=peer_name
         ))
 
-    def get_peers(self) -> list[ConnectionPeerModel]:
+    def __get_peers(self) -> list[ConnectionPeerModel]:
+        """Private method for working with peers"""
         return list(ConnectionPeerModel.select()
                     .where(ConnectionPeerModel.user == self.__model))
+
+    def get_peers(self) -> list[ConnectionPeer]:
+        """Get validated peers model(s)"""
+        return [
+            ConnectionPeer.model_validate(model)
+            for model in self.__get_peers()
+        ]
 
     def change_peer_name(self, peer_id: int, peer_name: str):
         self.__update_peer(peer_id, peer_name=peer_name)
@@ -89,26 +97,24 @@ class Client(BaseModel):
         Returns:
             bool: True if successfull. False otherwise
         """
-        peers = self.get_peers()
-        for peer in peers:
-            if ip_address in peer.shared_ips:
-                return (ConnectionPeerModel.delete()
-                        .where(ConnectionPeerModel.shared_ips == ip_address)
-                        .execute()) == 1
-        return False
-
-    class Meta:
-        arbitrary_types_allowed=True
+        # ? weird flex but okay.
+        return (ConnectionPeerModel.delete()
+                .where(ConnectionPeerModel.shared_ips.regexp(
+                    rf"(?:[, ]|^){ip_address.replace('.', '\\.')}(?:[, ]|$)"
+                ) & ConnectionPeerModel.user == self.__model)
+                .execute()) == 1
 
 class ClientFactory(BaseModel):
     model_config = ConfigDict(ignored_types=(multimethod, ))
 
     tg_id: int
 
-    def create_client(self, name: str, **kwargs) -> Client:
-        model = UserModel.create(telegram_id=self.tg_id, name=name, **kwargs)
+    def get_or_create_client(self, name: str, **kwargs) -> Client:
+        """Retrieves or creates a record of the user in the database.
+        Use this method when you're unsure whether the user already exists in the database or not."""
+        model = UserModel.get_or_create(telegram_id=self.tg_id, name=name, **kwargs)[0]
         return Client(model=model, userdata=User.model_validate(model))
-    
+
     @multimethod
     def get_client(self) -> Optional[Client]:
         try:
@@ -120,10 +126,11 @@ class ClientFactory(BaseModel):
     @multimethod
     @staticmethod
     def get_client(ip_address: str) -> Optional[Client]:
-        model = UserModel.select().where(UserModel.ip_address == ip_address)
-        if not model:
+        try:
+            model = UserModel.get(UserModel.ip_address == ip_address)
+            return Client(model=model, userdata=User.model_validate(model))
+        except DoesNotExist:
             return None
-        return Client(model=model, userdata=User.model_validate(model))
 
     @staticmethod
     def select_clients() -> list[Client]:
@@ -141,7 +148,3 @@ class ClientFactory(BaseModel):
     @staticmethod
     def count_clients() -> int:
         return UserModel.select().count()
-
-    class Meta:
-        arbitrary_types_allowed=True
-
