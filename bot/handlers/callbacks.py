@@ -6,7 +6,8 @@ from bot.utils.callback_data import (ConnectionPeerCallbackData,
                                      UserActionsCallbackData,
                                      UserActionsEnum)
 from config.loader import bot_instance
-from bot.handlers.keyboards import build_user_actions_keyboard
+from bot.handlers.keyboards import (build_user_actions_keyboard, 
+                                    build_peer_configs_keyboard)
 from core.wg.wgconfig_helper import get_peer_config_str
 from bot.utils.user_helper import get_user_data_string
 from core.db.db_works import ClientFactory
@@ -65,3 +66,17 @@ async def pardon_user_callback(callback: CallbackQuery, callback_data: UserActio
     await callback.answer(f"✅ Пользователь {client.userdata.name} разблокирован.")
     await callback.message.edit_text(get_user_data_string(client))
     await callback.message.edit_reply_markup(reply_markup=build_user_actions_keyboard(client))
+
+@router.callback_query(
+    UserActionsCallbackData.filter(F.action == UserActionsEnum.GET_CONFIGS)
+)
+async def get_user_configs_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
+    peers = ClientFactory(tg_id=callback_data.user_id).get_client().get_peers()
+    
+    builder = build_peer_configs_keyboard(peers)
+    
+    await callback.answer()
+    await callback.message.answer(
+        text="Выбери конфиг, который ты хочешь получить из клавиатуры: ",
+        reply_markup=builder
+    )
