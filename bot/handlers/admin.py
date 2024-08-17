@@ -45,7 +45,7 @@ async def broadcast(message: Message):
         await message.bot.send_message(client.userdata.telegram_id, text)
     await message.answer("Сообщение транслировано всем пользователям.")
 
-@router.message(Command("ban"))
+@router.message(Command("ban", "anathem"))
 async def ban(message: Message):
     client = await get_client_by_id_or_ip(message)
 
@@ -57,7 +57,7 @@ async def ban(message: Message):
     )
     # TODO: notify user about blocking and reject any ongoing connections
 
-@router.message(Command("unban", "mercy", "anathem", "pardon"))
+@router.message(Command("unban", "mercy", "pardon"))
 async def unban(message: Message):
     client = await get_client_by_id_or_ip(message)
     

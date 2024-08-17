@@ -28,7 +28,7 @@ async def get_config(message: Message):
     if len(peers) >= 2:
         keyboard = build_peer_configs_keyboard(peers)
         await message.answer(
-            text="Выбери конфиг из клавиатуры, который ты хочешь получить: ",
+            text="Выбери конфиг, который ты хочешь получить из клавиатуры: ",
             reply_markup=keyboard)
     else:
         config = BufferedInputFile(
