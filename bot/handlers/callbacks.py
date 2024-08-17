@@ -19,11 +19,8 @@ router = Router(name="callbacks")
 
 @router.callback_query(ConnectionPeerCallbackData.filter())
 async def select_peer_callback(callback: CallbackQuery, callback_data: ConnectionPeerCallbackData):
-
-    client = ClientFactory(tg_id=callback.from_user.id).get_client()
-
+    client = ClientFactory(tg_id=callback_data.user_id).get_client()
     peers = client.get_peers()
-
     media_group = MediaGroupBuilder()
 
     for peer in peers:
@@ -72,11 +69,15 @@ async def pardon_user_callback(callback: CallbackQuery, callback_data: UserActio
 )
 async def get_user_configs_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
     peers = ClientFactory(tg_id=callback_data.user_id).get_client().get_peers()
-    
-    builder = build_peer_configs_keyboard(peers)
-    
+
     await callback.answer()
-    await callback.message.answer(
-        text="Выбери конфиг, который ты хочешь получить из клавиатуры: ",
-        reply_markup=builder
-    )
+    if peers:
+        builder = build_peer_configs_keyboard(callback_data.user_id, peers)
+        await callback.message.answer(
+            text="Выбери конфиг, который ты хочешь получить из клавиатуры: ",
+            reply_markup=builder
+        )
+    else:
+        await callback.message.answer(
+            text="❌ У этого пользователя нет доступных пиров."
+        )

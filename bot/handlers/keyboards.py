@@ -5,19 +5,19 @@ from core.db.model_serializer import ConnectionPeer
 from bot.utils.callback_data import ConnectionPeerCallbackData, UserActionsCallbackData, UserActionsEnum
 
 
-def build_peer_configs_keyboard(peers: list[ConnectionPeer]):
+def build_peer_configs_keyboard(user_id: int, peers: list[ConnectionPeer]):
     builder = InlineKeyboardBuilder()
 
     builder.button(
         text="Получить все конфиги", 
-        callback_data=ConnectionPeerCallbackData(peer_id=-1)
+        callback_data=ConnectionPeerCallbackData(user_id=user_id, peer_id=-1)
     )
     builder.adjust(1)
 
     for peer in peers:
         builder.button(
             text=f"{peer.peer_name or peer.id}_wg.conf",
-            callback_data=ConnectionPeerCallbackData(peer_id=peer.id)
+            callback_data=ConnectionPeerCallbackData(user_id=user_id, peer_id=peer.id)
         )
         builder.adjust(1)
 
