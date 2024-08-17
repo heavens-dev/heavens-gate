@@ -26,12 +26,18 @@ class UserModel(BaseModel):
     expire_time = DateTimeField(default=None, null=True)
     registered_at = DateTimeField(default=datetime.datetime.now)
 
+    class Meta:
+        table_name = "Users"
+
 class ConnectionPeerModel(BaseModel):
     user = ForeignKeyField(UserModel, backref="peer", on_delete="CASCADE")
     public_key = CharField()
     preshared_key = CharField()
     shared_ips = CharField()
     peer_name = CharField(default=None, null=True)
+
+    class Meta:
+        table_name = "ConnectionPeers"
 
 
 def init_db(path: str):
