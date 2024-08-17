@@ -97,9 +97,11 @@ class Client(BaseModel):
         Returns:
             bool: True if successfull. False otherwise
         """
-        
+        # ? weird flex but okay.
         return (ConnectionPeerModel.delete()
-                .where(ConnectionPeerModel.shared_ips.contains(ip_address))
+                .where(ConnectionPeerModel.shared_ips.regexp(
+                    rf"(?:[, ]|^){ip_address.replace('.', '\\.')}(?:[, ]|$)"
+                ))
                 .execute()) == 1
 
 class ClientFactory(BaseModel):
