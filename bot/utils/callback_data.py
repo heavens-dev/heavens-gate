@@ -11,7 +11,7 @@ class ConnectionPeerCallbackData(CallbackData, prefix="peer"):
     """Peer callback data for keyboards.
 
     Args:
-        peer_id (int): integer if we want to get single peer. Set to -1 to get ALL peers that related to some user
+        peer_id (int): integer if we want to get a single peer. Set to -1 to get ALL peers that are related to some user
     """
     peer_id: int
 
