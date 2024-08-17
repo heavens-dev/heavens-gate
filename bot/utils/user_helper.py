@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 
 async def get_client_by_id_or_ip(message: Message) -> Optional[Client]:
-    """Not a command"""
+    """Not a command. Automatically sends an error message if user has not been found, and returns `None`."""
     args = message.text.split()
     if len(args) <= 1:
         await message.answer("❌ Сообщение должно содержать IP-адрес пользователя или его Telegram ID.")
