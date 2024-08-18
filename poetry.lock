@@ -303,6 +303,17 @@ files = [
 ]
 
 [[package]]
+name = "icmplib"
+version = "3.0.4"
+description = "Easily forge ICMP packets and make your own ping and traceroute."
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "icmplib-3.0.4-py3-none-any.whl", hash = "sha256:336b75c6c23c5ce99ddec33f718fab09661f6ad698e35b6f1fc7cc0ecf809398"},
+    {file = "icmplib-3.0.4.tar.gz", hash = "sha256:57868f2cdb011418c0e1d5586b16d1fabd206569fe9652654c27b6b2d6a316de"},
+]
+
+[[package]]
 name = "idna"
 version = "3.7"
 description = "Internationalized Domain Names in Applications (IDNA)"
@@ -713,4 +724,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "eb17d8d8602b2ee66d82a4e8465592b5958af701100798a8ae70f8cc283afcc6"
+content-hash = "a77d1b890a4830d961e4bd99a3eb49125f8d0d180a2fdc35ae754cfe1df5bbf1"
