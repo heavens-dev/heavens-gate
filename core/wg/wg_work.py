@@ -1,13 +1,15 @@
 import subprocess
-import keygen
 from core.db.model_serializer import ConnectionPeer
 from config.loader import server_cfg
+from core.wg.keygen import private_key, preshared_key, public_key
 
 def create_peer_keys():
     pass
 
 def setup_server_keys():
-    pass
+    server_private_key = private_key()
+    server_cfg.privatekey = server_private_key
+    print(f"{server_cfg.privatekey}")
 
 def create_server_base():
     pass

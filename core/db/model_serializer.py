@@ -21,6 +21,7 @@ class ConnectionPeer(BaseModel):
     id: int
     user_id: int
     public_key: str
+    private_key: str
     preshared_key: str
     shared_ips: str
     peer_name: Optional[str]
