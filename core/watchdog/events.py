@@ -27,7 +27,7 @@ class ConnectionEvents:
         """List of Telegram IDs of connected clients"""
 
         self.__clients_lock = asyncio.Lock()
-        """Internal lock that prevents updating `self.connected_clients`
+        """Internal lock that prevents updating `self.clients`
         during client connection checks"""
 
     async def __check_connection(self, client: Client, peer: ConnectionPeer) -> bool:
