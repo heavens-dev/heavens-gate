@@ -14,7 +14,7 @@ from bot.commands import (get_admin_commands,
                           set_admin_commands,
                           set_user_commands)
 from bot.handlers import get_handlers_router
-from core.db.db_works import ClientFactory
+from core.db.db_works import ClientFactory, Client
 
 
 @bot_dispatcher.message(CommandStart())
@@ -62,8 +62,14 @@ async def on_connections_observer_startup():
     print("Observer started!")
 
 @connections_observer.connected()
-async def on_connected(client):
-    print(f"{client.userdata.name}")
+async def on_connected(client: Client):
+    print(f"{client}")
+    print(connections_observer.connected_clients)
+
+@connections_observer.disconnected()
+async def on_disconnected(client: Client):
+    print(f"{client}")
+    print(connections_observer.connected_clients)
 
 async def main() -> None:
     bot_dispatcher.include_router(get_handlers_router())

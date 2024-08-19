@@ -1,3 +1,4 @@
+from contextlib import suppress
 import asyncio
 from core.db.model_serializer import ConnectionPeer
 from core.watchdog.observer import EventObserver
@@ -11,8 +12,10 @@ class ConnectionEvents:
         self.listen_timer = listen_timer
         self.update_timer = update_timer
 
-        self.connected = EventObserver()
-        self.disconnected = EventObserver()
+        self.connected = EventObserver(required_types=[Client])
+        """Decorated methods must have a `Client` argument"""
+        self.disconnected = EventObserver(required_types=[Client])
+        """Decorated methods must have a `Client` argument"""
         self.startup = EventObserver()
 
         self.clients: list[tuple[Client, list[ConnectionPeer]]] = [
@@ -20,20 +23,23 @@ class ConnectionEvents:
         ]
         """List of all `Client`s and their `ConnectionPeer`s"""
 
-        self.connected_clients: list[Client] = []
+        self.connected_clients: list[int] = []
+        """List of Telegram IDs of connected clients"""
 
     async def __check_connection(self, client: Client, peer: ConnectionPeer) -> bool:
         host = await async_ping(peer.shared_ips)
 
         if host.is_alive:
-            if client not in self.connected_clients:
+            if client.userdata.telegram_id not in self.connected_clients:
                 await self.emit_connect(client)
             return True
 
-        if client in self.connected_clients:
+        if client.userdata.telegram_id in self.connected_clients or \
+           client.userdata.status == StatusChoices.STATUS_CONNECTED:
             await self.emit_disconnect(client)
         return False
 
+    # TODO: listen connected clients more often than all clients. should add another task
     async def __listen_connected(self):
         while True:
             async with asyncio.TaskGroup() as group:
@@ -51,7 +57,7 @@ class ConnectionEvents:
 
         Updates Client status to `StatusChoices.STATUS_CONNECTED`"""
         client.set_status(StatusChoices.STATUS_CONNECTED)
-        self.connected_clients.append(client)
+        self.connected_clients.append(client.userdata.telegram_id)
         await self.connected.trigger(client)
 
     async def emit_disconnect(self, client: Client):
@@ -59,9 +65,12 @@ class ConnectionEvents:
 
         Updates Client status to `StatusChoices.STATUS_DISCONNECTED`"""
         client.set_status(StatusChoices.STATUS_DISCONNECTED)
-        self.connected_clients.remove(client)
+        with suppress(ValueError):
+            self.connected_clients.remove(client.userdata.telegram_id)
         await self.disconnected.trigger(client)
 
+    # ! this task may update clients list right in middle of listening users. !
+    # TODO: require update only after listening task.
     async def __update_clients_list(self):
         while True:
             self.clients = [

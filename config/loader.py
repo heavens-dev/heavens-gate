@@ -23,4 +23,4 @@ db_instance = init_db(db_cfg.path)
 
 server_cfg = cfg.get_server_config()
 
-connections_observer = ConnectionEvents()
+connections_observer = ConnectionEvents(listen_timer=30, update_timer=30)
