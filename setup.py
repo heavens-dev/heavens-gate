@@ -1,12 +1,12 @@
-from core.wg.keygen import private_key, public_key
+from core.wg.keygen import generate_private_key, generate_public_key
 from configparser import ConfigParser
 import os
 from requests import get
 
 def make_config(path):
     #Create pair of crypto keys
-    server_private_key = private_key()
-    server_public_key = public_key(server_private_key)
+    server_private_key = generate_private_key()
+    server_public_key = generate_public_key(server_private_key)
 
     #Get external ip of your server
     external_ip = get('https://api.ipify.org').content.decode('utf8')

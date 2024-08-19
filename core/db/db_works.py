@@ -6,7 +6,7 @@ from core.db.models import UserModel, ConnectionPeerModel
 from core.db.model_serializer import User, ConnectionPeer
 from core.db.enums import StatusChoices
 
-from core.wg.keygen import private_key, preshared_key, public_key
+from core.wg.keygen import generate_private_key, generate_preshared_key, generate_public_key
 
 
 class Client(BaseModel):
@@ -59,9 +59,9 @@ class Client(BaseModel):
                  preshared_key: str, 
                  shared_ips: str,
                  peer_name: str = None) -> ConnectionPeer:
-        private_peer_key = private_key()
-        public_peer_key = public_key(private_peer_key)
-        preshared_peer_key = preshared_key()
+        private_peer_key = generate_private_key()
+        public_peer_key = generate_public_key(private_peer_key)
+        preshared_peer_key = generate_preshared_key()
         return ConnectionPeer.model_validate(ConnectionPeerModel.create(
             user=self.__model,
             public_key=public_peer_key,
