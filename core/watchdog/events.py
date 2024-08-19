@@ -1,9 +1,9 @@
 from contextlib import suppress
 import asyncio
+from icmplib import async_ping
 from core.db.model_serializer import ConnectionPeer
 from core.watchdog.observer import EventObserver
 from core.db.db_works import Client, ClientFactory
-from icmplib import async_ping
 from core.db.enums import StatusChoices
 
 
@@ -25,6 +25,10 @@ class ConnectionEvents:
 
         self.connected_clients: list[int] = []
         """List of Telegram IDs of connected clients"""
+
+        self.__can_update_clients = asyncio.Event()
+        """Internal lock that prevents updating `self.connected_clients`
+        during client connection checks"""
 
     async def __check_connection(self, client: Client, peer: ConnectionPeer) -> bool:
         host = await async_ping(peer.shared_ips)
@@ -50,6 +54,7 @@ class ConnectionEvents:
                         )
 
             print(f"Done listening connections. Sleeping for {self.listen_timer} sec")
+            self.__can_update_clients.set()
             await asyncio.sleep(self.listen_timer)
 
     async def emit_connect(self, client: Client):
@@ -69,14 +74,14 @@ class ConnectionEvents:
             self.connected_clients.remove(client.userdata.telegram_id)
         await self.disconnected.trigger(client)
 
-    # ! this task may update clients list right in middle of listening users. !
-    # TODO: require update only after listening task.
     async def __update_clients_list(self):
         while True:
+            await self.__can_update_clients.wait()
             self.clients = [
                 (client, client.get_peers()) for client in ClientFactory.select_clients()
             ]
             print(f"Done updating clients list. Sleeping for {self.update_timer} sec")
+            self.__can_update_clients.clear()
             await asyncio.sleep(self.update_timer)
 
     async def listen_events(self):
