@@ -4,6 +4,8 @@ import datetime
 
 from core.db.enums import StatusChoices
 
+from core.wg.keygen import private_key, preshared_key, public_key
+
 
 db = SqliteExtDatabase(None, regexp_function=True)
 
@@ -36,6 +38,22 @@ class ConnectionPeerModel(BaseModel):
     preshared_key = CharField()
     shared_ips = CharField()
     peer_name = CharField(default=None, null=True)
+
+    def setup_peer_keys(self):
+        peer_private_key = private_key()
+        self.privatekey = peer_private_key
+        self.public_key = public_key(peer_private_key)
+        self.preshared_key = preshared_key()
+
+    def peer_for_wg_server_config(self):
+        return f"""
+#{self.peer_name}
+[Peer]
+PublicKey = {self.public_key}
+PresharedKey = {self.preshared_key}
+AllowedIPs = {self.shared_ips}/32
+
+"""
 
     class Meta:
         table_name = "ConnectionPeers"
