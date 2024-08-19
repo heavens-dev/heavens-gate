@@ -5,9 +5,9 @@ from core.watchdog.object import CallableObject, Callback
 
 
 class EventObserver:
-    def __init__(self, required_types: list[Any] = []) -> None:
+    def __init__(self, required_types: list[Any] = None) -> None:
         self.__event_handlers: list[CallableObject] = []
-        self.required_types = required_types
+        self.required_types = required_types or []
         """Types that are required to call functions"""
 
     def register(self, fn: Union[Callable, Coroutine]):
@@ -23,8 +23,8 @@ class EventObserver:
                     stacklevel=3
                 )
 
-            for argname, type in argspec.annotations.items():
-                if not any(tuple(i for i in self.required_types if i == type)):
+            for argname, argtype in argspec.annotations.items():
+                if not any(tuple(i for i in self.required_types if i == argtype)):
                     warnings.warn(
                         message=f"Ensure that function '{fn.__name__}' correctly handling "
                         f"argument '{argname}' for any of this types: {self.required_types}. "
