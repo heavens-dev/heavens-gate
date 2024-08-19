@@ -1,7 +1,6 @@
 from configparser import ConfigParser
 from typing import Type
 import os
-from core.wg.keygen import private_key, preshared_key, public_key
 
 
 class Config:
@@ -85,29 +84,13 @@ ListenPort = {self.endpoint_port}
 PrivateKey = {self.private_key}
 """
 
-        def setup_server_keys(self):
-            server_private_key = private_key()
-            server_public_key = public_key(server_private_key)
-            self.privatekey = server_private_key
-            self.public_key = server_public_key
-
         def create_wg_server_config(path, base):
-            try:
-                wg_file = open(path, "w")
-                wg_file.write(base)
-                wg_file.close()
-                return 0
-            except:
-                return 1
+            with open(path, "w", encoding="utf-8") as wg_file:
+                	wg_file.write(base)
 
         def update_wg_server_config(path, data):
-            try:
-                wg_file = open(path, "a")
-                wg_file.write(data)
-                wg_file.close()
-                return 0
-            except:
-                return 1
+            with open(path, "a", encoding="utf-8") as wg_file:
+                	wg_file.write(data)
 
 
 
