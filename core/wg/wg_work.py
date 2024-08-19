@@ -1,9 +1,11 @@
 import subprocess
 from core.db.model_serializer import ConnectionPeer
+from config.settings import Server
 from config.loader import server_cfg
 from core.wg.keygen import private_key, preshared_key, public_key
 import os
 
+#Here also would be good server class, but there's no one, only config class
 def setup_peer_keys(peer: ConnectionPeer) -> str:
     peer_private_key = private_key()
     peer.privatekey = peer_private_key
@@ -11,25 +13,27 @@ def setup_peer_keys(peer: ConnectionPeer) -> str:
     peer.preshared_key = preshared_key()
     
 
-def setup_server_keys():
+def setup_server_keys(server: Server):
     server_private_key = private_key()
     server_public_key = public_key(server_private_key)
-    server_cfg.privatekey = server_private_key
-    server_cfg.public_key = server_public_key
-    print(server_cfg.public_key)
+    server.privatekey = server_private_key
+    server.public_key = server_public_key
 
-def create_server_base():
+def create_server_base(server: Server):
     return f"""[Interface]
-Address = {server.server_ip}/24
+Address = {server.user_ip}.1/24
 ListenPort = {server.endpoint_port}
-PrivateKey = {server.privatekey}
+PrivateKey = {server.private_key}
 """
 
 def peer_for_server_config(peer: ConnectionPeer) -> str:
-    return f"""[Peer]
-PublicKey = {peer.publickey}
+    return f"""
+#{peer.peer_name}
+[Peer]
+PublicKey = {peer.public_key}
 PresharedKey = {peer.preshared_key}
 AllowedIPs = {peer.shared_ips}/32
+
 """
 
 def disable_server(path):
