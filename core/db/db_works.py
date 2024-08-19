@@ -6,6 +6,8 @@ from core.db.models import UserModel, ConnectionPeerModel
 from core.db.model_serializer import User, ConnectionPeer
 from core.db.enums import StatusChoices
 
+from core.wg.keygen import private_key, preshared_key, public_key
+
 
 class Client(BaseModel):
     model_config = ConfigDict(ignored_types=(multimethod, ))
@@ -57,11 +59,14 @@ class Client(BaseModel):
                  preshared_key: str, 
                  shared_ips: str,
                  peer_name: str = None) -> ConnectionPeer:
+        private_peer_key = private_key()
+        public_peer_key = public_key(private_peer_key)
+        preshared_peer_key = preshared_key()
         return ConnectionPeer.model_validate(ConnectionPeerModel.create(
             user=self.__model,
-            public_key=public_key,
-            private_key=private_key,
-            preshared_key=preshared_key,
+            public_key=public_peer_key,
+            private_key=private_peer_key,
+            preshared_key=preshared_peer_key,
             shared_ips=shared_ips,
             peer_name=peer_name
         ))
