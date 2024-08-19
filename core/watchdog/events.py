@@ -26,7 +26,7 @@ class ConnectionEvents:
         self.connected_clients: list[int] = []
         """List of Telegram IDs of connected clients"""
 
-        self.__can_update_clients = asyncio.Event()
+        self.__clients_lock = asyncio.Lock()
         """Internal lock that prevents updating `self.connected_clients`
         during client connection checks"""
 
@@ -46,15 +46,15 @@ class ConnectionEvents:
     # TODO: listen connected clients more often than all clients. should add another task
     async def __listen_connected(self):
         while True:
-            async with asyncio.TaskGroup() as group:
-                for client, peers in self.clients:
-                    for peer in peers:
-                        group.create_task(
-                            self.__check_connection(client, peer)
-                        )
+            async with self.__clients_lock:
+                async with asyncio.TaskGroup() as group:
+                    for client, peers in self.clients:
+                        for peer in peers:
+                            group.create_task(
+                                self.__check_connection(client, peer)
+                            )
 
             print(f"Done listening connections. Sleeping for {self.listen_timer} sec")
-            self.__can_update_clients.set()
             await asyncio.sleep(self.listen_timer)
 
     async def emit_connect(self, client: Client):
@@ -76,12 +76,12 @@ class ConnectionEvents:
 
     async def __update_clients_list(self):
         while True:
-            await self.__can_update_clients.wait()
-            self.clients = [
-                (client, client.get_peers()) for client in ClientFactory.select_clients()
-            ]
-            print(f"Done updating clients list. Sleeping for {self.update_timer} sec")
-            self.__can_update_clients.clear()
+            async with self.__clients_lock:
+                self.clients = [
+                    (client, client.get_peers()) for client in ClientFactory.select_clients()
+                ]
+                print(f"Done updating clients list. Sleeping for {self.update_timer} sec")
+
             await asyncio.sleep(self.update_timer)
 
     async def listen_events(self):
