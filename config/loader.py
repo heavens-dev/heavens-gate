@@ -1,9 +1,10 @@
-from config.settings import Config
-from core.db.models import init_db
-from aiogram import Bot, Dispatcher
-from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
 from aiogram.fsm.storage.memory import MemoryStorage
+from core.watchdog.events import ConnectionEvents
+from aiogram.enums import ParseMode
+from aiogram import Bot, Dispatcher
+from core.db.models import init_db
+from config.settings import Config
 
 
 path_to_config = "config.conf"
@@ -21,3 +22,5 @@ db_cfg = cfg.get_database_config()
 db_instance = init_db(db_cfg.path)
 
 server_cfg = cfg.get_server_config()
+
+connections_observer = ConnectionEvents()
