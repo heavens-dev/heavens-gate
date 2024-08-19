@@ -53,12 +53,14 @@ class Client(BaseModel):
 
     def add_peer(self, 
                  public_key: str, 
+                 private_key: str,
                  preshared_key: str, 
                  shared_ips: str,
                  peer_name: str = None) -> ConnectionPeer:
         return ConnectionPeer.model_validate(ConnectionPeerModel.create(
             user=self.__model,
             public_key=public_key,
+            private_key=private_key,
             preshared_key=preshared_key,
             shared_ips=shared_ips,
             peer_name=peer_name
