@@ -77,7 +77,7 @@ class Config:
             self.endpoint_ip = endpoint_ip
             self.endpoint_port = endpoint_port
         
-        def create_wg_server_base(self):
+        def wg_server_base_str(self):
             return f"""[Interface]
 Address = {self.user_ip}.1/24
 ListenPort = {self.endpoint_port}
