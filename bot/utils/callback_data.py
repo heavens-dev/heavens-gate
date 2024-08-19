@@ -7,6 +7,7 @@ class UserActionsEnum(StrEnum):
     PARDON_USER = "pardon"
     GET_CONFIGS = "configs"
     TERMINATE_CONNECTION = "terconn" # TODO
+    UPDATE_DATA = "update"
 
 
 class ConnectionPeerCallbackData(CallbackData, prefix="peer"):

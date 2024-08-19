@@ -1,4 +1,6 @@
+from contextlib import suppress
 from aiogram import F, Router
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.utils.media_group import MediaGroupBuilder
 from aiogram.types import CallbackQuery, BufferedInputFile
 
@@ -61,8 +63,10 @@ async def pardon_user_callback(callback: CallbackQuery, callback_data: UserActio
     client = ClientFactory(tg_id=callback_data.user_id).get_client()
     client.set_status(StatusChoices.STATUS_CREATED)
     await callback.answer(f"✅ Пользователь {client.userdata.name} разблокирован.")
-    await callback.message.edit_text(get_user_data_string(client))
-    await callback.message.edit_reply_markup(reply_markup=build_user_actions_keyboard(client))
+    await callback.message.edit_text(
+        text=get_user_data_string(client),
+        reply_markup=build_user_actions_keyboard(client)
+    )
 
 @router.callback_query(
     UserActionsCallbackData.filter(F.action == UserActionsEnum.GET_CONFIGS)
@@ -80,4 +84,16 @@ async def get_user_configs_callback(callback: CallbackQuery, callback_data: User
     else:
         await callback.message.answer(
             text="❌ У этого пользователя нет доступных пиров."
+        )
+
+@router.callback_query(
+    UserActionsCallbackData.filter(F.action == UserActionsEnum.UPDATE_DATA)
+)
+async def update_user_message_data(callback: CallbackQuery, callback_data: UserActionsCallbackData):
+    client = ClientFactory(tg_id=callback_data.user_id).get_client()
+    await callback.answer(f"Данные пользователя {client.userdata.name} обновлены.")
+    with suppress(TelegramBadRequest):
+        await callback.message.edit_text(
+            text=get_user_data_string(client),
+            reply_markup=build_user_actions_keyboard(client)
         )

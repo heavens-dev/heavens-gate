@@ -43,7 +43,6 @@ def build_user_actions_keyboard(client: Client):
             )
         )
 
-    builder.adjust(1)
 
     builder.button(
         text="📒 Получить конфиги",
@@ -52,5 +51,15 @@ def build_user_actions_keyboard(client: Client):
             user_id=client.userdata.telegram_id
         )
     )
+
+    builder.button(
+        text="🔄 Обновить данные",
+        callback_data=UserActionsCallbackData(
+            action=UserActionsEnum.UPDATE_DATA,
+            user_id=client.userdata.telegram_id
+        )
+    )
+
+    builder.adjust(2, repeat=1)
 
     return builder.as_markup()
