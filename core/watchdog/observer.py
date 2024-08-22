@@ -11,7 +11,7 @@ class EventObserver:
         """Types that are required to call functions"""
 
     def register(self, fn: Union[Callable, Coroutine]):
-        """Register callback."""
+        """Registers a callback. Checks for correctness of annotations if `required_types` is present."""
         if self.required_types:
             argspec = inspect.getfullargspec(fn)
 

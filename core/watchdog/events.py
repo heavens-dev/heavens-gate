@@ -8,9 +8,13 @@ from core.db.enums import StatusChoices
 
 
 class ConnectionEvents:
-    def __init__(self, listen_timer: int = 60, update_timer: int = 360):
+    def __init__(self, 
+                 listen_timer: int = 120, 
+                 connected_only_listen_timer: int = 60, 
+                 update_timer: int = 360):
         self.listen_timer = listen_timer
         self.update_timer = update_timer
+        self.connected_only_listen_timer = connected_only_listen_timer
 
         self.connected = EventObserver(required_types=[Client])
         """Decorated methods must have a `Client` argument"""
@@ -43,19 +47,25 @@ class ConnectionEvents:
             await self.emit_disconnect(client)
         return False
 
-    # TODO: listen connected clients more often than all clients. should add another task
-    async def __listen_connected(self):
+    async def __listen_clients(self, listen_timer: int, connected_only: bool = False):
         while True:
+            # looks cringy, but idk how to make it prettier
             async with self.__clients_lock:
                 async with asyncio.TaskGroup() as group:
                     for client, peers in self.clients:
                         for peer in peers:
+                            if connected_only:
+                                if client.userdata.status == StatusChoices.STATUS_CONNECTED:
+                                    group.create_task(
+                                        self.__check_connection(client, peer)
+                                    )
+                                continue
                             group.create_task(
                                 self.__check_connection(client, peer)
                             )
 
-            print(f"Done listening connections. Sleeping for {self.listen_timer} sec")
-            await asyncio.sleep(self.listen_timer)
+            print(f"Done listening connections. Sleeping for {listen_timer} sec")
+            await asyncio.sleep(listen_timer)
 
     async def emit_connect(self, client: Client):
         """Appends connected clients and propagates connection event to handlers.
@@ -88,7 +98,13 @@ class ConnectionEvents:
         await self.startup.trigger()
         async with asyncio.TaskGroup() as group:
             group.create_task(self.__update_clients_list())
-            group.create_task(self.__listen_connected())
+            group.create_task(self.__listen_clients(self.listen_timer))
+            group.create_task(
+                self.__listen_clients(
+                    self.connected_only_listen_timer, 
+                    connected_only=True
+                )
+            )
 
     def listen_events_runner(self):
         return asyncio.run(self.listen_events())
