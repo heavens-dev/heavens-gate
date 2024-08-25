@@ -3,9 +3,11 @@ import os
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.types import Message
+from aiogram.fsm.context import FSMContext
 
 from bot.utils.user_helper import get_client_by_id_or_ip, get_user_data_string
-from bot.handlers.keyboards import build_user_actions_keyboard
+from bot.handlers.keyboards import build_user_actions_keyboard, preview_keyboard
+from bot.utils.states import PreviewMessageStates
 from config.loader import bot_cfg, bot_instance
 from core.db.db_works import ClientFactory
 from core.db.enums import StatusChoices
@@ -28,22 +30,30 @@ async def reboot(message: Message) -> None:
 
     os.execv(sys.executable, ['python'] + sys.argv)
 
+# FIXME: merge broadcast and whisper funcs
 @router.message(Command("broadcast"))
-async def broadcast(message: Message):
+async def broadcast(message: Message, state: FSMContext):
     """Broadcast message to ALL registered users"""
-    args = message.text.split()
+    args = message.html_text.split()
     if len(args) <= 1:
         await message.answer("❌ Сообщение должно содержать хотя бы какой-то текст для отправки.")
         return
     all_clients = ClientFactory.select_clients()
-    text = "✉️ <b>Рассылка от администрации</b>:\n\n"
-    text += " ".join(args[1::])
-    # ? sooo we can get rate limited probably. fixme? maybe later.
+    msg = message.html_text.split(maxsplit=1)[1]
+    clients_list = []
+
     for client in all_clients:
         if message.chat.id == client.userdata.telegram_id:
             continue
-        await message.bot.send_message(client.userdata.telegram_id, text)
-    await message.answer("Сообщение транслировано всем пользователям.")
+        clients_list.append(client.userdata.telegram_id)
+
+    await state.set_state(PreviewMessageStates.preview)
+    await state.set_data(data=dict(message=msg, user_ids=clients_list))
+
+    await message.answer(
+        "✉️ <b>Проверь правильность твоего сообщения перед отправкой</b>.\n\n" + msg + "\n\n<b>Отправить?</b>",
+        reply_markup=preview_keyboard()
+    )
 
 @router.message(Command("ban", "anathem"))
 async def ban(message: Message):
@@ -70,21 +80,25 @@ async def unban(message: Message):
     # TODO: notify user about pardon
 
 @router.message(Command("whisper"))
-async def whisper(message: Message):
+async def whisper(message: Message, state: FSMContext):
     client = await get_client_by_id_or_ip(message)
 
     if not client: return
 
-    args = message.text.split()
+    args = message.html_text.split()
     if len(args) <= 2:
         await message.answer("❌ Сообщение должно содержать хотя бы какой-то текст для отправки.")
         return
 
-    await bot_instance.send_message(
-        client.userdata.telegram_id,
-        text="🤫 <b>Сообщение от администрации</b>:\n\n" + "".join(i for i in message.text.split()[2::])
+    msg = message.html_text.split(maxsplit=2)[2]
+
+    await state.set_state(PreviewMessageStates.preview)
+    await state.set_data(data=dict(message=msg, user_ids=[client.userdata.telegram_id]))
+
+    await message.answer(
+        "✉️ <b>Проверь правильность твоего сообщения перед отправкой</b>.\n\n" + msg + "\n\n<b>Отправить?</b>",
+        reply_markup=preview_keyboard()
     )
-    await message.answer("✅ Сообщение отправлено.")
 
 @router.message(Command("get_user"))
 async def get_user(message: Message):

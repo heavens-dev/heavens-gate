@@ -2,7 +2,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from core.db.db_works import Client
 from core.db.enums import StatusChoices
 from core.db.model_serializer import ConnectionPeer
-from bot.utils.callback_data import ConnectionPeerCallbackData, UserActionsCallbackData, UserActionsEnum
+from bot.utils.callback_data import ConnectionPeerCallbackData, UserActionsCallbackData, UserActionsEnum, PreviewMessageCallbackData, YesOrNoEnum
 
 
 def build_peer_configs_keyboard(user_id: int, peers: list[ConnectionPeer]):
@@ -50,6 +50,27 @@ def build_user_actions_keyboard(client: Client):
         callback_data=UserActionsCallbackData(
             action=UserActionsEnum.GET_CONFIGS,
             user_id=client.userdata.telegram_id
+        )
+    )
+
+    return builder.as_markup()
+
+def preview_keyboard():
+    builder = InlineKeyboardBuilder()
+
+    builder.button(
+        text="✅ Да",
+        callback_data=PreviewMessageCallbackData(
+            answer=YesOrNoEnum.ANSWER_YES,
+        )
+    )
+
+    builder.adjust(1)
+
+    builder.button(
+        text="❌ Нет",
+        callback_data=PreviewMessageCallbackData(
+            answer=YesOrNoEnum.ANSWER_NO,
         )
     )
 
