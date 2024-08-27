@@ -34,6 +34,7 @@ class EventObserver:
 
         self.__event_handlers.append(CallableObject(callback=fn))
 
+    # TODO: check arguments if required_types is present.
     async def trigger(self, *args, **kwargs):
         """Propagate event to handlers."""
         for handler in self.__event_handlers:
