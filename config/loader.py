@@ -1,8 +1,8 @@
 from aiogram.client.default import DefaultBotProperties
 from aiogram.fsm.storage.memory import MemoryStorage
-from core.watchdog.events import ConnectionEvents
 from aiogram.enums import ParseMode
 from aiogram import Bot, Dispatcher
+from core.watchdog.events import ConnectionEvents
 from core.db.models import init_db
 from config.settings import Config
 

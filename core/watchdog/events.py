@@ -8,9 +8,9 @@ from core.db.enums import StatusChoices
 
 
 class ConnectionEvents:
-    def __init__(self, 
-                 listen_timer: int = 120, 
-                 connected_only_listen_timer: int = 60, 
+    def __init__(self,
+                 listen_timer: int = 120,
+                 connected_only_listen_timer: int = 60,
                  update_timer: int = 360):
         self.listen_timer = listen_timer
         self.update_timer = update_timer
@@ -101,7 +101,7 @@ class ConnectionEvents:
             group.create_task(self.__listen_clients(self.listen_timer))
             group.create_task(
                 self.__listen_clients(
-                    self.connected_only_listen_timer, 
+                    self.connected_only_listen_timer,
                     connected_only=True
                 )
             )

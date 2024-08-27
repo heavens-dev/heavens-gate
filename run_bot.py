@@ -63,12 +63,12 @@ async def on_connections_observer_startup():
 
 @connections_observer.connected()
 async def on_connected(client: Client):
-    print(f"{client}")
+    print(f"{client} connected!")
     print(connections_observer.connected_clients)
 
 @connections_observer.disconnected()
 async def on_disconnected(client: Client):
-    print(f"{client}")
+    print(f"{client} disconnected!")
     print(connections_observer.connected_clients)
 
 async def main() -> None:
