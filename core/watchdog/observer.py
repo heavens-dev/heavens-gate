@@ -27,7 +27,7 @@ class EventObserver:
                 if not any(tuple(i for i in self.required_types if i == argtype)):
                     warnings.warn(
                         message=f"Ensure that function '{fn.__name__}' correctly handles "
-                        f"argument '{argname}' for any of this types: {self.required_types}. "
+                        f"argument '{argname}' for any of these types: {self.required_types}. "
                         "Add correct annotation to hide this warning",
                         stacklevel=3
                     )
