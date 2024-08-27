@@ -17,7 +17,7 @@ class EventObserver:
 
             if argspec.args and not argspec.annotations:
                 warnings.warn(
-                    message=f"Ensure that function '{fn.__name__}' correctly handling "
+                    message=f"Ensure that function '{fn.__name__}' correctly handles "
                     f"arguments with types {self.required_types}. "
                     "Add annotations to hide this warning",
                     stacklevel=3
