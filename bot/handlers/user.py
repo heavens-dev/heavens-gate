@@ -1,11 +1,11 @@
 from aiogram import Router
 from aiogram.filters import Command
-from aiogram.types import Message, BufferedInputFile
+from aiogram.types import BufferedInputFile, Message
 
 from bot.handlers.keyboards import build_peer_configs_keyboard
-from core.wg.wgconfig_helper import get_peer_config_str
 from bot.utils.user_helper import get_user_data_string
 from core.db.db_works import ClientFactory
+from core.wg.wgconfig_helper import get_peer_config_str
 
 router = Router(name="user")
 

@@ -1,5 +1,6 @@
-from aiogram.filters.callback_data import CallbackData
 from enum import StrEnum
+
+from aiogram.filters.callback_data import CallbackData
 
 
 class UserActionsEnum(StrEnum):
@@ -7,6 +8,7 @@ class UserActionsEnum(StrEnum):
     PARDON_USER = "pardon"
     GET_CONFIGS = "configs"
     TERMINATE_CONNECTION = "terconn" # TODO
+    UPDATE_DATA = "update"
 
 
 class YesOrNoEnum(StrEnum):

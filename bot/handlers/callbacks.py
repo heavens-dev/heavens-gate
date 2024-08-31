@@ -1,22 +1,23 @@
-from aiogram import F, Router
-from aiogram.fsm.context import FSMContext
-from aiogram.utils.media_group import MediaGroupBuilder
-from aiogram.types import CallbackQuery, BufferedInputFile
+from contextlib import suppress
 
-from bot.utils.callback_data import (PreviewMessageCallbackData,
-                                     ConnectionPeerCallbackData,
-                                     UserActionsCallbackData,
-                                     UserActionsEnum,
+from aiogram import F, Router
+from aiogram.exceptions import TelegramBadRequest
+from aiogram.fsm.context import FSMContext
+from aiogram.types import BufferedInputFile, CallbackQuery
+from aiogram.utils.media_group import MediaGroupBuilder
+
+from bot.handlers.keyboards import (build_peer_configs_keyboard,
+                                    build_user_actions_keyboard)
+from bot.utils.callback_data import (ConnectionPeerCallbackData,
+                                     PreviewMessageCallbackData,
+                                     UserActionsCallbackData, UserActionsEnum,
                                      YesOrNoEnum)
-from config.loader import bot_instance
-from bot.handlers.keyboards import (build_user_actions_keyboard,
-                                    build_peer_configs_keyboard)
-from core.wg.wgconfig_helper import get_peer_config_str
-from bot.utils.user_helper import get_user_data_string
 from bot.utils.states import PreviewMessageStates
+from bot.utils.user_helper import get_user_data_string
+from config.loader import bot_instance
 from core.db.db_works import ClientFactory
 from core.db.enums import StatusChoices
-
+from core.wg.wgconfig_helper import get_peer_config_str
 
 router = Router(name="callbacks")
 
@@ -65,8 +66,10 @@ async def pardon_user_callback(callback: CallbackQuery, callback_data: UserActio
     client = ClientFactory(tg_id=callback_data.user_id).get_client()
     client.set_status(StatusChoices.STATUS_CREATED)
     await callback.answer(f"✅ Пользователь {client.userdata.name} разблокирован.")
-    await callback.message.edit_text(get_user_data_string(client))
-    await callback.message.edit_reply_markup(reply_markup=build_user_actions_keyboard(client))
+    await callback.message.edit_text(
+        text=get_user_data_string(client),
+        reply_markup=build_user_actions_keyboard(client)
+    )
 
 @router.callback_query(
     UserActionsCallbackData.filter(F.action == UserActionsEnum.GET_CONFIGS)
@@ -84,6 +87,18 @@ async def get_user_configs_callback(callback: CallbackQuery, callback_data: User
     else:
         await callback.message.answer(
             text="❌ У этого пользователя нет доступных пиров."
+        )
+
+@router.callback_query(
+    UserActionsCallbackData.filter(F.action == UserActionsEnum.UPDATE_DATA)
+)
+async def update_user_message_data(callback: CallbackQuery, callback_data: UserActionsCallbackData):
+    client = ClientFactory(tg_id=callback_data.user_id).get_client()
+    await callback.answer(f"Данные пользователя {client.userdata.name} обновлены.")
+    with suppress(TelegramBadRequest):
+        await callback.message.edit_text(
+            text=get_user_data_string(client),
+            reply_markup=build_user_actions_keyboard(client)
         )
 
 @router.callback_query(PreviewMessageCallbackData.filter(), PreviewMessageStates.preview)

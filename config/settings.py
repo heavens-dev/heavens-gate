@@ -1,6 +1,6 @@
+import os
 from configparser import ConfigParser
 from typing import Type
-import os
 
 
 class Config:

@@ -1,17 +1,18 @@
-import sys
 import os
+import sys
+
 from aiogram import F, Router
 from aiogram.filters import Command
-from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
+from aiogram.types import Message
 
-from bot.utils.user_helper import get_client_by_id_or_ip, get_user_data_string
-from bot.handlers.keyboards import build_user_actions_keyboard, preview_keyboard
+from bot.handlers.keyboards import (build_user_actions_keyboard,
+                                    preview_keyboard)
 from bot.utils.states import PreviewMessageStates
+from bot.utils.user_helper import get_client_by_id_or_ip, get_user_data_string
 from config.loader import bot_cfg, bot_instance
 from core.db.db_works import ClientFactory
 from core.db.enums import StatusChoices
-
 
 router = Router(name="admin")
 router.message.filter(
