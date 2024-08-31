@@ -31,28 +31,40 @@ async def reboot(message: Message) -> None:
 
     os.execv(sys.executable, ['python'] + sys.argv)
 
-# FIXME: merge broadcast and whisper funcs
-@router.message(Command("broadcast"))
+@router.message(Command("broadcast", "whisper"))
 async def broadcast(message: Message, state: FSMContext):
-    """Broadcast message to ALL registered users"""
     args = message.html_text.split()
-    if len(args) <= 1:
-        await message.answer("❌ Сообщение должно содержать хотя бы какой-то текст для отправки.")
-        return
-    all_clients = ClientFactory.select_clients()
-    msg = message.html_text.split(maxsplit=1)[1]
+    command = message.text[1::]
     clients_list = []
 
-    for client in all_clients:
-        if message.chat.id == client.userdata.telegram_id:
-            continue
+    if len(args) <= 1 and command.startswith("broadcast") \
+       or \
+       len(args) <= 2 and command.startswith("whisper"):
+        await message.answer("❌ Сообщение должно содержать хотя бы какой-то текст для отправки.")
+        return
+
+    if command.startswith("broadcast"):
+        all_clients = ClientFactory.select_clients()
+        msg = message.html_text.split(maxsplit=1)[1]
+
+        for client in all_clients:
+            if message.chat.id == client.userdata.telegram_id:
+                continue
+            clients_list.append(client.userdata.telegram_id)
+    else:
+        client = await get_client_by_id_or_ip(message)
+        msg = message.html_text.split(maxsplit=2)[2]
         clients_list.append(client.userdata.telegram_id)
 
     await state.set_state(PreviewMessageStates.preview)
     await state.set_data(data=dict(message=msg, user_ids=clients_list))
 
     await message.answer(
-        "✉️ <b>Проверь правильность твоего сообщения перед отправкой</b>.\n\n" + msg + "\n\n<b>Отправить?</b>",
+        "✉️ <b>Проверь правильность твоего сообщения перед отправкой</b>.\n"
+        + "\n--------------------------------------------\n"
+        + msg
+        + "\n--------------------------------------------"
+        + "\n<b>Отправить?</b>",
         reply_markup=preview_keyboard()
     )
 
@@ -79,27 +91,6 @@ async def unban(message: Message):
         f"✅ Пользователь <code>{client.userdata.name}:{client.userdata.telegram_id}:{client.userdata.ip_address}</code> разблокирован."
     )
     # TODO: notify user about pardon
-
-@router.message(Command("whisper"))
-async def whisper(message: Message, state: FSMContext):
-    client = await get_client_by_id_or_ip(message)
-
-    if not client: return
-
-    args = message.html_text.split()
-    if len(args) <= 2:
-        await message.answer("❌ Сообщение должно содержать хотя бы какой-то текст для отправки.")
-        return
-
-    msg = message.html_text.split(maxsplit=2)[2]
-
-    await state.set_state(PreviewMessageStates.preview)
-    await state.set_data(data=dict(message=msg, user_ids=[client.userdata.telegram_id]))
-
-    await message.answer(
-        "✉️ <b>Проверь правильность твоего сообщения перед отправкой</b>.\n\n" + msg + "\n\n<b>Отправить?</b>",
-        reply_markup=preview_keyboard()
-    )
 
 @router.message(Command("get_user"))
 async def get_user(message: Message):
