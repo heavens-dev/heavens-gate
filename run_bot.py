@@ -1,20 +1,16 @@
 import asyncio
-import random
 import os
-from aiogram.filters import CommandStart, Command
+import random
+
+from aiogram.filters import Command, CommandStart
 from aiogram.types import Message
 
-from config.loader import (bot_instance,
-                           bot_dispatcher,
-                           bot_cfg,
-                           db_instance,
-                           connections_observer)
-from bot.commands import (get_admin_commands,
-                          get_default_commands,
-                          set_admin_commands,
-                          set_user_commands)
+from bot.commands import (get_admin_commands, get_default_commands,
+                          set_admin_commands, set_user_commands)
 from bot.handlers import get_handlers_router
-from core.db.db_works import ClientFactory, Client
+from config.loader import (bot_cfg, bot_dispatcher, bot_instance,
+                           connections_observer, db_instance)
+from core.db.db_works import Client, ClientFactory
 
 
 @bot_dispatcher.message(CommandStart())

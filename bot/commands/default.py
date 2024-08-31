@@ -1,4 +1,5 @@
-from aiogram.types import BotCommandScopeChat, BotCommand
+from aiogram.types import BotCommand, BotCommandScopeChat
+
 from config.loader import bot_instance
 
 

@@ -1,8 +1,10 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+from bot.utils.callback_data import (ConnectionPeerCallbackData,
+                                     UserActionsCallbackData, UserActionsEnum)
 from core.db.db_works import Client
 from core.db.enums import StatusChoices
 from core.db.model_serializer import ConnectionPeer
-from bot.utils.callback_data import ConnectionPeerCallbackData, UserActionsCallbackData, UserActionsEnum
 
 
 def build_peer_configs_keyboard(user_id: int, peers: list[ConnectionPeer]):

@@ -1,6 +1,7 @@
 import inspect
 import warnings
-from typing import Callable, Coroutine, Union, Any
+from typing import Any, Callable, Coroutine, Union
+
 from core.watchdog.object import CallableObject, Callback
 
 

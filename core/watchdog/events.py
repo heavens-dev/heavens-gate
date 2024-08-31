@@ -1,10 +1,12 @@
-from contextlib import suppress
 import asyncio
+from contextlib import suppress
+
 from icmplib import async_ping
-from core.db.model_serializer import ConnectionPeer
-from core.watchdog.observer import EventObserver
+
 from core.db.db_works import Client, ClientFactory
 from core.db.enums import StatusChoices
+from core.db.model_serializer import ConnectionPeer
+from core.watchdog.observer import EventObserver
 
 
 class ConnectionEvents:

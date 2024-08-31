@@ -1,10 +1,12 @@
 from typing import Optional
-from pydantic import BaseModel, ConfigDict, PrivateAttr
+
 from multimethod import multimethod
 from peewee import DoesNotExist
-from core.db.models import UserModel, ConnectionPeerModel
-from core.db.model_serializer import User, ConnectionPeer
+from pydantic import BaseModel, ConfigDict, PrivateAttr
+
 from core.db.enums import StatusChoices
+from core.db.model_serializer import ConnectionPeer, User
+from core.db.models import ConnectionPeerModel, UserModel
 
 
 class Client(BaseModel):

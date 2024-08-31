@@ -1,20 +1,19 @@
 from contextlib import suppress
+
 from aiogram import F, Router
 from aiogram.exceptions import TelegramBadRequest
+from aiogram.types import BufferedInputFile, CallbackQuery
 from aiogram.utils.media_group import MediaGroupBuilder
-from aiogram.types import CallbackQuery, BufferedInputFile
 
+from bot.handlers.keyboards import (build_peer_configs_keyboard,
+                                    build_user_actions_keyboard)
 from bot.utils.callback_data import (ConnectionPeerCallbackData,
-                                     UserActionsCallbackData,
-                                     UserActionsEnum)
-from config.loader import bot_instance
-from bot.handlers.keyboards import (build_user_actions_keyboard,
-                                    build_peer_configs_keyboard)
-from core.wg.wgconfig_helper import get_peer_config_str
+                                     UserActionsCallbackData, UserActionsEnum)
 from bot.utils.user_helper import get_user_data_string
+from config.loader import bot_instance
 from core.db.db_works import ClientFactory
 from core.db.enums import StatusChoices
-
+from core.wg.wgconfig_helper import get_peer_config_str
 
 router = Router(name="callbacks")
 

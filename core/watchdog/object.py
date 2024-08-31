@@ -1,8 +1,8 @@
 import asyncio
 import contextvars
-from typing import Callable, Any
 from dataclasses import dataclass, field
 from functools import partial
+from typing import Any, Callable
 
 Callback = Callable[..., Any]
 
