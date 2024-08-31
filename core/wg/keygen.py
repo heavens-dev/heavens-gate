@@ -1,5 +1,6 @@
 import subprocess
 
+
 def preshared_key():
     return subprocess.getoutput("wg genpsk")
 
@@ -16,5 +17,3 @@ if __name__ == "__main__":
     print(f"Here your Preshared key {presh_key}")
     print(f"Here your Private key {priv_key}")
     print(f"Here your Public key {pub_key}")
-
-

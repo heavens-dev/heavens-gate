@@ -1,10 +1,11 @@
 from typing import Optional
-from aiogram.types import Message
 
-from core.db.db_works import ClientFactory, Client
-from core.utils.check import check_ip_address
-from core.db.enums import StatusChoices
+from aiogram.types import Message
 from pydantic import ValidationError
+
+from core.db.db_works import Client, ClientFactory
+from core.db.enums import StatusChoices
+from core.utils.check import check_ip_address
 
 
 async def get_client_by_id_or_ip(message: Message) -> Optional[Client]:

@@ -1,8 +1,10 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+
+from bot.utils.callback_data import (ConnectionPeerCallbackData,
+                                     UserActionsCallbackData, UserActionsEnum)
 from core.db.db_works import Client
 from core.db.enums import StatusChoices
 from core.db.model_serializer import ConnectionPeer
-from bot.utils.callback_data import ConnectionPeerCallbackData, UserActionsCallbackData, UserActionsEnum
 
 
 def build_peer_configs_keyboard(user_id: int, peers: list[ConnectionPeer]):
@@ -43,7 +45,6 @@ def build_user_actions_keyboard(client: Client):
             )
         )
 
-    builder.adjust(1)
 
     builder.button(
         text="📒 Получить конфиги",
@@ -52,5 +53,15 @@ def build_user_actions_keyboard(client: Client):
             user_id=client.userdata.telegram_id
         )
     )
+
+    builder.button(
+        text="🔄 Обновить данные",
+        callback_data=UserActionsCallbackData(
+            action=UserActionsEnum.UPDATE_DATA,
+            user_id=client.userdata.telegram_id
+        )
+    )
+
+    builder.adjust(2, repeat=1)
 
     return builder.as_markup()

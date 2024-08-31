@@ -1,10 +1,12 @@
 from typing import Optional
-from pydantic import BaseModel, ConfigDict, PrivateAttr
+
 from multimethod import multimethod
 from peewee import DoesNotExist
-from core.db.models import UserModel, ConnectionPeerModel
-from core.db.model_serializer import User, ConnectionPeer
+from pydantic import BaseModel, ConfigDict, PrivateAttr
+
 from core.db.enums import StatusChoices
+from core.db.model_serializer import ConnectionPeer, User
+from core.db.models import ConnectionPeerModel, UserModel
 
 
 class Client(BaseModel):
@@ -46,14 +48,14 @@ class Client(BaseModel):
     def set_ip_address(self, ip_address: str) -> bool:
         self.userdata.ip_address = ip_address
         return self.__update_client(ip_address=ip_address)
-    
+
     def set_status(self, status: StatusChoices) -> bool:
         self.userdata.status = status
         return self.__update_client(status=status.value)
 
-    def add_peer(self, 
-                 public_key: str, 
-                 preshared_key: str, 
+    def add_peer(self,
+                 public_key: str,
+                 preshared_key: str,
                  shared_ips: str,
                  peer_name: str = None) -> ConnectionPeer:
         return ConnectionPeer.model_validate(ConnectionPeerModel.create(
@@ -122,7 +124,7 @@ class ClientFactory(BaseModel):
             return Client(model=model, userdata=User.model_validate(model))
         except DoesNotExist:
             return None
-    
+
     @multimethod
     @staticmethod
     def get_client(ip_address: str) -> Optional[Client]:
@@ -135,7 +137,11 @@ class ClientFactory(BaseModel):
     @staticmethod
     def select_clients() -> list[Client]:
         return [Client(model=i, userdata=User.model_validate(i)) for i in UserModel.select()]
-    
+
+    @staticmethod
+    def select_peers() -> list[ConnectionPeer]:
+        return [ConnectionPeer.model_validate(i) for i in ConnectionPeerModel.select()]
+
     @multimethod
     @staticmethod
     def delete_client(ip_address: str) -> bool:
@@ -144,7 +150,7 @@ class ClientFactory(BaseModel):
     @multimethod
     def delete_client(self) -> bool:
         return UserModel.delete_by_id(self.tg_id)
-    
+
     @staticmethod
     def count_clients() -> int:
         return UserModel.select().count()
