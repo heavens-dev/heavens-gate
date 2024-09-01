@@ -1,4 +1,5 @@
 import os
+import re
 import sys
 
 from aiogram import F, Router
@@ -34,16 +35,16 @@ async def reboot(message: Message) -> None:
 @router.message(Command("broadcast", "whisper"))
 async def broadcast(message: Message, state: FSMContext):
     args = message.html_text.split()
-    command = message.text[1::]
+    command: str = re.findall(r"\/(\w+)", message.text)[0]
     clients_list = []
 
-    if len(args) <= 1 and command.startswith("broadcast") \
+    if len(args) <= 1 and command == "broadcast" \
        or \
-       len(args) <= 2 and command.startswith("whisper"):
+       len(args) <= 2 and command == "whisper":
         await message.answer("❌ Сообщение должно содержать хотя бы какой-то текст для отправки.")
         return
 
-    if command.startswith("broadcast"):
+    if command == "broadcast":
         all_clients = ClientFactory.select_clients()
         msg = message.html_text.split(maxsplit=1)[1]
 
