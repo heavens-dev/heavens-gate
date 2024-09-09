@@ -9,7 +9,7 @@ class ClientGettersMiddleware(BaseMiddleware):
     GETTERS_COMMANDS = [
         "ban", "anathem", # ban func
         "unban", "pardon", "mercy", # unban
-        "broadcast", "whisper", # broadcast
+        "whisper", # broadcast
         "get_user" # get_user
     ]
 
@@ -21,10 +21,7 @@ class ClientGettersMiddleware(BaseMiddleware):
     ) -> Any:
         command: str = re.findall(r"\/(\w+)", event.text)[0]
         if command in self.GETTERS_COMMANDS:
-            command_length = len(event.text.split())
-
-            if (command == "whisper" and command_length <= 2) or \
-                command_length <= 1:
+            if len(event.text.split()) <= 1:
                 await event.answer("❌ Сообщение должно содержать IP-адрес пользователя или его Telegram ID.")
                 return
 
