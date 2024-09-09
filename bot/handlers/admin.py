@@ -53,7 +53,10 @@ async def broadcast(message: Message, state: FSMContext):
                 continue
             clients_list.append(client.userdata.telegram_id)
     else:
-        client = await get_client_by_id_or_ip(message)
+        client, err = await get_client_by_id_or_ip(args[1])
+        if err:
+            await message.answer(err)
+            return
         msg = message.html_text.split(maxsplit=2)[2]
         clients_list.append(client.userdata.telegram_id)
 
@@ -71,9 +74,11 @@ async def broadcast(message: Message, state: FSMContext):
 
 @router.message(Command("ban", "anathem"))
 async def ban(message: Message):
-    client = await get_client_by_id_or_ip(message)
+    client, err = await get_client_by_id_or_ip(message.text.split()[1])
 
-    if not client: return
+    if err:
+        await message.answer(err)
+        return
 
     client.set_status(StatusChoices.STATUS_ACCOUNT_BLOCKED)
     await message.answer(
@@ -83,9 +88,11 @@ async def ban(message: Message):
 
 @router.message(Command("unban", "mercy", "pardon"))
 async def unban(message: Message):
-    client = await get_client_by_id_or_ip(message)
+    client, err = await get_client_by_id_or_ip(message.text.split()[1])
 
-    if not client: return
+    if err:
+        await message.answer(err)
+        return
 
     client.set_status(StatusChoices.STATUS_CREATED)
     await message.answer(
@@ -95,8 +102,11 @@ async def unban(message: Message):
 
 @router.message(Command("get_user"))
 async def get_user(message: Message):
-    client = await get_client_by_id_or_ip(message)
-    if not client: return
+    client, err = await get_client_by_id_or_ip(message.text.split()[1])
+
+    if err:
+        await message.answer(err)
+        return
 
     await message.answer(f"Пользователь: {client.userdata.name}")
     await message.answer(

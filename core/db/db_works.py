@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 
 from multimethod import multimethod
 from peewee import DoesNotExist
@@ -109,7 +109,7 @@ class Client(BaseModel):
 class ClientFactory(BaseModel):
     model_config = ConfigDict(ignored_types=(multimethod, ))
 
-    tg_id: int
+    tg_id: Union[int]
 
     def get_or_create_client(self, name: str, **kwargs) -> Client:
         """Retrieves or creates a record of the user in the database.
