@@ -9,9 +9,10 @@ from aiogram.types import Message
 
 from bot.handlers.keyboards import (build_user_actions_keyboard,
                                     preview_keyboard)
+from bot.middlewares.client_getter_middleware import ClientGettersMiddleware
 from bot.utils.states import PreviewMessageStates
 from bot.utils.user_helper import get_client_by_id_or_ip, get_user_data_string
-from config.loader import bot_cfg, bot_instance
+from config.loader import bot_cfg
 from core.db.db_works import ClientFactory
 from core.db.enums import StatusChoices
 
@@ -19,6 +20,7 @@ router = Router(name="admin")
 router.message.filter(
     F.from_user.id.in_(bot_cfg.admins)
 )
+router.message.middleware(ClientGettersMiddleware())
 
 
 @router.message(Command("reboot"))
