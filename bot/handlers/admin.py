@@ -10,10 +10,10 @@ from aiogram.types import Message
 
 from bot.handlers.keyboards import (build_user_actions_keyboard,
                                     preview_keyboard)
-from bot.middlewares.client_getter_middleware import ClientGettersMiddleware
+from bot.middlewares.client_getters_middleware import ClientGettersMiddleware
 from bot.utils.states import PreviewMessageStates
 from bot.utils.user_helper import get_user_data_string
-from config.loader import bot_cfg
+from config.loader import bot_cfg, bot_instance
 from core.db.db_works import Client, ClientFactory
 from core.db.enums import StatusChoices
 
@@ -23,6 +23,19 @@ router.message.filter(
 )
 router.message.middleware(ClientGettersMiddleware())
 
+
+async def preview_message(msg: str, chat_id: int, state: FSMContext, clients_list: list[int]):
+    await state.set_state(PreviewMessageStates.preview)
+    await state.set_data(data=dict(message=msg, user_ids=clients_list))
+
+    await bot_instance.send_message(chat_id=chat_id, text=
+        "✉️ <b>Проверь правильность твоего сообщения перед отправкой</b>.\n"
+        + "\n--------------------------------------------\n"
+        + msg
+        + "\n--------------------------------------------"
+        + "\n<b>Отправить?</b>",
+        reply_markup=preview_keyboard()
+    )
 
 @router.message(Command("reboot"))
 async def reboot(message: Message) -> None:
@@ -35,41 +48,36 @@ async def reboot(message: Message) -> None:
 
     os.execv(sys.executable, ['python'] + sys.argv)
 
-@router.message(Command("broadcast", "whisper"))
-async def broadcast(message: Message, state: FSMContext, client: Optional[Client] = None):
+@router.message(Command("broadcast"))
+async def broadcast(message: Message, state: FSMContext):
     args = message.html_text.split()
-    command: str = re.findall(r"\/(\w+)", message.text)[0]
-    clients_list = []
 
-    if len(args) <= 1 and command == "broadcast" \
-       or \
-       len(args) <= 2 and command == "whisper":
+    if len(args) <= 1:
         await message.answer("❌ Сообщение должно содержать хотя бы какой-то текст для отправки.")
         return
 
-    if command == "broadcast":
-        all_clients = ClientFactory.select_clients()
-        msg = message.html_text.split(maxsplit=1)[1]
+    clients_list = []
+    all_clients = ClientFactory.select_clients()
+    msg = message.html_text.split(maxsplit=1)[1]
 
-        for client in all_clients:
-            if message.chat.id == client.userdata.telegram_id:
-                continue
-            clients_list.append(client.userdata.telegram_id)
-    else:
-        msg = message.html_text.split(maxsplit=2)[2]
+    for client in all_clients:
+        if message.chat.id == client.userdata.telegram_id:
+            continue
         clients_list.append(client.userdata.telegram_id)
 
-    await state.set_state(PreviewMessageStates.preview)
-    await state.set_data(data=dict(message=msg, user_ids=clients_list))
+    await preview_message(msg, message.chat.id, state, clients_list)
 
-    await message.answer(
-        "✉️ <b>Проверь правильность твоего сообщения перед отправкой</b>.\n"
-        + "\n--------------------------------------------\n"
-        + msg
-        + "\n--------------------------------------------"
-        + "\n<b>Отправить?</b>",
-        reply_markup=preview_keyboard()
-    )
+@router.message(Command("whisper"))
+async def whisper(message: Message, state: FSMContext, client: Client):
+    args = message.html_text.split()
+
+    if len(args) <= 2:
+        await message.answer("❌ Сообщение должно содержать хотя бы какой-то текст для отправки.")
+        return
+
+    msg = message.html_text.split(maxsplit=2)[2]
+
+    await preview_message(msg, message.chat.id, state, [client.userdata.telegram_id])
 
 @router.message(Command("ban", "anathem"))
 async def ban(message: Message, client: Client):
