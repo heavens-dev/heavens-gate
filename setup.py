@@ -12,9 +12,9 @@ def make_config(path):
     #Get external ip of your server
     external_ip = get('https://api.ipify.org').content.decode('utf8')
     
-    tg_token = get_telegram_bot_token()
+    tg_token = input("[ ! ] Telegram bot token: ")
 
-    admins = get_tg_admins()
+    admins = input("[ ! ] Admin Telegram IDs with ',' separator: ")
 
     ip_range = get_ip_range()
 
@@ -28,12 +28,6 @@ def make_config(path):
     config["Server"] = {"IP":f"{ip_range}", "PrivateKey": f"{server_private_key}", "PublicKey": f"{server_public_key}", "EndpointIP": f"{external_ip}", "EndpointPort":f"{endpoint_port}"}
     with open(path, 'w') as server_config:
         config.write(server_config)
-
-def get_telegram_bot_token():
-    return input("[ ! ] Telegram bot token: ")
-
-def get_tg_admins():
-    return input("[ ! ] Admin Telegram IDs with ',' separator: ")
 
 def get_ip_range():
     ip_range = input("[ ? ] Are you okay with '10.28.98.X' range for your IP addresses? Y/n ")
