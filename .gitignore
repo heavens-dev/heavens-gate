@@ -5,6 +5,8 @@
 test.*
 __pycache__
 .reboot
+.venv
+.venv/*
 
 # migrations folder
 migrations
