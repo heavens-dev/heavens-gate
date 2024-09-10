@@ -6,9 +6,6 @@ test.*
 __pycache__
 .reboot
 .venv
-.venv/*
-.vscode
-.vscode/*
 
 # migrations folder
 migrations

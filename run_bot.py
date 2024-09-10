@@ -1,20 +1,16 @@
 import asyncio
-import random
 import os
-from aiogram.filters import CommandStart, Command
+import random
+
+from aiogram.filters import Command, CommandStart
 from aiogram.types import Message
 
-from config.loader import (bot_instance,
-                           bot_dispatcher,
-                           bot_cfg,
-                           db_instance)
-
-from bot.commands import (get_admin_commands,
-                          get_default_commands,
-                          set_admin_commands,
-                          set_user_commands)
+from bot.commands import (get_admin_commands, get_default_commands,
+                          set_admin_commands, set_user_commands)
 from bot.handlers import get_handlers_router
-from core.db.db_works import ClientFactory
+from config.loader import (bot_cfg, bot_dispatcher, bot_instance,
+                           connections_observer, db_instance)
+from core.db.db_works import Client, ClientFactory
 
 
 @bot_dispatcher.message(CommandStart())
@@ -55,12 +51,28 @@ async def on_startup(*args):
             await bot_instance.send_sticker(chat_id, random.choice(stickerset.stickers).file_id)
             await bot_instance.send_message(chat_id, "Бот перезапущен.")
         os.remove(".reboot")
-    print("started.")
+    print("Bot started!")
 
-def main() -> None:
+@connections_observer.startup()
+async def on_connections_observer_startup():
+    print("Observer started!")
+
+@connections_observer.connected()
+async def on_connected(client: Client):
+    print(f"{client} connected!")
+    print(connections_observer.connected_clients)
+
+@connections_observer.disconnected()
+async def on_disconnected(client: Client):
+    print(f"{client} disconnected!")
+    print(connections_observer.connected_clients)
+
+async def main() -> None:
     bot_dispatcher.include_router(get_handlers_router())
 
-    asyncio.run(bot_dispatcher.run_polling(bot_instance))
+    async with asyncio.TaskGroup() as group:
+        group.create_task(connections_observer.listen_events())
+        group.create_task(bot_dispatcher.start_polling(bot_instance))
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

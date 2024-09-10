@@ -1,6 +1,7 @@
-from aiogram.types import BotCommandScopeChat, BotCommand
-from config.loader import bot_instance
+from aiogram.types import BotCommand, BotCommandScopeChat
+
 from bot.commands.default import get_default_commands
+from config.loader import bot_instance
 
 
 def get_admin_commands() -> list[BotCommand]:

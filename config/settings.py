@@ -1,6 +1,6 @@
+import os
 from configparser import ConfigParser
 from typing import Type
-import os
 
 
 class Config:
@@ -76,7 +76,7 @@ class Config:
             self.public_key = public_key
             self.endpoint_ip = endpoint_ip
             self.endpoint_port = endpoint_port
-        
+
         def wg_server_base_str(self):
             return f"""[Interface]
 Address = {self.user_ip}.1/24
@@ -86,11 +86,8 @@ PrivateKey = {self.private_key}
 
         def create_wg_server_config(path, base):
             with open(path, "w", encoding="utf-8") as wg_file:
-                	wg_file.write(base)
+                wg_file.write(base)
 
         def update_wg_server_config(path, data):
             with open(path, "a", encoding="utf-8") as wg_file:
-                	wg_file.write(data)
-
-
-
+                wg_file.write(data)

@@ -13,7 +13,11 @@ wgconfig = "^1.0.4"
 peewee = "^3.17.6"
 peewee-migrate = "^1.13.0"
 multimethod = "^1.12"
+icmplib = "^3.0.4"
 
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^3.8.0"
 
 [build-system]
 requires = ["poetry-core"]

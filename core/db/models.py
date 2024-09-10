@@ -1,9 +1,10 @@
-from peewee import Model, CharField, DateTimeField, ForeignKeyField, IntegerField
-from playhouse.sqlite_ext import SqliteExtDatabase
 import datetime
 
-from core.db.enums import StatusChoices
+from peewee import (CharField, DateTimeField, ForeignKeyField, IntegerField,
+                    Model)
+from playhouse.sqlite_ext import SqliteExtDatabase
 
+from core.db.enums import StatusChoices
 
 db = SqliteExtDatabase(None, regexp_function=True)
 

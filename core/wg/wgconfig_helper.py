@@ -1,5 +1,5 @@
-from core.db.model_serializer import ConnectionPeer
 from config.loader import server_cfg
+from core.db.model_serializer import ConnectionPeer
 
 
 def get_peer_config_str(peer: ConnectionPeer) -> str:

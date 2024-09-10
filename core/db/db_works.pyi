@@ -1,13 +1,14 @@
 from typing import Optional, overload
-from core.db.models import ConnectionPeerModel
-from core.db.model_serializer import ConnectionPeer, User
-from core.db.enums import StatusChoices
+
 from pydantic import BaseModel
 
+from core.db.enums import StatusChoices
+from core.db.model_serializer import ConnectionPeer, User
+from core.db.models import ConnectionPeerModel
 
 class Client(BaseModel):
     """
-    General class for operating with single client. 
+    General class for operating with single client.
     All methods that perform I/O operations (transactions) **should** be used with `atomic` context manager.
 
     Example:
@@ -30,20 +31,22 @@ class ClientFactory(BaseModel):
     """Class for creating `Client`s."""
     tg_id: Optional[int]
     def get_or_create_client(self, name: str, **kwargs) -> Client: ...
-    
+
     @overload
     def get_client(self) -> Optional[Client]: ...
-    
+
     @overload
     @staticmethod
     def get_client(ip_address: str) -> Optional[Client]: ...
-    
+
     @staticmethod
     def select_clients() -> list[Client]: ...
-    
+    @staticmethod
+    def select_peers() -> list[ConnectionPeer]: ...
+
     @overload
     def delete_client(self) -> bool: ...
-    
+
     @overload
     @staticmethod
     def delete_client(ip_address: str) -> bool: ...
