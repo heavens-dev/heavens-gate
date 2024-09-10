@@ -109,7 +109,7 @@ class Client(BaseModel):
 class ClientFactory(BaseModel):
     model_config = ConfigDict(ignored_types=(multimethod, ))
 
-    tg_id: Union[int]
+    tg_id: int
 
     def get_or_create_client(self, name: str, **kwargs) -> Client:
         """Retrieves or creates a record of the user in the database.
