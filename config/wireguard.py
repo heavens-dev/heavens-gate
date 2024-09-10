@@ -19,7 +19,7 @@ def create_wg_server(wg_server, path_to_config):
     for peer in peer_list:
         update_wg_server_config(wg_server, peer_for_wg_server_config(peer.peer_name, peer.public_key, peer.preshared_key, peer.shared_ips))
 
-def test():
+def make_server_config(path_to_config):
     wg_server = os.getcwd()+"/wghub.conf"
-    create_wg_server(wg_server, "/somepath/config.conf")
-    #create_wg_server("config.conf")
+    create_wg_server(wg_server, path_to_config)
+    return wg_server
