@@ -2,13 +2,17 @@ from contextlib import suppress
 
 from aiogram import F, Router
 from aiogram.exceptions import TelegramBadRequest
+from aiogram.fsm.context import FSMContext
 from aiogram.types import BufferedInputFile, CallbackQuery
 from aiogram.utils.media_group import MediaGroupBuilder
 
 from bot.handlers.keyboards import (build_peer_configs_keyboard,
                                     build_user_actions_keyboard)
 from bot.utils.callback_data import (ConnectionPeerCallbackData,
-                                     UserActionsCallbackData, UserActionsEnum)
+                                     PreviewMessageCallbackData,
+                                     UserActionsCallbackData, UserActionsEnum,
+                                     YesOrNoEnum)
+from bot.utils.states import PreviewMessageStates
 from bot.utils.user_helper import get_user_data_string
 from config.loader import bot_instance
 from core.db.db_works import ClientFactory
@@ -96,3 +100,24 @@ async def update_user_message_data(callback: CallbackQuery, callback_data: UserA
             text=get_user_data_string(client),
             reply_markup=build_user_actions_keyboard(client)
         )
+
+@router.callback_query(PreviewMessageCallbackData.filter(), PreviewMessageStates.preview)
+async def preview_message_callback(callback: CallbackQuery, callback_data: PreviewMessageCallbackData, state: FSMContext):
+    await callback.answer()
+    await callback.message.delete()
+    if callback_data.answer == YesOrNoEnum.ANSWER_NO:
+        await callback.message.answer("❌ Отправка отменена")
+        return
+
+    # ? message_data = {message="<message_to_broadcast>", user_ids=[<telegram_ids>, ...]}
+    message_data = await state.get_data()
+    await state.clear()
+
+    msg = "🤫 <b>Сообщение от администрации</b>:\n\n" \
+          if len(message_data["user_ids"]) <= 1 \
+          else "✉️ <b>Рассылка от администрации</b>:\n\n"
+
+    for tg_id in message_data["user_ids"]:
+        await callback.bot.send_message(tg_id, msg + message_data["message"])
+
+    await callback.message.answer("✅ Сообщение отправлено!")

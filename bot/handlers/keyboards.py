@@ -1,7 +1,9 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot.utils.callback_data import (ConnectionPeerCallbackData,
-                                     UserActionsCallbackData, UserActionsEnum)
+                                     PreviewMessageCallbackData,
+                                     UserActionsCallbackData, UserActionsEnum,
+                                     YesOrNoEnum)
 from core.db.db_works import Client
 from core.db.enums import StatusChoices
 from core.db.model_serializer import ConnectionPeer
@@ -63,5 +65,26 @@ def build_user_actions_keyboard(client: Client):
     )
 
     builder.adjust(2, repeat=1)
+
+    return builder.as_markup()
+
+def preview_keyboard():
+    builder = InlineKeyboardBuilder()
+
+    builder.button(
+        text="✅ Да",
+        callback_data=PreviewMessageCallbackData(
+            answer=YesOrNoEnum.ANSWER_YES,
+        )
+    )
+
+    builder.adjust(1)
+
+    builder.button(
+        text="❌ Нет",
+        callback_data=PreviewMessageCallbackData(
+            answer=YesOrNoEnum.ANSWER_NO,
+        )
+    )
 
     return builder.as_markup()

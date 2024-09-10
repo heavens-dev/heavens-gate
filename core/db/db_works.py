@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 
 from multimethod import multimethod
 from peewee import DoesNotExist
