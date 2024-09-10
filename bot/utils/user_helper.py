@@ -7,7 +7,7 @@ from core.db.enums import StatusChoices
 from core.utils.check import check_ip_address
 
 
-async def get_client_by_id_or_ip(id_or_ip: Union[str, int]) -> tuple[Optional[Client], Optional[str]]:
+def get_client_by_id_or_ip(id_or_ip: Union[str, int]) -> tuple[Optional[Client], Optional[str]]:
     """Tries to get client by it's id or ip.
     Returns `(Client, None)` if the user was found, `(None, "error_message")` otherwise"""
     if check_ip_address(id_or_ip):
