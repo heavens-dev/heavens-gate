@@ -27,12 +27,3 @@ class ConnectionPeer(BaseModel):
     preshared_key: str
     shared_ips: str
     peer_name: Optional[str]
-    def peer_for_wg_server_config(self):
-        return f"""
-#{self.peer_name}
-[Peer]
-PublicKey = {self.public_key}
-PresharedKey = {self.preshared_key}
-AllowedIPs = {self.shared_ips}/32
-
-"""
