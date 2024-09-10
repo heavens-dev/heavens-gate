@@ -88,24 +88,3 @@ def preview_keyboard():
     )
 
     return builder.as_markup()
-
-def preview_keyboard():
-    builder = InlineKeyboardBuilder()
-
-    builder.button(
-        text="✅ Да",
-        callback_data=PreviewMessageCallbackData(
-            answer=YesOrNoEnum.ANSWER_YES,
-        )
-    )
-
-    builder.adjust(1)
-
-    builder.button(
-        text="❌ Нет",
-        callback_data=PreviewMessageCallbackData(
-            answer=YesOrNoEnum.ANSWER_NO,
-        )
-    )
-
-    return builder.as_markup()

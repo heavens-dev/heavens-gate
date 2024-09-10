@@ -1,7 +1,5 @@
 import os
-import re
 import sys
-from typing import Optional
 
 from aiogram import F, Router
 from aiogram.filters import Command
