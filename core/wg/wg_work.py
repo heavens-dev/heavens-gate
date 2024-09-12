@@ -1,5 +1,4 @@
 import subprocess
-from config.settings import Config
 
 def disable_server(path):
     return "error" in subprocess.getoutput(f"wg-quick down {path}")
@@ -8,7 +7,7 @@ def enable_server(path):
     return "error" in subprocess.getoutput(f"wg-quick up {path}")
 
 
-def create_wg_server_base(ip, endpoint_port, private_key):
+def make_wg_server_base(ip, endpoint_port, private_key):
     return f"""[Interface]
 Address = {ip}.1/24
 ListenPort = {endpoint_port}
