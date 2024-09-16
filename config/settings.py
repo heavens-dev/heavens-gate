@@ -77,13 +77,6 @@ class Config:
             self.endpoint_ip = endpoint_ip
             self.endpoint_port = endpoint_port
 
-        def wg_server_base_str(self):
-            return f"""[Interface]
-Address = {self.user_ip}.1/24
-ListenPort = {self.endpoint_port}
-PrivateKey = {self.private_key}
-"""
-
         def create_wg_server_config(path, base):
             with open(path, "w", encoding="utf-8") as wg_file:
                 wg_file.write(base)
