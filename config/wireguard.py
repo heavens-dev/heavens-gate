@@ -2,7 +2,6 @@ import os
 
 from config.settings import Config
 from core.db.db_works import ClientFactory
-from core.db.model_serializer import ConnectionPeer
 
 from core.wg.wg_work import make_wg_server_base, peer_for_wg_server_config
 from core.wg.wg_work import disable_server, enable_server
@@ -11,14 +10,14 @@ cfg = Config('config.conf')
 server_cfg = cfg.get_server_config()
 
 #Rewrite old config/create a brand new one
-def create_wg_server_config(path, base):
+def create_wg_server_config(path, config_base):
     with open(path, "w", encoding="utf-8") as wg_file:
-            wg_file.write(base)
+            wg_file.write(config_base)
 
 #Add peers into config
-def update_wg_server_config(path, data):
+def update_wg_server_config(path, peer_data):
     with open(path, "a", encoding="utf-8") as wg_file:
-            wg_file.write(data)
+            wg_file.write(peer_data)
 
 #Create wireguard server config
 def create_server_config(wg_server):

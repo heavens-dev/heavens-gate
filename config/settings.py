@@ -70,7 +70,7 @@ class Config:
             self.path = path
 
     class Server:
-        def __init__(self, user_ip: str, private_key: str, public_key:str, endpoint_ip: str, endpoint_port: str):
+        def __init__(self, user_ip: str, private_key: str, public_key: str, endpoint_ip: str, endpoint_port: str):
             self.user_ip = user_ip
             self.private_key = private_key
             self.public_key = public_key
