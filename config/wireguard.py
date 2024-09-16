@@ -2,6 +2,7 @@ import os
 
 from config.settings import Config
 from core.db.db_works import ClientFactory
+from core.db.model_serializer import ConnectionPeer
 
 from core.wg.wg_work import make_wg_server_base, peer_for_wg_server_config
 from core.wg.wg_work import disable_server, enable_server
@@ -25,7 +26,7 @@ def create_server_config(wg_server):
     peer_list = (ClientFactory.select_peers())
     for peer in peer_list:
         #Here I need to check if this peer should be in active server config
-        update_wg_server_config(wg_server, peer_for_wg_server_config(peer.peer_name, peer.public_key, peer.preshared_key, peer.shared_ips))
+        update_wg_server_config(wg_server, peer_for_wg_server_config(peer))
 
 #Func for use once at the beginning of installation
 def create_wg_server():

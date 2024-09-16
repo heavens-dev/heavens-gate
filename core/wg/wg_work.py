@@ -1,4 +1,5 @@
 import subprocess
+from core.db.model_serializer import ConnectionPeer
 
 def disable_server(path):
     return "error" in subprocess.getoutput(f"wg-quick down {path}")
@@ -15,12 +16,13 @@ PrivateKey = {private_key}
 
 """
 
-def peer_for_wg_server_config(peer_name, public_key, preshared_key, shared_ips):
+#def peer_for_wg_server_config(peer_name, public_key, preshared_key, shared_ips):
+def peer_for_wg_server_config(peer: ConnectionPeer):
         return f"""
-#{peer_name}
+#{peer.peer_name}
 [Peer]
-PublicKey = {public_key}
-PresharedKey = {preshared_key}
-AllowedIPs = {shared_ips}/32
+PublicKey = {peer.public_key}
+PresharedKey = {peer.preshared_key}
+AllowedIPs = {peer.shared_ips}/32
 
 """
