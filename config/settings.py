@@ -76,11 +76,3 @@ class Config:
             self.public_key = public_key
             self.endpoint_ip = endpoint_ip
             self.endpoint_port = endpoint_port
-
-        def create_wg_server_config(path, base):
-            with open(path, "w", encoding="utf-8") as wg_file:
-                wg_file.write(base)
-
-        def update_wg_server_config(path, data):
-            with open(path, "a", encoding="utf-8") as wg_file:
-                wg_file.write(data)
