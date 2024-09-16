@@ -40,6 +40,7 @@ def recreate_wg_server(wg_server):
         disable_server(wg_server)
     except Exception as err:
         print(err)
+        return False
     create_server_config(wg_server)
     enable_server(wg_server)
     return wg_server
