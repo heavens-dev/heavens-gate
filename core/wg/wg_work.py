@@ -17,7 +17,7 @@ PrivateKey = {private_key}
 """
 
 #def peer_for_wg_server_config(peer_name, public_key, preshared_key, shared_ips):
-def peer_for_wg_server_config(peer: ConnectionPeer):
+def peer_to_str_wg_server(peer: ConnectionPeer):
         return f"""
 #{peer.peer_name}
 [Peer]

@@ -36,7 +36,10 @@ def create_wg_server():
 
 #Func for every change of Wireguard server
 def recreate_wg_server(wg_server):
-    disable_server(wg_server)
+    try:
+        disable_server(wg_server)
+    except Exception as err:
+        print(err)
     create_server_config(wg_server)
     enable_server(wg_server)
     return wg_server
