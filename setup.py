@@ -24,7 +24,14 @@ def make_config(path):
     config.optionxform = str
     config["TelegramBot"] = {"token":f"{tg_token}", "admins": f"{admins}"}
     config["db"] = {"path": "db.sqlite"}
-    config["Server"] = {"IP":f"{ip_range}", "PrivateKey": f"{server_private_key}", "PublicKey": f"{server_public_key}", "EndpointIP": f"{external_ip}", "EndpointPort":f"{endpoint_port}"}
+    config["Server"] = {
+        "IP":f"{ip_range}",
+        "PrivateKey": f"{server_private_key}",
+        "PublicKey": f"{server_public_key}",
+        "EndpointIP": f"{external_ip}",
+        "EndpointPort":f"{endpoint_port}"
+        }
+
     with open(path, 'w') as server_config:
         config.write(server_config)
 
