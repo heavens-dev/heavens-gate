@@ -36,6 +36,7 @@ class PeerStatusChoices(Enum):
     STATUS_TIME_EXPIRED = 2
     STATUS_BLOCKED = 3
 
+    @staticmethod
     def to_string(status: Type["PeerStatusChoices"]) -> str:
         match status:
             case status.STATUS_DISCONNECTED:
