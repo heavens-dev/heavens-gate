@@ -4,7 +4,7 @@ from peewee import (CharField, DateTimeField, ForeignKeyField, IntegerField,
                     Model)
 from playhouse.sqlite_ext import SqliteExtDatabase
 
-from core.db.enums import ClientStatusChoices
+from core.db.enums import ClientStatusChoices, PeerStatusChoices
 
 db = SqliteExtDatabase(None, regexp_function=True)
 
@@ -36,6 +36,12 @@ class ConnectionPeerModel(BaseModel):
     preshared_key = CharField()
     shared_ips = CharField()
     peer_name = CharField(default=None, null=True)
+    peer_status = IntegerField(
+        default=PeerStatusChoices.STATUS_DISCONNECTED.value,
+        choices=tuple(
+            (status.value, status.name) for status in PeerStatusChoices
+        )
+    )
 
     class Meta:
         table_name = "ConnectionPeers"
