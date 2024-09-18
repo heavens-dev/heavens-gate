@@ -4,7 +4,7 @@ from multimethod import multimethod
 from peewee import DoesNotExist
 from pydantic import BaseModel, ConfigDict, PrivateAttr
 
-from core.db.enums import StatusChoices
+from core.db.enums import ClientStatusChoices
 from core.db.model_serializer import ConnectionPeer, User
 from core.db.models import ConnectionPeerModel, UserModel
 
@@ -49,7 +49,7 @@ class Client(BaseModel):
         self.userdata.ip_address = ip_address
         return self.__update_client(ip_address=ip_address)
 
-    def set_status(self, status: StatusChoices) -> bool:
+    def set_status(self, status: ClientStatusChoices) -> bool:
         self.userdata.status = status
         return self.__update_client(status=status.value)
 

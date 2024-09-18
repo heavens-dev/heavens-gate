@@ -3,7 +3,7 @@ from typing import Optional, Union
 from pydantic import ValidationError
 
 from core.db.db_works import Client, ClientFactory
-from core.db.enums import StatusChoices
+from core.db.enums import ClientStatusChoices
 from core.utils.check import check_ip_address
 
 
@@ -27,7 +27,7 @@ def get_user_data_string(client: Client) -> str:
     Recommended to use `parse_mode="HTML"`."""
     return f"""ℹ️ Информация об аккаунте:
 ID: {client.userdata.telegram_id}
-Текущий статус: {StatusChoices.to_string(client.userdata.status)}
+Текущий статус: {ClientStatusChoices.to_string(client.userdata.status)}
 IP: {client.userdata.ip_address}
 
 📅 Дата регистрации: {client.userdata.registered_at.strftime("%d %b %Y в %H:%M")}

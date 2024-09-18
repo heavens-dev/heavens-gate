@@ -5,7 +5,7 @@ from bot.utils.callback_data import (ConnectionPeerCallbackData,
                                      UserActionsCallbackData, UserActionsEnum,
                                      YesOrNoEnum)
 from core.db.db_works import Client
-from core.db.enums import StatusChoices
+from core.db.enums import ClientStatusChoices
 from core.db.model_serializer import ConnectionPeer
 
 
@@ -30,7 +30,7 @@ def build_peer_configs_keyboard(user_id: int, peers: list[ConnectionPeer]):
 def build_user_actions_keyboard(client: Client):
     builder = InlineKeyboardBuilder()
 
-    if client.userdata.status == StatusChoices.STATUS_ACCOUNT_BLOCKED:
+    if client.userdata.status == ClientStatusChoices.STATUS_ACCOUNT_BLOCKED:
         builder.button(
             text="🔓 Разблокировать",
             callback_data=UserActionsCallbackData(

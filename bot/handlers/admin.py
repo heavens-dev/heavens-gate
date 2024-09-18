@@ -13,7 +13,7 @@ from bot.utils.states import PreviewMessageStates
 from bot.utils.user_helper import get_user_data_string
 from config.loader import bot_cfg, bot_instance
 from core.db.db_works import Client, ClientFactory
-from core.db.enums import StatusChoices
+from core.db.enums import ClientStatusChoices
 
 router = Router(name="admin")
 router.message.filter(
@@ -79,7 +79,7 @@ async def whisper(message: Message, state: FSMContext, client: Client):
 
 @router.message(Command("ban", "anathem"))
 async def ban(message: Message, client: Client):
-    client.set_status(StatusChoices.STATUS_ACCOUNT_BLOCKED)
+    client.set_status(ClientStatusChoices.STATUS_ACCOUNT_BLOCKED)
     await message.answer(
         f"✅ Пользователь <code>{client.userdata.name}:{client.userdata.telegram_id}:{client.userdata.ip_address}</code> заблокирован."
     )
@@ -87,7 +87,7 @@ async def ban(message: Message, client: Client):
 
 @router.message(Command("unban", "mercy", "pardon"))
 async def unban(message: Message, client: Client):
-    client.set_status(StatusChoices.STATUS_CREATED)
+    client.set_status(ClientStatusChoices.STATUS_CREATED)
     await message.answer(
         f"✅ Пользователь <code>{client.userdata.name}:{client.userdata.telegram_id}:{client.userdata.ip_address}</code> разблокирован."
     )

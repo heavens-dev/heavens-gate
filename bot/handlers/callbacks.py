@@ -16,7 +16,7 @@ from bot.utils.states import PreviewMessageStates
 from bot.utils.user_helper import get_user_data_string
 from config.loader import bot_instance
 from core.db.db_works import ClientFactory
-from core.db.enums import StatusChoices
+from core.db.enums import ClientStatusChoices
 from core.wg.wgconfig_helper import get_peer_config_str
 
 router = Router(name="callbacks")
@@ -54,7 +54,7 @@ async def select_peer_callback(callback: CallbackQuery, callback_data: Connectio
 )
 async def ban_user_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
     client = ClientFactory(tg_id=callback_data.user_id).get_client()
-    client.set_status(StatusChoices.STATUS_ACCOUNT_BLOCKED)
+    client.set_status(ClientStatusChoices.STATUS_ACCOUNT_BLOCKED)
     await callback.answer(f"✅ Пользователь {client.userdata.name} заблокирован.")
     await callback.message.edit_text(get_user_data_string(client))
     await callback.message.edit_reply_markup(reply_markup=build_user_actions_keyboard(client))
@@ -64,7 +64,7 @@ async def ban_user_callback(callback: CallbackQuery, callback_data: UserActionsC
 )
 async def pardon_user_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
     client = ClientFactory(tg_id=callback_data.user_id).get_client()
-    client.set_status(StatusChoices.STATUS_CREATED)
+    client.set_status(ClientStatusChoices.STATUS_CREATED)
     await callback.answer(f"✅ Пользователь {client.userdata.name} разблокирован.")
     await callback.message.edit_text(
         text=get_user_data_string(client),

@@ -2,7 +2,7 @@ from enum import Enum
 from typing import Type
 
 
-class StatusChoices(Enum):
+class ClientStatusChoices(Enum):
     STATUS_CREATED = 0
     STATUS_IP_BLOCKED = 1
     STATUS_ACCOUNT_BLOCKED = 2
@@ -12,7 +12,7 @@ class StatusChoices(Enum):
 
 
     @staticmethod
-    def to_string(status: Type["StatusChoices"]):
+    def to_string(status: Type["ClientStatusChoices"]) -> str:
         """Converts Enum to human-readable status."""
         match status:
             case status.STATUS_CREATED:
@@ -29,3 +29,22 @@ class StatusChoices(Enum):
                 return "Отключён от сети"
             case _:
                 return "Ты как сюда попал, дурной?"
+
+class PeerStatusChoices(Enum):
+    STATUS_DISCONNECTED = 0
+    STATUS_CONNECTED = 1
+    STATUS_TIME_EXPIRED = 2
+    STATUS_BLOCKED = 3
+
+    def to_string(status: Type["PeerStatusChoices"]) -> str:
+        match status:
+            case status.STATUS_DISCONNECTED:
+                return "Отключён"
+            case status.STATUS_CONNECTED:
+                return "Подключён"
+            case status.STATUS_TIME_EXPIRED:
+                return "Время вышло"
+            case status.STATUS_BLOCKED:
+                return "Заблокирован"
+            case _:
+                return "Что-то тут нечисто..."

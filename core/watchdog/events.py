@@ -4,7 +4,7 @@ from contextlib import suppress
 from icmplib import async_ping
 
 from core.db.db_works import Client, ClientFactory
-from core.db.enums import StatusChoices
+from core.db.enums import ClientStatusChoices
 from core.db.model_serializer import ConnectionPeer
 from core.watchdog.observer import EventObserver
 
@@ -45,7 +45,7 @@ class ConnectionEvents:
             return True
 
         if client.userdata.telegram_id in self.connected_clients or \
-           client.userdata.status == StatusChoices.STATUS_CONNECTED:
+           client.userdata.status == ClientStatusChoices.STATUS_CONNECTED:
             await self.emit_disconnect(client)
         return False
 
@@ -57,7 +57,7 @@ class ConnectionEvents:
                     for client, peers in self.clients:
                         for peer in peers:
                             if connected_only:
-                                if client.userdata.status == StatusChoices.STATUS_CONNECTED:
+                                if client.userdata.status == ClientStatusChoices.STATUS_CONNECTED:
                                     group.create_task(
                                         self.__check_connection(client, peer)
                                     )
@@ -73,7 +73,7 @@ class ConnectionEvents:
         """Appends connected clients and propagates connection event to handlers.
 
         Updates Client status to `StatusChoices.STATUS_CONNECTED`"""
-        client.set_status(StatusChoices.STATUS_CONNECTED)
+        client.set_status(ClientStatusChoices.STATUS_CONNECTED)
         self.connected_clients.append(client.userdata.telegram_id)
         await self.connected.trigger(client)
 
@@ -81,7 +81,7 @@ class ConnectionEvents:
         """Removes client from `connected_clients` and propagates disconnect event to handlers.
 
         Updates Client status to `StatusChoices.STATUS_DISCONNECTED`"""
-        client.set_status(StatusChoices.STATUS_DISCONNECTED)
+        client.set_status(ClientStatusChoices.STATUS_DISCONNECTED)
         with suppress(ValueError):
             self.connected_clients.remove(client.userdata.telegram_id)
         await self.disconnected.trigger(client)
