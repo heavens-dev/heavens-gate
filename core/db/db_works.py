@@ -4,7 +4,7 @@ from multimethod import multimethod
 from peewee import DoesNotExist
 from pydantic import BaseModel, ConfigDict, PrivateAttr
 
-from core.db.enums import ClientStatusChoices
+from core.db.enums import ClientStatusChoices, PeerStatusChoices
 from core.db.model_serializer import ConnectionPeer, User
 from core.db.models import ConnectionPeerModel, UserModel
 
@@ -66,10 +66,10 @@ class Client(BaseModel):
             peer_name=peer_name
         ))
 
-    def __get_peers(self) -> list[ConnectionPeerModel]:
+    def __get_peers(self, *criteria) -> list[ConnectionPeerModel]:
         """Private method for working with peers"""
         return list(ConnectionPeerModel.select()
-                    .where(ConnectionPeerModel.user == self.__model))
+                    .where(ConnectionPeerModel.user == self.__model, *criteria))
 
     def get_peers(self) -> list[ConnectionPeer]:
         """Get validated peers model(s)"""
@@ -80,6 +80,15 @@ class Client(BaseModel):
 
     def change_peer_name(self, peer_id: int, peer_name: str):
         self.__update_peer(peer_id, peer_name=peer_name)
+
+    def set_peer_status(self, peer_id: int, peer_status: PeerStatusChoices):
+        self.__update_peer(peer_id, peer_status=peer_status.value)
+
+    def get_connected_peers(self) -> list[ConnectionPeer]:
+        return [
+            ConnectionPeer.model_validate(model)
+            for model in self.__get_peers(ConnectionPeerModel.peer_status == PeerStatusChoices.STATUS_CONNECTED.value)
+        ]
 
     @multimethod
     def delete_peer(self) -> bool:

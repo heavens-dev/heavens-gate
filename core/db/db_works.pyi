@@ -2,9 +2,8 @@ from typing import Optional, overload
 
 from pydantic import BaseModel
 
-from core.db.enums import ClientStatusChoices
+from core.db.enums import ClientStatusChoices, PeerStatusChoices
 from core.db.model_serializer import ConnectionPeer, User
-from core.db.models import ConnectionPeerModel
 
 class Client(BaseModel):
     """
@@ -26,6 +25,8 @@ class Client(BaseModel):
     def set_ip_address(self, ip_address: str) -> bool: ...
     def set_status(self, status: ClientStatusChoices) -> bool: ...
     def change_peer_name(self, peer_id: int, peer_name: str) -> bool: ...
+    def set_peer_status(self, peer_id: int, peer_status: PeerStatusChoices) -> bool: ...
+    def get_connected_peers(self) -> list[ConnectionPeer]: ...
 
 class ClientFactory(BaseModel):
     """Class for creating `Client`s."""

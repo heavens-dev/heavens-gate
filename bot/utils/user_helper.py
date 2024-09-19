@@ -29,7 +29,7 @@ def get_user_data_string(client: Client) -> str:
     peers_str = ""
 
     for peer in peers:
-        peers_str = f"{peer.peer_name or peer.shared_ips}: {PeerStatusChoices.to_string(peer.peer_status)}\n"
+        peers_str += f"{peer.peer_name or peer.shared_ips}: {PeerStatusChoices.to_string(peer.peer_status)}\n"
 
     return f"""ℹ️ Информация об аккаунте:
 ID: {client.userdata.telegram_id}
