@@ -3,7 +3,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
 
-from core.db.enums import StatusChoices
+from core.db.enums import ClientStatusChoices, PeerStatusChoices
 
 
 class User(BaseModel):
@@ -13,7 +13,7 @@ class User(BaseModel):
     name: str
     ip_address: Optional[str]
     active_time: Optional[datetime]
-    status: StatusChoices
+    status: ClientStatusChoices
     expire_time: Optional[datetime]
     registered_at: datetime
 
@@ -26,3 +26,4 @@ class ConnectionPeer(BaseModel):
     preshared_key: str
     shared_ips: str
     peer_name: Optional[str]
+    peer_status: PeerStatusChoices

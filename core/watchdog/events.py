@@ -4,7 +4,7 @@ from contextlib import suppress
 from icmplib import async_ping
 
 from core.db.db_works import Client, ClientFactory
-from core.db.enums import StatusChoices
+from core.db.enums import ClientStatusChoices, PeerStatusChoices
 from core.db.model_serializer import ConnectionPeer
 from core.watchdog.observer import EventObserver
 
@@ -18,9 +18,9 @@ class ConnectionEvents:
         self.update_timer = update_timer
         self.connected_only_listen_timer = connected_only_listen_timer
 
-        self.connected = EventObserver(required_types=[Client])
+        self.connected = EventObserver(required_types=[Client, ConnectionPeer])
         """Decorated methods must have a `Client` argument"""
-        self.disconnected = EventObserver(required_types=[Client])
+        self.disconnected = EventObserver(required_types=[Client, ConnectionPeer])
         """Decorated methods must have a `Client` argument"""
         self.startup = EventObserver()
 
@@ -28,9 +28,6 @@ class ConnectionEvents:
             (client, client.get_peers()) for client in ClientFactory.select_clients()
         ]
         """List of all `Client`s and their `ConnectionPeer`s"""
-
-        self.connected_clients: list[int] = []
-        """List of Telegram IDs of connected clients"""
 
         self.__clients_lock = asyncio.Lock()
         """Internal lock that prevents updating `self.clients`
@@ -40,13 +37,12 @@ class ConnectionEvents:
         host = await async_ping(peer.shared_ips)
 
         if host.is_alive:
-            if client.userdata.telegram_id not in self.connected_clients:
-                await self.emit_connect(client)
+            if peer.peer_status == PeerStatusChoices.STATUS_DISCONNECTED:
+                await self.emit_connect(client, peer)
             return True
 
-        if client.userdata.telegram_id in self.connected_clients or \
-           client.userdata.status == StatusChoices.STATUS_CONNECTED:
-            await self.emit_disconnect(client)
+        if peer.peer_status == PeerStatusChoices.STATUS_CONNECTED:
+            await self.emit_disconnect(client, peer)
         return False
 
     async def __listen_clients(self, listen_timer: int, connected_only: bool = False):
@@ -56,8 +52,14 @@ class ConnectionEvents:
                 async with asyncio.TaskGroup() as group:
                     for client, peers in self.clients:
                         for peer in peers:
+                            if peer.peer_status in [
+                                PeerStatusChoices.STATUS_TIME_EXPIRED,
+                                PeerStatusChoices.STATUS_BLOCKED
+                                ]:
+                                continue
+
                             if connected_only:
-                                if client.userdata.status == StatusChoices.STATUS_CONNECTED:
+                                if peer.peer_status == PeerStatusChoices.STATUS_CONNECTED:
                                     group.create_task(
                                         self.__check_connection(client, peer)
                                     )
@@ -69,22 +71,24 @@ class ConnectionEvents:
             print(f"Done listening connections. Sleeping for {listen_timer} sec")
             await asyncio.sleep(listen_timer)
 
-    async def emit_connect(self, client: Client):
+    async def emit_connect(self, client: Client, peer: ConnectionPeer):
         """Appends connected clients and propagates connection event to handlers.
 
-        Updates Client status to `StatusChoices.STATUS_CONNECTED`"""
-        client.set_status(StatusChoices.STATUS_CONNECTED)
-        self.connected_clients.append(client.userdata.telegram_id)
-        await self.connected.trigger(client)
+        Updates Client status to `ClientStatusChoices.STATUS_CONNECTED`
+        and Peer status to `PeerStatusChoices.STATUS_DISCONNECTED`"""
+        client.set_peer_status(peer.id, PeerStatusChoices.STATUS_CONNECTED)
+        client.set_status(ClientStatusChoices.STATUS_CONNECTED)
+        await self.connected.trigger(client, peer)
 
-    async def emit_disconnect(self, client: Client):
+    async def emit_disconnect(self, client: Client, peer: ConnectionPeer):
         """Removes client from `connected_clients` and propagates disconnect event to handlers.
 
-        Updates Client status to `StatusChoices.STATUS_DISCONNECTED`"""
-        client.set_status(StatusChoices.STATUS_DISCONNECTED)
-        with suppress(ValueError):
-            self.connected_clients.remove(client.userdata.telegram_id)
-        await self.disconnected.trigger(client)
+        Updates Client status to `ClientStatusChoices.STATUS_DISCONNECTED`
+        and Peer status to `PeerStatusChoices.STATUS_DISCONNECTED`"""
+        client.set_peer_status(peer.id, PeerStatusChoices.STATUS_DISCONNECTED)
+        if len(client.get_connected_peers()) == 0:
+            client.set_status(ClientStatusChoices.STATUS_DISCONNECTED)
+        await self.disconnected.trigger(client, peer)
 
     async def __update_clients_list(self):
         while True:
