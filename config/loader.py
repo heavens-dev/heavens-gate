@@ -7,9 +7,9 @@ from config.settings import Config
 from core.db.models import init_db
 from core.watchdog.events import ConnectionEvents
 
-path_to_config = "config.conf"
+PATH_TO_CONFIG = "config.conf"
 
-cfg = Config(path_to_config)
+cfg = Config(PATH_TO_CONFIG)
 
 bot_cfg = cfg.get_bot_config()
 bot_instance = Bot(

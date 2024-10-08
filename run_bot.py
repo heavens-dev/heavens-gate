@@ -12,6 +12,7 @@ from config.loader import (bot_cfg, bot_dispatcher, bot_instance,
                            connections_observer, db_instance)
 from core.db.db_works import Client, ClientFactory
 from core.db.model_serializer import ConnectionPeer
+from core.logs import bot_logger
 
 
 @bot_dispatcher.message(CommandStart())
@@ -52,19 +53,21 @@ async def on_startup(*args):
             await bot_instance.send_sticker(chat_id, random.choice(stickerset.stickers).file_id)
             await bot_instance.send_message(chat_id, "Бот перезапущен.")
         os.remove(".reboot")
-    print("Bot started!")
+    bot_logger.info("Bot is running!")
 
 @connections_observer.startup()
 async def on_connections_observer_startup():
-    print("Observer started!")
+    bot_logger.info("Observer is running!")
 
 @connections_observer.connected()
 async def on_connected(client: Client, peer: ConnectionPeer):
-    print(f"{client} connected, Peer: {peer}")
+    with bot_logger.contextualize(client=client, peer=peer):
+        bot_logger.info("Client connected")
 
 @connections_observer.disconnected()
 async def on_disconnected(client: Client, peer: ConnectionPeer):
-    print(f"{client} disconnected, Peer: {peer}")
+    with bot_logger.contextualize(client=client, peer=peer):
+        bot_logger.info("Client disconnected")
 
 async def main() -> None:
     bot_dispatcher.include_router(get_handlers_router())
