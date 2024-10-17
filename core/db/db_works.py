@@ -56,14 +56,19 @@ class Client(BaseModel):
         return self.__update_client(status=status.value)
 
     def add_peer(self,
-                 public_key: str,
-                 private_key: str,
-                 preshared_key: str,
                  shared_ips: str,
+                 public_key: Optional[str] = None,
+                 private_key: Optional[str] = None,
+                 preshared_key: Optional[str] = None,
                  peer_name: str = None) -> ConnectionPeer:
-        private_peer_key = generate_private_key()
-        public_peer_key = generate_public_key(private_peer_key)
-        preshared_peer_key = generate_preshared_key()
+        """
+        Adds peer to database. Automatically generates peer keys if they're not present in arguments.
+
+        Returns `ConnectionPeer`.
+        """
+        private_peer_key = private_key or generate_private_key()
+        public_peer_key = public_key or generate_public_key(private_peer_key)
+        preshared_peer_key = preshared_key or generate_preshared_key()
         return ConnectionPeer.model_validate(ConnectionPeerModel.create(
             user=self.__model,
             public_key=public_peer_key,
