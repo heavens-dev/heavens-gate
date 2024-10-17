@@ -121,9 +121,10 @@ class Client(BaseModel):
             bool: True if successfull. False otherwise
         """
         # ? weird flex but okay.
+        formatted_ip = ip_address.replace(".", "\\.")
         return (ConnectionPeerModel.delete()
                 .where(ConnectionPeerModel.shared_ips.regexp(
-                    rf"(?:[, ]|^){ip_address.replace('.', '\\.')}(?:[, ]|$)"
+                    rf"(?:[, ]|^){formatted_ip}(?:[, ]|$)"
                 ) & ConnectionPeerModel.user == self.__model)
                 .execute()) == 1
 

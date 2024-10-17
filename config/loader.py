@@ -11,7 +11,7 @@ from core.watchdog.events import ConnectionEvents
 from core.wg.wg_work import WGHub
 
 PATH_TO_CONFIG = "config.conf"
-PATH_TO_WGHUB = os.getcwd() + "/wghub.conf"
+PATH_TO_WGHUB = "~/wgtest.conf"
 
 cfg = Config(PATH_TO_CONFIG)
 wghub = WGHub(PATH_TO_WGHUB)
