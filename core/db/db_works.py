@@ -1,7 +1,7 @@
 from typing import Optional, Union
 
 from multimethod import multimethod
-from peewee import DoesNotExist
+from peewee import SQL, DoesNotExist
 from pydantic import BaseModel, ConfigDict, PrivateAttr
 
 from core.db.enums import ClientStatusChoices, PeerStatusChoices
@@ -176,3 +176,7 @@ class ClientFactory(BaseModel):
     @staticmethod
     def count_clients() -> int:
         return UserModel.select().count()
+
+    @staticmethod
+    def get_latest_peer_id() -> int:
+        return ConnectionPeerModel.select(ConnectionPeerModel.id).order_by(SQL("id").desc()).limit(1)[0]

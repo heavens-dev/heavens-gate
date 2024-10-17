@@ -54,3 +54,6 @@ class ClientFactory(BaseModel):
 
     @staticmethod
     def count_clients() -> int: ...
+
+    @staticmethod
+    def get_latest_peer_id() -> int: ...
