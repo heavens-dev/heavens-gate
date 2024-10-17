@@ -11,6 +11,7 @@ from bot.handlers import get_handlers_router
 from config.loader import (bot_cfg, bot_dispatcher, bot_instance,
                            connections_observer, db_instance)
 from core.db.db_works import Client, ClientFactory
+from core.db.model_serializer import ConnectionPeer
 
 
 @bot_dispatcher.message(CommandStart())
@@ -58,14 +59,12 @@ async def on_connections_observer_startup():
     print("Observer started!")
 
 @connections_observer.connected()
-async def on_connected(client: Client):
-    print(f"{client} connected!")
-    print(connections_observer.connected_clients)
+async def on_connected(client: Client, peer: ConnectionPeer):
+    print(f"{client} connected, Peer: {peer}")
 
 @connections_observer.disconnected()
-async def on_disconnected(client: Client):
-    print(f"{client} disconnected!")
-    print(connections_observer.connected_clients)
+async def on_disconnected(client: Client, peer: ConnectionPeer):
+    print(f"{client} disconnected, Peer: {peer}")
 
 async def main() -> None:
     bot_dispatcher.include_router(get_handlers_router())

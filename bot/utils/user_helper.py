@@ -1,40 +1,42 @@
-from typing import Optional
+from typing import Optional, Union
 
-from aiogram.types import Message
 from pydantic import ValidationError
 
 from core.db.db_works import Client, ClientFactory
-from core.db.enums import StatusChoices
+from core.db.enums import ClientStatusChoices, PeerStatusChoices
 from core.utils.check import check_ip_address
 
 
-async def get_client_by_id_or_ip(message: Message) -> Optional[Client]:
-    """Not a command. Automatically sends an error message if user has not been found, and returns `None`."""
-    args = message.text.split()
-    if len(args) <= 1:
-        await message.answer("❌ Сообщение должно содержать IP-адрес пользователя или его Telegram ID.")
-        return None
-
-    if check_ip_address(args[1]):
-        client = ClientFactory.get_client(args[1])
+def get_client_by_id_or_ip(id_or_ip: Union[str, int]) -> tuple[Optional[Client], Optional[str]]:
+    """Tries to get client by it's id or ip.
+    Returns `(Client, None)` if the user was found, `(None, "error_message")` otherwise"""
+    if check_ip_address(id_or_ip):
+        client = ClientFactory.get_client(id_or_ip)
     else:
         try:
-            client = ClientFactory(tg_id=args[1]).get_client()
+            client = ClientFactory(tg_id=id_or_ip).get_client()
         except ValidationError:
             client = None
 
     if client is None:
-        await message.answer(f"❌ Пользователь <code>{args[1]}</code> не найден.")
-        return None
-    return client
+        return None, f"❌ Пользователь <code>{id_or_ip}</code> не найден."
+    return client, None
 
 def get_user_data_string(client: Client) -> str:
     """Returns human-readable data about User.
     Recommended to use `parse_mode="HTML"`."""
+    peers = client.get_peers()
+    peers_str = ""
+
+    for peer in peers:
+        peers_str += f"{peer.peer_name or peer.shared_ips}: {PeerStatusChoices.to_string(peer.peer_status)}\n"
+
     return f"""ℹ️ Информация об аккаунте:
 ID: {client.userdata.telegram_id}
-Текущий статус: {StatusChoices.to_string(client.userdata.status)}
+Текущий статус: {ClientStatusChoices.to_string(client.userdata.status)}
 IP: {client.userdata.ip_address}
 
+🛜 Пиры:
+{peers_str or '❌ Нет пиров\n'}
 📅 Дата регистрации: {client.userdata.registered_at.strftime("%d %b %Y в %H:%M")}
 """

@@ -11,6 +11,11 @@ class UserActionsEnum(StrEnum):
     UPDATE_DATA = "update"
 
 
+class YesOrNoEnum(StrEnum):
+    ANSWER_YES = "yes"
+    ANSWER_NO = "no"
+
+
 class ConnectionPeerCallbackData(CallbackData, prefix="peer"):
     """Peer callback data for keyboards.
 
@@ -24,3 +29,7 @@ class ConnectionPeerCallbackData(CallbackData, prefix="peer"):
 class UserActionsCallbackData(CallbackData, prefix="user_action"):
     user_id: int
     action: UserActionsEnum
+
+
+class PreviewMessageCallbackData(CallbackData, prefix="preview"):
+    answer: YesOrNoEnum
