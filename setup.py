@@ -8,11 +8,11 @@ from core.wg.keygen import generate_private_key, generate_public_key
 
 
 def make_config(path):
-    #Create pair of crypto keys
+    # Create pair of crypto keys
     server_private_key = generate_private_key()
     server_public_key = generate_public_key(server_private_key)
 
-    #Get external ip of your server
+    # Get external ip of your server
     external_ip = get('https://api.ipify.org').content.decode('utf8')
     tg_token = input("[ ! ] Telegram bot token: ")
     admins = input("[ ! ] Admin Telegram IDs with ',' separator: ")
@@ -30,7 +30,7 @@ def make_config(path):
         "PublicKey": f"{server_public_key}",
         "EndpointIP": f"{external_ip}",
         "EndpointPort":f"{endpoint_port}"
-        }
+    }
 
     with open(path, 'w') as server_config:
         config.write(server_config)
