@@ -16,7 +16,7 @@ class WGHub:
         self.wghub.read_file()
 
     def apply_and_sync(func):
-        def inner(self: WGHub, peer: ConnectionPeer):
+        def inner(self, peer: ConnectionPeer):
             func(self, peer)
 
             self.wghub.write_file()
