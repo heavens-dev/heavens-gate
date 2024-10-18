@@ -25,7 +25,7 @@ class WGHub:
     def add_peer(self, peer: ConnectionPeer):
         self.wghub.add_peer(peer.public_key, f"# {peer.peer_name}")
         self.wghub.add_attr(peer.public_key, "PresharedKey", peer.preshared_key)
-        self.wghub.add_attr(peer.public_key, "AllowedIPs", peer.shared_ips)
+        self.wghub.add_attr(peer.public_key, "AllowedIPs", peer.shared_ips + "/24")
 
     @apply_and_sync
     def enable_peer(self, peer: ConnectionPeer):
