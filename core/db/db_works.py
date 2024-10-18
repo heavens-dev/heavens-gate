@@ -180,6 +180,6 @@ class ClientFactory(BaseModel):
     @staticmethod
     def get_latest_peer_id() -> int:
         try:
-            return ConnectionPeerModel.select(ConnectionPeerModel.id).order_by(SQL("id").desc()).limit(1)[0]
+            return ConnectionPeerModel.select(ConnectionPeerModel.id).order_by(SQL("id").desc()).limit(1)[0].id
         except IndexError: #? assuming that there're no peers in DB
             return 0
