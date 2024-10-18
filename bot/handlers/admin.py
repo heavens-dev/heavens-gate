@@ -13,7 +13,8 @@ from bot.utils.states import PreviewMessageStates
 from bot.utils.user_helper import get_user_data_string
 from config.loader import bot_cfg, bot_instance, server_cfg, wghub
 from core.db.db_works import Client, ClientFactory
-from core.db.enums import ClientStatusChoices
+from core.db.enums import ClientStatusChoices, PeerStatusChoices
+from core.utils.check import check_ip_address
 
 router = Router(name="admin")
 router.message.filter(
@@ -108,3 +109,36 @@ async def add_peer(message: Message, client: Client):
     new_peer = client.add_peer(shared_ips=ip_addr, peer_name=f"{client.userdata.name}_{last_id}")
     wghub.add_peer(new_peer)
     await message.answer("✅ Пир создан и добавлен в конфиг.")
+
+@router.message(Command("disable_peer", "enable_peer"))
+async def manage_peer(message: Message):
+    if len(message.text.split()) <= 1:
+        await message.answer("❌ Сообщение должно включать в себя IP-адрес.")
+
+    ip = message.text.split()[1]
+    is_disable = message.text.startswith("/disable")
+    if check_ip_address(ip):
+        await message.answer("❌ IP-адрес введён неверно.")
+        return
+
+    peer = ClientFactory.get_peer(ip)
+    if not peer:
+        await message.answer("❌ IP-адрес не найден.")
+
+    client = ClientFactory(tg_id=peer.user_id).get_client()
+    if is_disable:
+        client.set_peer_status(peer.id, PeerStatusChoices.STATUS_BLOCKED)
+        wghub.disable_peer(peer)
+        await message.answer("✅ Пир отключён.")
+        await message.bot.send_message(
+            client.userdata.telegram_id,
+            f"‼️ Пир {peer.peer_name} был принудительно заблокирован. Обратись к администрации, чтобы уточнить детали."
+        )
+    else:
+        client.set_peer_status(peer.id, PeerStatusChoices.STATUS_DISCONNECTED)
+        wghub.enable_peer(peer)
+        await message.answer("✅ Пир включён.")
+        await message.bot.send_message(
+            client.userdata.telegram_id,
+            f"‼️ Пир {peer.peer_name} был разблокирован. Можешь начать пользоваться в течение короткого времени."
+        )

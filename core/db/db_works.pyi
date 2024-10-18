@@ -45,6 +45,9 @@ class ClientFactory(BaseModel):
     @staticmethod
     def select_peers() -> list[ConnectionPeer]: ...
 
+    @staticmethod
+    def get_peer(ip_address: str) -> Optional[ConnectionPeer]: ...
+
     @overload
     def delete_client(self) -> bool: ...
 

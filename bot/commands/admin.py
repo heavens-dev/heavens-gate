@@ -14,6 +14,8 @@ def get_admin_commands() -> list[BotCommand]:
         BotCommand(command="/unban", description="Unblock user by telegram ID or IP. Aliases: pardon, mercy"),
         BotCommand(command="/get_user", description="Get user by telegram ID or IP. Keyboard included!"),
         BotCommand(command="/add_peer", description="Adds peer to DB and config file."),
+        BotCommand(command="/disable_peer", description="Disables peer (wow)."),
+        BotCommand(command="/enable_peer", description="Enables peer (wow).")
     ])
 
     return commands

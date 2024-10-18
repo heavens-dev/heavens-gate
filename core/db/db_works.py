@@ -164,6 +164,14 @@ class ClientFactory(BaseModel):
     def select_peers() -> list[ConnectionPeer]:
         return [ConnectionPeer.model_validate(i) for i in ConnectionPeerModel.select()]
 
+    @staticmethod
+    def get_peer(ip_address: str) -> Optional[ConnectionPeer]:
+        try:
+            model = ConnectionPeerModel.get(ConnectionPeerModel.shared_ips == ip_address)
+            return ConnectionPeer.model_validate(model)
+        except DoesNotExist:
+            return None
+
     @multimethod
     @staticmethod
     def delete_client(ip_address: str) -> bool:
