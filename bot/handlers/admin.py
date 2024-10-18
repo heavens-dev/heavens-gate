@@ -114,6 +114,7 @@ async def add_peer(message: Message, client: Client):
 async def manage_peer(message: Message):
     if len(message.text.split()) <= 1:
         await message.answer("❌ Сообщение должно включать в себя IP-адрес.")
+        return
 
     ip = message.text.split()[1]
     is_disable = message.text.startswith("/disable")
