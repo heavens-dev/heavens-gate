@@ -9,8 +9,6 @@ from core.db.model_serializer import ConnectionPeer
 
 class WGHub:
     def __init__(self, path: str):
-        if not os.path.isabs(path):
-            path = os.getcwd() + "/wghub.conf"
         self.path = path
         self.wghub = wgconfig.WGConfig(path)
         self.wghub.read_file()
