@@ -118,13 +118,14 @@ async def manage_peer(message: Message):
 
     ip = message.text.split()[1]
     is_disable = message.text.startswith("/disable")
-    if check_ip_address(ip):
+    if not check_ip_address(ip):
         await message.answer("❌ IP-адрес введён неверно.")
         return
 
     peer = ClientFactory.get_peer(ip)
     if not peer:
         await message.answer("❌ IP-адрес не найден.")
+        return
 
     client = ClientFactory(tg_id=peer.user_id).get_client()
     if is_disable:

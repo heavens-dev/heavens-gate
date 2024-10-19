@@ -1,5 +1,5 @@
 import subprocess
-from typing import Union
+from typing import Callable, Union
 
 import wgconfig
 
@@ -12,7 +12,7 @@ class WGHub:
         self.wghub = wgconfig.WGConfig(path)
         self.wghub.read_file()
 
-    def apply_and_sync(func):
+    def apply_and_sync(func: Callable):
         def inner(self, peer: ConnectionPeer):
             func(self, peer)
 
@@ -55,7 +55,7 @@ PrivateKey = {private_key}
 """
 
 def peer_to_str_wg_server(peer: ConnectionPeer) -> str:
-        return f"""
+    return f"""
 # {peer.peer_name}
 [Peer]
 PublicKey = {peer.public_key}
