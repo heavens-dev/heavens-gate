@@ -1,3 +1,4 @@
+import os
 import subprocess
 from typing import Callable, Union
 
@@ -39,10 +40,14 @@ class WGHub:
         self.wghub.del_peer(peer.public_key)
 
 def disable_server(path: str) -> bool:
+    if not os.path.exists(path):
+        return False
     """Returns True if server was disabled successfully"""
     return "error" in subprocess.getoutput(f"wg-quick down {path}")
 
 def enable_server(path: str) -> bool:
+    if not os.path.exists(path):
+        return False
     """Returns True if server was enabled successfully"""
     return "error" in subprocess.getoutput(f"wg-quick up {path}")
 
