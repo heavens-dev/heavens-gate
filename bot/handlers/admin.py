@@ -16,6 +16,7 @@ from core.db.db_works import Client, ClientFactory
 from core.db.enums import ClientStatusChoices, PeerStatusChoices
 from core.utils.check import check_ip_address
 
+
 router = Router(name="admin")
 router.message.filter(
     F.from_user.id.in_(bot_cfg.admins)
@@ -144,3 +145,8 @@ async def manage_peer(message: Message):
             client.userdata.telegram_id,
             f"‼️ Пир {peer.peer_name} был разблокирован. Можешь начать пользоваться в течение короткого времени."
         )
+
+@router.message(Command("syncconfig"))
+async def syncconfig(message: Message):
+    wghub.sync_config()
+    await message.answer("✅ Конфиг синхронизирован с сервером.")

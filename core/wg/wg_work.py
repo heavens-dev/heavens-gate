@@ -10,8 +10,14 @@ from core.db.model_serializer import ConnectionPeer
 class WGHub:
     def __init__(self, path: str):
         self.path = path
+        self.interface_name = os.path.basename(path).split(".")[0]
+        print(self.path, self.interface_name)
         self.wghub = wgconfig.WGConfig(path)
         self.wghub.read_file()
+
+    def sync_config(self):
+        subprocess.call(f"/bin/bash -c 'wg syncconf {self.interface_name} <(wg-quick strip {self.path})'",
+                        shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
     def apply_and_sync(func: Callable):
         def inner(self, peer: ConnectionPeer):
@@ -19,6 +25,8 @@ class WGHub:
 
             self.wghub.write_file()
             #! sync with server
+            self.sync_config()
+            print("Synced with wireguard (hopefully)")
         return inner
 
     @apply_and_sync
