@@ -17,7 +17,7 @@ class WGHub:
 
     def sync_config(self):
         subprocess.call(f"/bin/bash -c 'wg syncconf {self.interface_name} <(wg-quick strip {self.path})'",
-                        shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+                        stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
     def apply_and_sync(func: Callable):
         def inner(self, peer: ConnectionPeer):
