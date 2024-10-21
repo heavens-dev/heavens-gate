@@ -16,7 +16,6 @@ from core.db.db_works import Client, ClientFactory
 from core.db.enums import ClientStatusChoices, PeerStatusChoices
 from core.utils.check import check_ip_address
 
-
 router = Router(name="admin")
 router.message.filter(
     F.from_user.id.in_(bot_cfg.admins)
