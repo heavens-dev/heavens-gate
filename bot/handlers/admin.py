@@ -105,7 +105,7 @@ async def get_user(message: Message, client: Client):
 @router.message(Command("add_peer"))
 async def add_peer(message: Message, client: Client):
     last_id = ClientFactory.get_latest_peer_id()
-    ip_addr = f"{server_cfg.user_ip}.{last_id + 1}"
+    ip_addr = f"{server_cfg.user_ip}.{last_id + 2}"
     new_peer = client.add_peer(shared_ips=ip_addr, peer_name=f"{client.userdata.name}_{last_id}")
     wghub.add_peer(new_peer)
     await message.answer("✅ Пир создан и добавлен в конфиг.")

@@ -28,6 +28,7 @@ class Config:
 
     def get_server_config(self):
         return self.Server(
+            path=self.cfg.get("Server", "Path", fallback=os.getcwd() + "/wg0.conf"),
             user_ip=self.cfg.get("Server", "IP", fallback="127.0.0"),
             private_key=self.cfg.get("Server", "PrivateKey", fallback="@!ChAngEME!@"),
             public_key=self.cfg.get("Server", "PublicKey", fallback="@!ChAngEME!@"),
@@ -70,7 +71,8 @@ class Config:
             self.path = path
 
     class Server:
-        def __init__(self, user_ip: str, private_key: str, public_key: str, endpoint_ip: str, endpoint_port: str):
+        def __init__(self, path: str, user_ip: str, private_key: str, public_key: str, endpoint_ip: str, endpoint_port: str):
+            self.path = path
             self.user_ip = user_ip
             self.private_key = private_key
             self.public_key = public_key
