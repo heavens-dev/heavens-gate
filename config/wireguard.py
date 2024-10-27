@@ -40,11 +40,3 @@ def create_server_config(wg_server):
 def create_wg_server():
     create_server_config(WIREGUARD_CONFIG_PATH)
     enable_server(WIREGUARD_CONFIG_PATH)
-
-# Func for every change of Wireguard server
-def recreate_wg_server(wg_server):
-    if not disable_server(wg_server):
-        create_server_config(wg_server)
-        enable_server(wg_server)
-        return wg_server
-    return False
