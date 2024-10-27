@@ -15,6 +15,7 @@ peewee-migrate = "^1.13.0"
 multimethod = "^1.12"
 icmplib = "^3.0.4"
 loguru = "^0.7.2"
+requests = "^2.32.3"
 
 
 [tool.poetry.group.dev.dependencies]

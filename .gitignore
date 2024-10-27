@@ -8,6 +8,7 @@ __pycache__
 .venv
 # not ignoring logs folder in core service
 /logs
+.vscode
 
 # migrations folder
 migrations

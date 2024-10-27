@@ -1,6 +1,8 @@
 import asyncio
 import os
 import random
+import signal
+import sys
 
 from aiogram.filters import Command, CommandStart
 from aiogram.types import Message
@@ -14,6 +16,10 @@ from core.db.db_works import Client, ClientFactory
 from core.db.model_serializer import ConnectionPeer
 from core.logs import bot_logger
 
+
+def graceful_shutdown(sig, frame):
+    print("Shutdowning gracefully...")
+    sys.exit(0)
 
 @bot_dispatcher.message(CommandStart())
 async def cmd_start(message: Message) -> None:
@@ -72,9 +78,11 @@ async def on_disconnected(client: Client, peer: ConnectionPeer):
 async def main() -> None:
     bot_dispatcher.include_router(get_handlers_router())
 
+    signal.signal(signal.SIGINT, graceful_shutdown)
+
     async with asyncio.TaskGroup() as group:
         group.create_task(connections_observer.listen_events())
-        group.create_task(bot_dispatcher.start_polling(bot_instance))
+        group.create_task(bot_dispatcher.start_polling(bot_instance, handle_signals=False))
 
 if __name__ == "__main__":
     asyncio.run(main())
