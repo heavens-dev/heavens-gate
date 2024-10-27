@@ -5,6 +5,7 @@ from typing import Callable, Union
 import wgconfig
 
 from core.db.model_serializer import ConnectionPeer
+from core.logs import core_logger
 
 
 class WGHub:
@@ -15,18 +16,20 @@ class WGHub:
         self.wghub = wgconfig.WGConfig(path)
         self.wghub.read_file()
 
+    @core_logger.catch
     def sync_config(self):
         subprocess.call(f"/bin/bash -c 'wg syncconf {self.interface_name} <(wg-quick strip {self.path})'",
                         stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
+    @core_logger.catch
     def apply_and_sync(func: Callable):
         def inner(self, peer: ConnectionPeer):
             func(self, peer)
 
             self.wghub.write_file()
-            #! sync with server
             self.sync_config()
-            print("Synced with wireguard (hopefully)")
+
+            core_logger.info("Config applied and synced with Wireguard server.")
         return inner
 
     @apply_and_sync
@@ -51,12 +54,14 @@ def disable_server(path: str) -> bool:
     """Returns True if server was disabled successfully"""
     if not os.path.exists(path):
         return False
+    core_logger.info("Disabling WG server...")
     return "error" in subprocess.getoutput(f"wg-quick down {path}")
 
 def enable_server(path: str) -> bool:
     """Returns True if server was enabled successfully"""
     if not os.path.exists(path):
         return False
+    core_logger.info("Enabling WG server...")
     return "error" in subprocess.getoutput(f"wg-quick up {path}")
 
 def make_wg_server_base_str(ip: str, endpoint_port: Union[str, int], private_key: str) -> str:

@@ -18,7 +18,7 @@ from core.logs import bot_logger
 
 
 def graceful_shutdown(sig, frame):
-    print("Shutdowning gracefully...")
+    bot_logger.critical("Recieved SIGINT signal, shutting down...")
     sys.exit(0)
 
 @bot_dispatcher.message(CommandStart())
