@@ -48,15 +48,15 @@ class WGHub:
         self.wghub.del_peer(peer.public_key)
 
 def disable_server(path: str) -> bool:
+    """Returns True if server was disabled successfully"""
     if not os.path.exists(path):
         return False
-    """Returns True if server was disabled successfully"""
     return "error" in subprocess.getoutput(f"wg-quick down {path}")
 
 def enable_server(path: str) -> bool:
+    """Returns True if server was enabled successfully"""
     if not os.path.exists(path):
         return False
-    """Returns True if server was enabled successfully"""
     return "error" in subprocess.getoutput(f"wg-quick up {path}")
 
 def make_wg_server_base_str(ip: str, endpoint_port: Union[str, int], private_key: str) -> str:
