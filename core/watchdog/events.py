@@ -69,7 +69,7 @@ class ConnectionEvents:
                             )
 
             with core_logger.contextualize(connected_only=connected_only):
-                core_logger.debug(f"Done listening connections. Sleeping for {listen_timer} sec")
+                core_logger.debug(f"Done listening for connections. Sleeping for {listen_timer} sec")
             await asyncio.sleep(listen_timer)
 
     async def emit_connect(self, client: Client, peer: ConnectionPeer):
