@@ -151,5 +151,5 @@ async def manage_peer(message: Message):
 @router.message(Command("syncconfig"))
 async def syncconfig(message: Message):
     wghub.sync_config()
-    bot_logger.info(f"Config was forcibly synchronized by {message.from_user.id}")
+    bot_logger.info(f"Config was forcefully synchronized by {message.from_user.id}")
     await message.answer("✅ Конфиг синхронизирован с сервером.")
