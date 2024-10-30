@@ -14,6 +14,7 @@ from bot.utils.user_helper import get_user_data_string
 from config.loader import bot_cfg, bot_instance, server_cfg, wghub
 from core.db.db_works import Client, ClientFactory
 from core.db.enums import ClientStatusChoices, PeerStatusChoices
+from core.logs import bot_logger
 from core.utils.check import check_ip_address
 
 router = Router(name="admin")
@@ -108,6 +109,8 @@ async def add_peer(message: Message, client: Client):
     ip_addr = f"{server_cfg.user_ip}.{last_id + 2}"
     new_peer = client.add_peer(shared_ips=ip_addr, peer_name=f"{client.userdata.name}_{last_id}")
     wghub.add_peer(new_peer)
+    with bot_logger.contextualize(peer=new_peer):
+        bot_logger.info(f"New peer was created manually by {message.from_user.id}")
     await message.answer("✅ Пир создан и добавлен в конфиг.")
 
 @router.message(Command("disable_peer", "enable_peer"))
@@ -148,4 +151,5 @@ async def manage_peer(message: Message):
 @router.message(Command("syncconfig"))
 async def syncconfig(message: Message):
     wghub.sync_config()
+    bot_logger.info(f"Config was forcefully synchronized by {message.from_user.id}")
     await message.answer("✅ Конфиг синхронизирован с сервером.")

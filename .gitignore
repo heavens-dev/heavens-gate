@@ -6,6 +6,8 @@ test.*
 __pycache__
 .reboot
 .venv
+# not ignoring logs folder in core service
+/logs
 .vscode
 
 # migrations folder

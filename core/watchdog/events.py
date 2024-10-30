@@ -1,11 +1,11 @@
 import asyncio
-from contextlib import suppress
 
 from icmplib import async_ping
 
 from core.db.db_works import Client, ClientFactory
 from core.db.enums import ClientStatusChoices, PeerStatusChoices
 from core.db.model_serializer import ConnectionPeer
+from core.logs import core_logger
 from core.watchdog.observer import EventObserver
 
 
@@ -68,7 +68,8 @@ class ConnectionEvents:
                                 self.__check_connection(client, peer)
                             )
 
-            print(f"Done listening connections. Sleeping for {listen_timer} sec")
+            with core_logger.contextualize(connected_only=connected_only):
+                core_logger.debug(f"Done listening for connections. Sleeping for {listen_timer} sec")
             await asyncio.sleep(listen_timer)
 
     async def emit_connect(self, client: Client, peer: ConnectionPeer):
@@ -96,7 +97,7 @@ class ConnectionEvents:
                 self.clients = [
                     (client, client.get_peers()) for client in ClientFactory.select_clients()
                 ]
-                print(f"Done updating clients list. Sleeping for {self.update_timer} sec")
+                core_logger.debug(f"Done updating clients list. Sleeping for {self.update_timer} sec")
 
             await asyncio.sleep(self.update_timer)
 
