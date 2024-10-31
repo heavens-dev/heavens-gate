@@ -37,7 +37,6 @@ class ConnectionEvents:
             (client, client.get_peers()) for client in ClientFactory.select_clients()
         ]
         """List of all `Client`s and their `ConnectionPeer`s"""
-        self.__warned_clients = []
 
         self.__clients_lock = asyncio.Lock()
         """Internal lock that prevents updating `self.clients`
