@@ -23,6 +23,6 @@ bot_dispatcher = Dispatcher(storage=MemoryStorage())
 
 db_instance = init_db(db_cfg.path)
 
-connections_observer = ConnectionEvents(listen_timer=30, update_timer=30)
-
 wghub = WGHub(server_cfg.path)
+
+connections_observer = ConnectionEvents(wghub, listen_timer=30, update_timer=30)

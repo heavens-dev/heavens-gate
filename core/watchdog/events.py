@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 
 from icmplib import async_ping
 
@@ -7,21 +8,29 @@ from core.db.enums import ClientStatusChoices, PeerStatusChoices
 from core.db.model_serializer import ConnectionPeer
 from core.logs import core_logger
 from core.watchdog.observer import EventObserver
+from core.wg.wg_work import WGHub
 
 
 class ConnectionEvents:
     def __init__(self,
+                 wghub: WGHub,
                  listen_timer: int = 120,
                  connected_only_listen_timer: int = 60,
-                 update_timer: int = 360):
+                 update_timer: int = 360,
+                 active_hours: int = 5):
         self.listen_timer = listen_timer
         self.update_timer = update_timer
         self.connected_only_listen_timer = connected_only_listen_timer
+        self.active_hours = active_hours
+        self.wghub = wghub
 
         self.connected = EventObserver(required_types=[Client, ConnectionPeer])
-        """Decorated methods must have a `Client` argument"""
+        """Decorated methods must have a `Client` and `ConnectionPeer` argument"""
         self.disconnected = EventObserver(required_types=[Client, ConnectionPeer])
-        """Decorated methods must have a `Client` argument"""
+        """Decorated methods must have a `Client` and `ConnectionPeer` argument"""
+        self.timer_observer = EventObserver(required_types=[Client, ConnectionPeer, bool])
+        """Decorated methods must have a `Client`, `ConnectionPeer` and boolean argument.
+        Boolean argument describes whether the trigger is a warning (**False**) or a disconnect (**True**)"""
         self.startup = EventObserver()
 
         self.clients: list[tuple[Client, list[ConnectionPeer]]] = [
@@ -34,6 +43,17 @@ class ConnectionEvents:
         during client connection checks"""
 
     async def __check_connection(self, client: Client, peer: ConnectionPeer) -> bool:
+        timedelta = (peer.peer_timer - datetime.datetime.now())
+
+        if timedelta.min <= 15 and peer.peer_status == PeerStatusChoices.STATUS_CONNECTED:
+            # False is warning
+            await self.timer_observer.trigger(client, peer, False)
+        elif timedelta.min <= 2 and peer.peer_status == PeerStatusChoices.STATUS_CONNECTED:
+            # True is disable
+            await self.timer_observer.trigger(client, peer, True)
+            await self.emit_timeout_disconnect(client, peer)
+            return False
+
         host = await async_ping(peer.shared_ips)
 
         if host.is_alive:
@@ -73,22 +93,32 @@ class ConnectionEvents:
             await asyncio.sleep(listen_timer)
 
     async def emit_connect(self, client: Client, peer: ConnectionPeer):
-        """Appends connected clients and propagates connection event to handlers.
+        """Propagates connection event to handlers.
+        Sets the time until which the connection can be active.
 
         Updates Client status to `ClientStatusChoices.STATUS_CONNECTED`
         and Peer status to `PeerStatusChoices.STATUS_DISCONNECTED`"""
+        new_time = datetime.datetime.now() + datetime.timedelta(hours=self.active_hours)
+        client.set_peer_timer(peer.id, new_time)
         client.set_peer_status(peer.id, PeerStatusChoices.STATUS_CONNECTED)
         client.set_status(ClientStatusChoices.STATUS_CONNECTED)
         await self.connected.trigger(client, peer)
 
     async def emit_disconnect(self, client: Client, peer: ConnectionPeer):
-        """Removes client from `connected_clients` and propagates disconnect event to handlers.
+        """Propagates disconnect event to handlers.
 
         Updates Client status to `ClientStatusChoices.STATUS_DISCONNECTED`
         and Peer status to `PeerStatusChoices.STATUS_DISCONNECTED`"""
         client.set_peer_status(peer.id, PeerStatusChoices.STATUS_DISCONNECTED)
         if len(client.get_connected_peers()) == 0:
             client.set_status(ClientStatusChoices.STATUS_DISCONNECTED)
+        await self.disconnected.trigger(client, peer)
+
+    async def emit_timeout_disconnect(self, client: Client, peer: ConnectionPeer):
+        client.set_peer_status(peer.id, PeerStatusChoices.STATUS_TIME_EXPIRED)
+        self.wghub.disable_peer(peer)
+        if len(client.get_connected_peers()) == 0:
+            client.set_status(ClientStatusChoices.STATUS_TIME_EXPIRED)
         await self.disconnected.trigger(client, peer)
 
     async def __update_clients_list(self):

@@ -28,3 +28,4 @@ class ConnectionPeer(BaseModel):
     shared_ips: str
     peer_name: Optional[str]
     peer_status: PeerStatusChoices
+    peer_timer: Optional[datetime]

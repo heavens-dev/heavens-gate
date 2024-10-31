@@ -14,13 +14,21 @@ from bot.utils.callback_data import (ConnectionPeerCallbackData,
                                      YesOrNoEnum)
 from bot.utils.states import PreviewMessageStates
 from bot.utils.user_helper import get_user_data_string
-from config.loader import bot_instance
-from core.db.db_works import ClientFactory
+from config.loader import bot_instance, connections_observer
+from core.db.db_works import Client, ClientFactory
 from core.db.enums import ClientStatusChoices
+from core.db.model_serializer import ConnectionPeer
 from core.wg.wgconfig_helper import get_peer_config_str
 
 router = Router(name="callbacks")
 
+@connections_observer.timer_observer
+async def warn_user_timeout(client: Client, peer: ConnectionPeer, disconnect: bool):
+    await bot_instance.send_message(client.userdata.telegram_id,
+        (f"⚠️ Подключение {peer.peer_name} будет разорвано менее чем через 15 минут. "
+        if not disconnect else
+        f"❗ Подключение {peer.peer_name} было разорвано из-за неактивности. ") +
+        "Введи /<command>, чтобы обновить время действия подключения.")
 
 @router.callback_query(ConnectionPeerCallbackData.filter())
 async def select_peer_callback(callback: CallbackQuery, callback_data: ConnectionPeerCallbackData):

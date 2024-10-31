@@ -1,3 +1,4 @@
+import datetime
 from typing import Optional, overload
 
 from pydantic import BaseModel
@@ -11,9 +12,9 @@ class Client(BaseModel):
     All methods that perform I/O operations (transactions) **should** be used with `atomic` context manager.
 
     Example:
-        >>> client = ClientFactory(tg_id=<telegram_id>).get_client() # -> Client
-        >>> with db.atomic():
-        ...    client.set_ip_address()
+    >>> client = ClientFactory(tg_id=<telegram_id>).get_client() # -> Client
+    >>> with db.atomic():
+    ...    client.set_ip_address()
     """
     userdata: User
     @overload
@@ -25,7 +26,8 @@ class Client(BaseModel):
     def set_ip_address(self, ip_address: str) -> bool: ...
     def set_status(self, status: ClientStatusChoices) -> bool: ...
     def change_peer_name(self, peer_id: int, peer_name: str) -> bool: ...
-    def set_peer_status(self, peer_id: int, peer_status: PeerStatusChoices) -> bool: ...
+    def set_peer_status(self, peer_id: int, peer_status: PeerStatusChoices): ...
+    def set_peer_timer(self, peer_id: int, peer_timer: datetime.datetime): ...
     def get_connected_peers(self) -> list[ConnectionPeer]: ...
 
 class ClientFactory(BaseModel):
