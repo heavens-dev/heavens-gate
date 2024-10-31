@@ -37,24 +37,24 @@ class ConnectionEvents:
             (client, client.get_peers()) for client in ClientFactory.select_clients()
         ]
         """List of all `Client`s and their `ConnectionPeer`s"""
+        self.__warned_clients = []
 
         self.__clients_lock = asyncio.Lock()
         """Internal lock that prevents updating `self.clients`
         during client connection checks"""
 
-    async def __check_connection(self, client: Client, peer: ConnectionPeer) -> bool:
-
+    async def __check_connection(self, client: Client, peer: ConnectionPeer, warn: bool = False) -> bool:
         if isinstance(peer.peer_timer, datetime.datetime) and peer.peer_status == PeerStatusChoices.STATUS_CONNECTED:
             timedelta = peer.peer_timer - datetime.datetime.now()
 
-            if timedelta <= datetime.timedelta(minutes=15):
-                # False is warning
-                await self.timer_observer.trigger(client, peer, False)
-            elif timedelta <= datetime.timedelta(minutes=2):
+            if timedelta <= datetime.timedelta(minutes=2):
                 # True is disable
                 await self.timer_observer.trigger(client, peer, True)
                 await self.emit_timeout_disconnect(client, peer)
                 return False
+            elif timedelta <= datetime.timedelta(minutes=15) and warn:
+                # False is warning
+                await self.timer_observer.trigger(client, peer, False)
 
         host = await async_ping(peer.shared_ips)
 
@@ -87,7 +87,7 @@ class ConnectionEvents:
                                     )
                                 continue
                             group.create_task(
-                                self.__check_connection(client, peer)
+                                self.__check_connection(client, peer, True)
                             )
 
             with core_logger.contextualize(connected_only=connected_only):
