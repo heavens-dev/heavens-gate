@@ -117,6 +117,8 @@ class ConnectionEvents:
 
     async def emit_timeout_disconnect(self, client: Client, peer: ConnectionPeer):
         client.set_peer_status(peer.id, PeerStatusChoices.STATUS_TIME_EXPIRED)
+        # avoid triggering the timer_observer multiple times
+        peer.peer_status = PeerStatusChoices.STATUS_TIME_EXPIRED
         self.wghub.disable_peer(peer)
         if len(client.get_connected_peers()) == 0:
             client.set_status(ClientStatusChoices.STATUS_TIME_EXPIRED)

@@ -1,10 +1,12 @@
+import datetime
+
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import BufferedInputFile, Message
 
 from bot.handlers.keyboards import build_peer_configs_keyboard
 from bot.utils.user_helper import get_user_data_string
-from config.loader import wghub
+from config.loader import core_cfg, wghub
 from core.db.db_works import ClientFactory
 from core.db.enums import PeerStatusChoices
 from core.wg.wgconfig_helper import get_peer_config_str
@@ -44,7 +46,10 @@ async def unblock_timeout_connections(message: Message):
     peers = client.get_peers()
     for peer in peers:
         if peer.peer_status != PeerStatusChoices.STATUS_TIME_EXPIRED:
-            continue
-        wghub.enable_peer(peer)
-        client.set_peer_status(peer.id, PeerStatusChoices.STATUS_DISCONNECTED)
+            wghub.enable_peer(peer)
+            client.set_peer_status(peer.id, PeerStatusChoices.STATUS_DISCONNECTED)
+        elif peer.peer_status == PeerStatusChoices.STATUS_CONNECTED:
+            new_time = datetime.datetime.now() + datetime.timedelta(hours=core_cfg.peer_active_time)
+            client.set_peer_timer(peer.id, peer_timer=new_time)
+
     await message.answer("✅ Соединения были разблокированы/обновлены. Можешь продолжать пользоваться VPN!")

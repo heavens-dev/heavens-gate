@@ -36,6 +36,11 @@ class Config:
             endpoint_port=self.cfg.get("Server", "EndpointPort", fallback="10000")
         )
 
+    def get_core_config(self):
+        return self.Core(
+            peer_active_time=self.cfg.get("core", "peer_active_time", fallback=6)
+        )
+
     def write_changes(self) -> bool:
         with open(self.path, "w", encoding="utf-8") as f:
             self.cfg.write(f)
@@ -78,3 +83,7 @@ class Config:
             self.public_key = public_key
             self.endpoint_ip = endpoint_ip
             self.endpoint_port = endpoint_port
+
+    class Core:
+        def __init__(self, peer_active_time: int):
+            self.peer_active_time = peer_active_time

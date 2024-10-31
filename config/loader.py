@@ -14,6 +14,7 @@ cfg = Config(PATH_TO_CONFIG)
 db_cfg = cfg.get_database_config()
 bot_cfg = cfg.get_bot_config()
 server_cfg = cfg.get_server_config()
+core_cfg = cfg.get_core_config()
 
 bot_instance = Bot(
     token=bot_cfg.token,
@@ -25,4 +26,9 @@ db_instance = init_db(db_cfg.path)
 
 wghub = WGHub(server_cfg.path)
 
-connections_observer = ConnectionEvents(wghub, listen_timer=30, update_timer=30)
+connections_observer = ConnectionEvents(
+    wghub,
+    listen_timer=30,
+    update_timer=30,
+    active_hours=core_cfg.peer_active_time
+)
