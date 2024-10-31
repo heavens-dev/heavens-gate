@@ -43,16 +43,18 @@ class ConnectionEvents:
         during client connection checks"""
 
     async def __check_connection(self, client: Client, peer: ConnectionPeer) -> bool:
-        timedelta = (peer.peer_timer - datetime.datetime.now())
 
-        if timedelta.min <= 15 and peer.peer_status == PeerStatusChoices.STATUS_CONNECTED:
-            # False is warning
-            await self.timer_observer.trigger(client, peer, False)
-        elif timedelta.min <= 2 and peer.peer_status == PeerStatusChoices.STATUS_CONNECTED:
-            # True is disable
-            await self.timer_observer.trigger(client, peer, True)
-            await self.emit_timeout_disconnect(client, peer)
-            return False
+        if isinstance(peer.peer_timer, datetime.datetime) and peer.peer_status == PeerStatusChoices.STATUS_CONNECTED:
+            timedelta = peer.peer_timer - datetime.datetime.now()
+
+            if timedelta <= datetime.timedelta(minutes=15):
+                # False is warning
+                await self.timer_observer.trigger(client, peer, False)
+            elif timedelta <= datetime.timedelta(minutes=2):
+                # True is disable
+                await self.timer_observer.trigger(client, peer, True)
+                await self.emit_timeout_disconnect(client, peer)
+                return False
 
         host = await async_ping(peer.shared_ips)
 
