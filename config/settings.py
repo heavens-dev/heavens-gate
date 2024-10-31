@@ -38,7 +38,7 @@ class Config:
 
     def get_core_config(self):
         return self.Core(
-            peer_active_time=self.cfg.get("core", "peer_active_time", fallback=6)
+            peer_active_time=self.cfg.getint("core", "peer_active_time", fallback=6)
         )
 
     def write_changes(self) -> bool:
