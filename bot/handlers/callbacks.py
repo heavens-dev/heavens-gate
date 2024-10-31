@@ -1,5 +1,6 @@
-import datetime
 from contextlib import suppress
+import datetime
+import time
 
 from aiogram import F, Router
 from aiogram.exceptions import TelegramBadRequest
@@ -27,7 +28,7 @@ router = Router(name="callbacks")
 async def warn_user_timeout(client: Client, peer: ConnectionPeer, disconnect: bool):
     time_left = peer.peer_timer - datetime.datetime.now()
     await bot_instance.send_message(client.userdata.telegram_id,
-        (f"⚠️ Подключение {peer.peer_name} будет разорвано через {time_left.min} минут. "
+        (f"⚠️ Подключение {peer.peer_name} будет разорвано через {time_left} минут. "
         if not disconnect else
         f"❗ Подключение {peer.peer_name} было разорвано из-за неактивности. ") +
         "Введи /unblock, чтобы обновить время действия подключения.")

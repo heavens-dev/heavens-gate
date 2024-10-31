@@ -1,5 +1,6 @@
 import os
 import subprocess
+import tempfile
 from typing import Callable, Union
 
 import wgconfig
@@ -18,8 +19,13 @@ class WGHub:
 
     @core_logger.catch
     def sync_config(self):
-        subprocess.call(f"/bin/bash -c 'wg syncconf {self.interface_name} <(wg-quick strip {self.path})'",
-                        stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        strip = subprocess.run(["wg-quick", "strip", self.path], check=True, capture_output=True, text=True)
+
+        with tempfile.NamedTemporaryFile() as temp_file:
+            temp_file.write(strip.stdout.encode("utf-8"))
+            temp_file.flush()
+
+            subprocess.run(["wg", "syncconf", self.interface_name, temp_file.name], check=True)
 
     @core_logger.catch
     def apply_and_sync(func: Callable):
