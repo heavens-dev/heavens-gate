@@ -29,8 +29,8 @@ class ConnectionEvents:
         self.disconnected = EventObserver(required_types=[Client, ConnectionPeer])
         """Decorated methods must have a `Client` and `ConnectionPeer` argument"""
         self.timer_observer = EventObserver(required_types=[Client, ConnectionPeer, bool])
-        """Decorated methods must have a `Client`, `ConnectionPeer` and boolean argument.
-        Boolean argument describes whether the trigger is a warning (**False**) or a disconnect (**True**)"""
+        """Decorated methods must have a `Client`, `ConnectionPeer` and `disconnect` boolean argument.
+        `disconnect` describes whether the trigger is a warning (**False**) or a disconnect (**True**)"""
         self.startup = EventObserver()
 
         self.clients: list[tuple[Client, list[ConnectionPeer]]] = [
@@ -46,14 +46,14 @@ class ConnectionEvents:
         if isinstance(peer.peer_timer, datetime.datetime) and peer.peer_status == PeerStatusChoices.STATUS_CONNECTED:
             timedelta = peer.peer_timer - datetime.datetime.now()
 
-            if timedelta <= datetime.timedelta(minutes=2):
+            if timedelta <= datetime.timedelta(0):
                 # True is disable
-                await self.timer_observer.trigger(client, peer, True)
+                await self.timer_observer.trigger(client, peer, disconnect=True)
                 await self.emit_timeout_disconnect(client, peer)
                 return False
             elif timedelta <= datetime.timedelta(minutes=15) and warn:
                 # False is warning
-                await self.timer_observer.trigger(client, peer, False)
+                await self.timer_observer.trigger(client, peer, disconnect=False)
 
         host = await async_ping(peer.shared_ips)
 
