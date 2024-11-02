@@ -1,3 +1,4 @@
+import datetime
 from typing import Optional
 
 from multimethod import multimethod
@@ -95,6 +96,9 @@ class Client(BaseModel):
 
     def set_peer_status(self, peer_id: int, peer_status: PeerStatusChoices):
         self.__update_peer(peer_id, peer_status=peer_status.value)
+
+    def set_peer_timer(self, peer_id, time: datetime.datetime):
+        self.__update_peer(peer_id, peer_timer=time)
 
     def get_connected_peers(self) -> list[ConnectionPeer]:
         return [

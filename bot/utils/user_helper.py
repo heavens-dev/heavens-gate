@@ -1,3 +1,4 @@
+import datetime
 from typing import Optional, Union
 
 from pydantic import ValidationError
@@ -29,7 +30,11 @@ def get_user_data_string(client: Client) -> str:
     peers_str = ""
 
     for peer in peers:
-        peers_str += f"{peer.peer_name or peer.shared_ips}: {PeerStatusChoices.to_string(peer.peer_status)} ({peer.shared_ips})\n"
+        peers_str += f"{peer.peer_name or peer.shared_ips}: {PeerStatusChoices.to_string(peer.peer_status)} ({peer.shared_ips}) "
+        if peer.peer_status == PeerStatusChoices.STATUS_CONNECTED:
+            timer = datetime.datetime.strftime(peer.peer_timer, "%H:%M")
+            peers_str += f"(активен до {timer})"
+        peers_str += "\n"
 
     return f"""ℹ️ Информация об аккаунте:
 ID: {client.userdata.telegram_id}

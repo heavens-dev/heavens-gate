@@ -44,6 +44,7 @@ class ConnectionPeerModel(BaseModel):
             (status.value, status.name) for status in PeerStatusChoices
         )
     )
+    peer_timer = DateTimeField(default=None, null=True)
 
     class Meta:
         table_name = "ConnectionPeers"
