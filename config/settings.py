@@ -18,7 +18,8 @@ class Config:
         return self.Bot(
             config_instance=self,
             token=self.cfg.get("TelegramBot", "token", fallback=None),
-            admins=self.cfg.get("TelegramBot", "admins", fallback="")
+            admins=self.cfg.get("TelegramBot", "admins", fallback=""),
+            faq_url=self.cfg.get("TelegramBot", "faq_url", fallback=None)
         )
 
     def get_database_config(self):
@@ -48,8 +49,9 @@ class Config:
         return True
 
     class Bot:
-        def __init__(self, config_instance: Type["Config"], token: str, admins: str):
+        def __init__(self, config_instance: Type["Config"], token: str, admins: str, faq_url: str):
             self.token = token
+            self.faq_url = faq_url
 
             if not self.token:
                 raise ValueError("Token MUST be specified in config file. For God's sake!")
