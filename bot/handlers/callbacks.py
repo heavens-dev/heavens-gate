@@ -153,7 +153,7 @@ async def change_peer_name_callback(callback: CallbackQuery, callback_data: User
 async def change_peer_name_entering_callback(callback: CallbackQuery, callback_data: ConnectionPeerCallbackData, state: FSMContext):
     await callback.answer()
     await callback.message.delete()
-    await callback.message.answer("🔤 Введи новое имя для конфига:")
+    await callback.message.answer("🔤 Введи новое имя для конфига (или <code>отмена</code>, если передумал):")
     await state.set_state(RenamePeerStates.name_entering)
     await state.set_data({"tg_id": callback_data.user_id, "peer_id": callback_data.peer_id})
 
@@ -162,6 +162,12 @@ async def change_peer_name_entering_callback(callback: CallbackQuery, callback_d
 @router.message(RenamePeerStates.name_entering)
 async def finally_change_peer_name(message: Message, state: FSMContext):
     new_name = message.text
+
+    if new_name.lower() in ["отмена", "cancel"]:
+        await state.clear()
+        await message.answer("❌ Действие отменено.")
+        return
+
     if len(new_name) >= 16:
         await message.answer("❌ Название конфига должно содержать меньше 16 символов!")
         await state.clear()
