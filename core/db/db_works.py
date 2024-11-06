@@ -195,3 +195,7 @@ class ClientFactory(BaseModel):
             return ConnectionPeerModel.select(ConnectionPeerModel.id).order_by(SQL("id").desc()).limit(1)[0].id
         except IndexError: #? assuming that there're no peers in DB
             return 0
+
+    @staticmethod
+    def get_ip_addresses() -> list[str]:
+        return [i.shared_ips for i in ConnectionPeerModel.select(ConnectionPeerModel.shared_ips)]

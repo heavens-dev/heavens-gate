@@ -11,11 +11,11 @@ from bot.handlers.keyboards import (build_user_actions_keyboard,
 from bot.middlewares.client_getters_middleware import ClientGettersMiddleware
 from bot.utils.states import PreviewMessageStates
 from bot.utils.user_helper import get_user_data_string
-from config.loader import bot_cfg, bot_instance, server_cfg, wghub
+from config.loader import bot_cfg, bot_instance, ip_queue, server_cfg, wghub
 from core.db.db_works import Client, ClientFactory
 from core.db.enums import ClientStatusChoices, PeerStatusChoices
 from core.logs import bot_logger
-from core.utils.check import check_ip_address
+from core.utils.ip_utils import check_ip_address
 
 router = Router(name="admin")
 router.message.filter(
@@ -106,7 +106,12 @@ async def get_user(message: Message, client: Client):
 @router.message(Command("add_peer"))
 async def add_peer(message: Message, client: Client):
     last_id = ClientFactory.get_latest_peer_id()
-    ip_addr = f"{server_cfg.user_ip}.{last_id + 2}"
+    try:
+        ip_addr = ip_queue.get_ip()
+    except Exception as e:
+        await message.answer("❌ Нет доступных IP-адресов!")
+        bot_logger.critical("❌ Tried to add a peer, but no IP addresses are available.")
+        return
     new_peer = client.add_peer(shared_ips=ip_addr, peer_name=f"{client.userdata.name}_{last_id}")
     wghub.add_peer(new_peer)
     with bot_logger.contextualize(peer=new_peer):
@@ -139,6 +144,7 @@ async def manage_peer(message: Message):
             client.userdata.telegram_id,
             f"‼️ Пир {peer.peer_name} был принудительно заблокирован. Обратись к администрации, чтобы уточнить детали."
         )
+        bot_logger.info(f"Peer id {peer.id} was blocked by {message.from_user.username}")
     else:
         client.set_peer_status(peer.id, PeerStatusChoices.STATUS_DISCONNECTED)
         wghub.enable_peer(peer)
@@ -147,6 +153,7 @@ async def manage_peer(message: Message):
             client.userdata.telegram_id,
             f"‼️ Пир {peer.peer_name} был разблокирован. Можешь начать пользоваться в течение короткого времени."
         )
+        bot_logger.info(f"Peer id {peer.id} was unblocked by {message.from_user.username}")
 
 @router.message(Command("syncconfig"))
 async def syncconfig(message: Message):

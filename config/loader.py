@@ -4,7 +4,10 @@ from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from config.settings import Config
+from core.db.db_works import ClientFactory
 from core.db.models import init_db
+from core.logs import core_logger
+from core.utils.ip_utils import IPQueue, generate_ip_addresses
 from core.watchdog.events import ConnectionEvents
 from core.wg.wg_work import WGHub
 
@@ -23,6 +26,10 @@ bot_instance = Bot(
 bot_dispatcher = Dispatcher(storage=MemoryStorage())
 
 db_instance = init_db(db_cfg.path)
+
+_all_ips = generate_ip_addresses(server_cfg.user_ip, mask="24")
+ip_queue = IPQueue([ip for ip in _all_ips if ip not in ClientFactory.get_ip_addresses()])
+core_logger.debug(f"Number of available ip addresses: {ip_queue.count_available_addresses()}")
 
 wghub = WGHub(server_cfg.path)
 
