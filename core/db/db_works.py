@@ -137,6 +137,7 @@ class ClientFactory(BaseModel):
 
     tg_id: int
 
+    # FIXME: fix `UNIQUE constraint failed` when the same user tries to /start but with different name
     def get_or_create_client(self, name: str, **kwargs) -> Client:
         """Retrieves or creates a record of the user in the database.
         Use this method when you're unsure whether the user already exists in the database or not."""
