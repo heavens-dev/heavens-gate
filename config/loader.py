@@ -19,6 +19,8 @@ bot_cfg = cfg.get_bot_config()
 server_cfg = cfg.get_server_config()
 core_cfg = cfg.get_core_config()
 
+RESERVED_IP_ADDRESSES = [server_cfg.user_ip + ".0", server_cfg.user_ip + ".1"]
+
 bot_instance = Bot(
     token=bot_cfg.token,
     default=DefaultBotProperties(parse_mode=ParseMode.HTML)
@@ -28,7 +30,9 @@ bot_dispatcher = Dispatcher(storage=MemoryStorage())
 db_instance = init_db(db_cfg.path)
 
 _all_ips = generate_ip_addresses(server_cfg.user_ip, mask="24")
-ip_queue = IPQueue([ip for ip in _all_ips if ip not in ClientFactory.get_ip_addresses()])
+ip_queue = IPQueue([ip for ip in _all_ips
+                    if ip not in ClientFactory.get_ip_addresses()
+                    and ip not in RESERVED_IP_ADDRESSES])
 core_logger.debug(f"Number of available ip addresses: {ip_queue.count_available_addresses()}")
 
 wghub = WGHub(server_cfg.path)
