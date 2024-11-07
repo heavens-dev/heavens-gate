@@ -19,7 +19,11 @@ bot_cfg = cfg.get_bot_config()
 server_cfg = cfg.get_server_config()
 core_cfg = cfg.get_core_config()
 
-RESERVED_IP_ADDRESSES = [server_cfg.user_ip + ".0", server_cfg.user_ip + ".1"]
+RESERVED_IP_ADDRESSES = [
+    server_cfg.user_ip + ".0",
+    server_cfg.user_ip + ".1",
+    server_cfg.user_ip + ".255"
+]
 
 bot_instance = Bot(
     token=bot_cfg.token,
