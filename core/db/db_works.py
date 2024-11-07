@@ -137,6 +137,7 @@ class ClientFactory(BaseModel):
 
     tg_id: int
 
+    # FIXME: fix `UNIQUE constraint failed` when the same user tries to /start but with different name
     def get_or_create_client(self, name: str, **kwargs) -> Client:
         """Retrieves or creates a record of the user in the database.
         Use this method when you're unsure whether the user already exists in the database or not."""
@@ -195,3 +196,7 @@ class ClientFactory(BaseModel):
             return ConnectionPeerModel.select(ConnectionPeerModel.id).order_by(SQL("id").desc()).limit(1)[0].id
         except IndexError: #? assuming that there're no peers in DB
             return 0
+
+    @staticmethod
+    def get_ip_addresses() -> list[str]:
+        return [i.shared_ips for i in ConnectionPeerModel.select(ConnectionPeerModel.shared_ips)]

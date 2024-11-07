@@ -31,7 +31,7 @@ async def cmd_start(message: Message) -> None:
     with db_instance.atomic():
         # just in case.
         ClientFactory(tg_id=message.chat.id).get_or_create_client(
-            name=message.chat.full_name
+            name=message.chat.username
         )
 
     keyboard = None

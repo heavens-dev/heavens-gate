@@ -4,7 +4,7 @@ from getpass import getpass
 
 import requests
 
-from core.utils.check import check_ip_address
+from core.utils.ip_utils import check_ip_address
 from core.wg.keygen import generate_private_key, generate_public_key
 
 

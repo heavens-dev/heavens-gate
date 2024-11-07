@@ -2,9 +2,12 @@ import datetime
 
 from aiogram import Router
 from aiogram.filters import Command
+from aiogram.fsm.context import FSMContext
 from aiogram.types import BufferedInputFile, Message
 
-from bot.handlers.keyboards import build_peer_configs_keyboard
+from bot.handlers.keyboards import (build_peer_configs_keyboard,
+                                    build_user_actions_keyboard)
+from bot.utils.states import RenamePeerStates
 from bot.utils.user_helper import get_user_data_string
 from config.loader import core_cfg, wghub
 from core.db.db_works import ClientFactory
@@ -18,7 +21,10 @@ router = Router(name="user")
 async def me(message: Message):
     client = ClientFactory(tg_id=message.chat.id).get_client()
 
-    await message.answer(get_user_data_string(client))
+    await message.answer(
+        get_user_data_string(client),
+        reply_markup=build_user_actions_keyboard(client, is_admin=False)
+    )
 
 @router.message(Command("config"))
 async def get_config(message: Message):
@@ -53,3 +59,13 @@ async def unblock_timeout_connections(message: Message):
             client.set_peer_timer(peer.id, peer_timer=new_time)
 
     await message.answer("✅ Соединения были разблокированы/обновлены. Можешь продолжать пользоваться VPN!")
+
+@router.message(Command("change_peer_name"))
+async def change_peer_name(message: Message, state: FSMContext):
+    client = ClientFactory(tg_id=message.from_user.id).get_client()
+    keyboard = build_peer_configs_keyboard(client.userdata.telegram_id, client.get_peers(), display_all=False)
+    await message.answer(
+        text="Выбери конфиг, который хочешь переименовать:",
+        reply_markup=keyboard
+    )
+    await state.set_state(RenamePeerStates.peer_selection)

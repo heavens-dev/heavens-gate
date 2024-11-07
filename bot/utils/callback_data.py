@@ -1,4 +1,5 @@
 from enum import StrEnum
+from typing import Optional
 
 from aiogram.filters.callback_data import CallbackData
 
@@ -9,6 +10,7 @@ class UserActionsEnum(StrEnum):
     GET_CONFIGS = "configs"
     TERMINATE_CONNECTION = "terconn" # TODO
     UPDATE_DATA = "update"
+    CHANGE_PEER_NAME = "change_peer_name"
 
 
 class YesOrNoEnum(StrEnum):
@@ -29,6 +31,7 @@ class ConnectionPeerCallbackData(CallbackData, prefix="peer"):
 class UserActionsCallbackData(CallbackData, prefix="user_action"):
     user_id: int
     action: UserActionsEnum
+    is_admin: bool
 
 
 class PreviewMessageCallbackData(CallbackData, prefix="preview"):
