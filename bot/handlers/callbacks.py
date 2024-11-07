@@ -10,7 +10,8 @@ from aiogram.types import BufferedInputFile, CallbackQuery, Message
 from aiogram.utils.media_group import MediaGroupBuilder
 
 from bot.handlers.keyboards import (build_peer_configs_keyboard,
-                                    build_user_actions_keyboard)
+                                    build_user_actions_keyboard,
+                                    cancel_keyboard)
 from bot.utils.callback_data import (ConnectionPeerCallbackData,
                                      PreviewMessageCallbackData,
                                      UserActionsCallbackData, UserActionsEnum,
@@ -35,6 +36,13 @@ async def warn_user_timeout(client: Client, peer: ConnectionPeer, disconnect: bo
         if not disconnect else
         f"❗ Подключение {peer.peer_name} было разорвано из-за неактивности. ") +
         "Введи /unblock, чтобы обновить время действия подключения.")
+
+@router.callback_query(F.data == "cancel_action")
+async def cancel_action_callback(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await state.clear()
+    await callback.message.delete()
+    await callback.message.answer("❌ Действие отменено.")
 
 @router.callback_query(ConnectionPeerCallbackData.filter(), default_state)
 async def select_peer_callback(callback: CallbackQuery, callback_data: ConnectionPeerCallbackData, state: FSMContext):
@@ -143,6 +151,7 @@ async def preview_message_callback(callback: CallbackQuery, callback_data: Previ
 async def change_peer_name_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData, state: FSMContext):
     client = ClientFactory(tg_id=callback.from_user.id).get_client()
     keyboard = build_peer_configs_keyboard(client.userdata.telegram_id, client.get_peers(), display_all=False)
+    keyboard.inline_keyboard.append(cancel_keyboard().inline_keyboard[0])
     await callback.answer()
     await callback.message.answer(
         text="Выбери конфиг, который хочешь переименовать:",
@@ -154,7 +163,8 @@ async def change_peer_name_callback(callback: CallbackQuery, callback_data: User
 async def change_peer_name_entering_callback(callback: CallbackQuery, callback_data: ConnectionPeerCallbackData, state: FSMContext):
     await callback.answer()
     await callback.message.delete()
-    await callback.message.answer("🔤 Введи новое имя для конфига (или <code>отмена</code>, если передумал):")
+    await callback.message.answer("🔤 Введи новое имя для конфига (или <code>отмена</code>, если передумал):",
+                                  reply_markup=cancel_keyboard())
     await state.set_state(RenamePeerStates.name_entering)
     await state.set_data({"tg_id": callback_data.user_id, "peer_id": callback_data.peer_id})
 
@@ -164,7 +174,7 @@ async def change_peer_name_entering_callback(callback: CallbackQuery, callback_d
 async def contact_admin_callback(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
     await callback.message.answer("✏️ Напиши сообщение, которое хочешь отправить администраторам"
-                                  " (или <code>отмена</code>, если передумал):")
+                                  " (или <code>отмена</code>, если передумал):", reply_markup=cancel_keyboard())
     await state.set_state(ContactAdminStates.message_entering)
 
 # tecnically it is not a callback, but who cares...

@@ -111,3 +111,13 @@ def preview_keyboard():
     )
 
     return builder.as_markup()
+
+def cancel_keyboard():
+    builder = InlineKeyboardBuilder()
+
+    builder.button(
+        text="❌ Отмена",
+        callback_data="cancel_action"
+    )
+
+    return builder.as_markup()
