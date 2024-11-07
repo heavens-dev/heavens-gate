@@ -62,3 +62,6 @@ class ClientFactory(BaseModel):
 
     @staticmethod
     def get_latest_peer_id() -> int: ...
+
+    @staticmethod
+    def get_ip_addresses() -> list[str]: ...

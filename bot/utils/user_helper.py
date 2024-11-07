@@ -5,7 +5,7 @@ from pydantic import ValidationError
 
 from core.db.db_works import Client, ClientFactory
 from core.db.enums import ClientStatusChoices, PeerStatusChoices
-from core.utils.check import check_ip_address
+from core.utils.ip_utils import check_ip_address
 
 
 def get_client_by_id_or_ip(id_or_ip: Union[str, int]) -> tuple[Optional[Client], Optional[str]]:
