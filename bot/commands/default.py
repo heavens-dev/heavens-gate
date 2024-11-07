@@ -8,6 +8,7 @@ def get_default_commands() -> list[BotCommand]:
         BotCommand(command="/start", description="(re)Start the bot"),
         BotCommand(command="/help", description="Get list of commands and their definitions"),
         BotCommand(command="/me", description="Info about yourself"),
+        BotCommand(command="/contact", description="Contact the admins"),
         BotCommand(command="/config", description="Get configs of peers"),
         BotCommand(command="/unblock", description="Unblock/update the connection"),
         BotCommand(command="/change_peer_name", description="Change peer name (wow)"),

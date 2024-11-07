@@ -15,9 +15,10 @@ from bot.utils.callback_data import (ConnectionPeerCallbackData,
                                      PreviewMessageCallbackData,
                                      UserActionsCallbackData, UserActionsEnum,
                                      YesOrNoEnum)
-from bot.utils.states import PreviewMessageStates, RenamePeerStates
+from bot.utils.states import (ContactAdminStates, PreviewMessageStates,
+                              RenamePeerStates)
 from bot.utils.user_helper import get_user_data_string
-from config.loader import bot_instance, connections_observer
+from config.loader import bot_cfg, bot_instance, connections_observer
 from core.db.db_works import Client, ClientFactory
 from core.db.enums import ClientStatusChoices
 from core.db.model_serializer import ConnectionPeer
@@ -157,6 +158,15 @@ async def change_peer_name_entering_callback(callback: CallbackQuery, callback_d
     await state.set_state(RenamePeerStates.name_entering)
     await state.set_data({"tg_id": callback_data.user_id, "peer_id": callback_data.peer_id})
 
+@router.callback_query(
+    UserActionsCallbackData.filter(F.action == UserActionsEnum.CONTACT_ADMIN)
+)
+async def contact_admin_callback(callback: CallbackQuery, state: FSMContext):
+    await callback.answer()
+    await callback.message.answer("✏️ Напиши сообщение, которое хочешь отправить администраторам"
+                                  " (или <code>отмена</code>, если передумал):")
+    await state.set_state(ContactAdminStates.message_entering)
+
 # tecnically it is not a callback, but who cares...
 # idk how to call this func properly, so yes
 @router.message(RenamePeerStates.name_entering)
@@ -179,3 +189,18 @@ async def finally_change_peer_name(message: Message, state: FSMContext):
     client.change_peer_name(peer_id, new_name)
     await state.clear()
     await message.answer("✅ Конфиг был успешно переименован!")
+
+@router.message(ContactAdminStates.message_entering)
+async def contact_admin(message: Message, state: FSMContext):
+    await state.clear()
+    if message.text.lower() in ["отмена", "cancel"]:
+        await message.answer("❌ Действие отменено.")
+        return
+
+    for admin_id in bot_cfg.admins:
+        await bot_instance.send_message(
+            chat_id=admin_id,
+            text=f"📩 Сообщение от пользователя {message.from_user.username} ({message.from_user.id}):\n\n{message.text}"
+            f"\n\n🔗 Ответить на сообщение: <code>/whisper {message.from_user.id}</code>"
+        )
+    await message.answer("✅ Сообщение отправлено администраторам. Ожидай обратной связи.")

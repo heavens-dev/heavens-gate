@@ -7,3 +7,6 @@ class PreviewMessageStates(StatesGroup):
 class RenamePeerStates(StatesGroup):
     peer_selection = State()
     name_entering = State()
+
+class ContactAdminStates(StatesGroup):
+    message_entering = State()
