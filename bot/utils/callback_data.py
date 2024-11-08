@@ -11,6 +11,7 @@ class UserActionsEnum(StrEnum):
     TERMINATE_CONNECTION = "terconn" # TODO
     UPDATE_DATA = "update"
     CHANGE_PEER_NAME = "change_peer_name"
+    CONTACT_ADMIN = "contact_admin"
 
 
 class YesOrNoEnum(StrEnum):

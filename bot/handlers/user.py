@@ -6,8 +6,9 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import BufferedInputFile, Message
 
 from bot.handlers.keyboards import (build_peer_configs_keyboard,
-                                    build_user_actions_keyboard)
-from bot.utils.states import RenamePeerStates
+                                    build_user_actions_keyboard,
+                                    cancel_keyboard)
+from bot.utils.states import ContactAdminStates, RenamePeerStates
 from bot.utils.user_helper import get_user_data_string
 from config.loader import core_cfg, wghub
 from core.db.db_works import ClientFactory
@@ -64,8 +65,15 @@ async def unblock_timeout_connections(message: Message):
 async def change_peer_name(message: Message, state: FSMContext):
     client = ClientFactory(tg_id=message.from_user.id).get_client()
     keyboard = build_peer_configs_keyboard(client.userdata.telegram_id, client.get_peers(), display_all=False)
+    keyboard.inline_keyboard.append(cancel_keyboard().inline_keyboard[0])
     await message.answer(
         text="Выбери конфиг, который хочешь переименовать:",
         reply_markup=keyboard
     )
     await state.set_state(RenamePeerStates.peer_selection)
+
+@router.message(Command("contact"))
+async def contact(message: Message, state: FSMContext):
+    await message.answer("✏️ Напиши сообщение, которое хочешь отправить администраторам"
+                         " (или <code>отмена</code>, если передумал):", reply_markup=cancel_keyboard())
+    await state.set_state(ContactAdminStates.message_entering)

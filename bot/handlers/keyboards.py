@@ -60,6 +60,14 @@ def build_user_actions_keyboard(client: Client, is_admin=True):
                 is_admin=is_admin
             )
         )
+        builder.button(
+            text="📞 Связаться с администрацией",
+            callback_data=UserActionsCallbackData(
+                action=UserActionsEnum.CONTACT_ADMIN,
+                user_id=client.userdata.telegram_id,
+                is_admin=is_admin
+            )
+        )
 
     builder.button(
         text="📒 Получить конфиги",
@@ -79,7 +87,7 @@ def build_user_actions_keyboard(client: Client, is_admin=True):
         )
     )
 
-    builder.adjust(2, repeat=1)
+    builder.adjust(2, repeat=True)
 
     return builder.as_markup()
 
@@ -100,6 +108,16 @@ def preview_keyboard():
         callback_data=PreviewMessageCallbackData(
             answer=YesOrNoEnum.ANSWER_NO,
         )
+    )
+
+    return builder.as_markup()
+
+def cancel_keyboard():
+    builder = InlineKeyboardBuilder()
+
+    builder.button(
+        text="❌ Отмена",
+        callback_data="cancel_action"
     )
 
     return builder.as_markup()
