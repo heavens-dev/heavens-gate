@@ -5,7 +5,7 @@ import signal
 import sys
 
 from aiogram.filters import Command, CommandStart
-from aiogram.types import Message
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from bot.commands import (get_admin_commands, get_default_commands,
                           set_admin_commands, set_user_commands)
@@ -31,10 +31,22 @@ async def cmd_start(message: Message) -> None:
     with db_instance.atomic():
         # just in case.
         ClientFactory(tg_id=message.chat.id).get_or_create_client(
-            name=message.chat.username # ? retrieving a @username will be a better option, maybe
+            name=message.chat.username
         )
 
-    await message.answer("Привет. Не знаю, как ты здесь оказался.")
+    keyboard = None
+    faq_str = ""
+    if bot_cfg.faq_url is not None:
+        faq_button = InlineKeyboardButton(text="FAQ", url=bot_cfg.faq_url)
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[[faq_button]])
+        faq_str = "\nПрежде чем приступить к работе с ботом, ознакомься с FAQ, нажав на кнопку ниже." \
+
+    msg = f"""👋 Привет!
+{faq_str}
+Если у тебя будут вопросы к администрации, воспользуйся командой /contact или кнопкой в меню /me.
+
+⚠️ На текущий момент бот находится в стадии разработки и тестирования, поэтому возможны недоработки, ошибки и прочее непонятное поведение. Если ты нашел какую-то ошибку, пожалуйста, сообщи об этом администрации бота."""
+    await message.answer(text=msg, reply_markup=keyboard)
 
 @bot_dispatcher.message(Command("help"))
 async def cmd_help(message: Message) -> None:
