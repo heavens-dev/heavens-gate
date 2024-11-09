@@ -14,8 +14,8 @@ class WGHub:
         self.path = path
         self.interface_name = os.path.basename(path).split(".")[0]
         print(self.path, self.interface_name)
-        self.wghub = wgconfig.WGConfig(path)
-        self.wghub.read_file()
+        self.wgconfig = wgconfig.WGConfig(path)
+        self.wgconfig.read_file()
 
     @core_logger.catch
     def sync_config(self):
@@ -40,21 +40,31 @@ class WGHub:
 
     @apply_and_sync
     def add_peer(self, peer: ConnectionPeer):
-        self.wghub.add_peer(peer.public_key, f"# {peer.peer_name}")
-        self.wghub.add_attr(peer.public_key, "PresharedKey", peer.preshared_key)
-        self.wghub.add_attr(peer.public_key, "AllowedIPs", peer.shared_ips + "/32")
+        self.wgconfig.add_peer(peer.public_key, f"# {peer.peer_name}")
+        self.wgconfig.add_attr(peer.public_key, "PresharedKey", peer.preshared_key)
+        self.wgconfig.add_attr(peer.public_key, "AllowedIPs", peer.shared_ips + "/32")
 
     @apply_and_sync
     def enable_peer(self, peer: ConnectionPeer):
-        self.wghub.enable_peer(peer.public_key)
+        self.wgconfig.enable_peer(peer.public_key)
+
+    @apply_and_sync
+    def enable_peers(self, peers: list[ConnectionPeer]):
+        for peer in peers:
+            self.wgconfig.enable_peer(peer.public_key)
 
     @apply_and_sync
     def disable_peer(self, peer: ConnectionPeer):
-        self.wghub.disable_peer(peer.public_key)
+        self.wgconfig.disable_peer(peer.public_key)
+
+    @apply_and_sync
+    def disable_peers(self, peers: list[ConnectionPeer]):
+        for peer in peers:
+            self.wgconfig.disable_peer(peer.public_key)
 
     @apply_and_sync
     def delete_peer(self, peer: ConnectionPeer):
-        self.wghub.del_peer(peer.public_key)
+        self.wgconfig.del_peer(peer.public_key)
 
 def disable_server(path: str) -> bool:
     """Returns True if server was disabled successfully"""

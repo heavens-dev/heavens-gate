@@ -11,7 +11,8 @@ from bot.commands import (get_admin_commands, get_default_commands,
                           set_admin_commands, set_user_commands)
 from bot.handlers import get_handlers_router
 from config.loader import (bot_cfg, bot_dispatcher, bot_instance,
-                           connections_observer, db_instance)
+                           connections_observer, db_instance,
+                           interval_observer)
 from core.db.db_works import Client, ClientFactory
 from core.db.model_serializer import ConnectionPeer
 from core.logs import bot_logger
@@ -94,6 +95,7 @@ async def main() -> None:
 
     async with asyncio.TaskGroup() as group:
         group.create_task(connections_observer.listen_events())
+        group.create_task(interval_observer.run_checkers())
         group.create_task(bot_dispatcher.start_polling(bot_instance, handle_signals=False))
 
 if __name__ == "__main__":
