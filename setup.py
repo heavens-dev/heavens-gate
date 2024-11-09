@@ -32,13 +32,13 @@ def make_config(path):
         Fore.YELLOW + "[ ! ]" + Style.RESET_ALL + " Peer active time in hours (default: 12): ", 12
     )
     connection_listen_timer = input_with_default(
-        Fore.YELLOW + "[ ! ]" + Style.RESET_ALL + " Connection listen timer in minutes (default: 3): ", 3
+        Fore.YELLOW + "[ ! ]" + Style.RESET_ALL + " Connection listen timer in seconds (default: 120): ", 120
     )
     connection_update_timer = input_with_default(
-        Fore.YELLOW + "[ ! ]" + Style.RESET_ALL + " Connection update timer in minutes (default: 5): ", 5
+        Fore.YELLOW + "[ ! ]" + Style.RESET_ALL + " Connection update timer in seconds (default: 300): ", 300
     )
     connection_connected_only_listen_timer = input_with_default(
-        Fore.YELLOW + "[ ! ]" + Style.RESET_ALL + " Connection connected only listen timer in minutes (default: 1): ", 1
+        Fore.YELLOW + "[ ! ]" + Style.RESET_ALL + " Connection connected only listen timer in seconds (default: 60): ", 60
     )
     logs_path = input_with_default(Fore.YELLOW + "[ ! ]" + Style.RESET_ALL + " Logs path (default: logs): ", "logs")
     os.makedirs(logs_path, exist_ok=True)
