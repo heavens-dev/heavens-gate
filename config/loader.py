@@ -6,7 +6,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from config.settings import Config
 from core.db.db_works import ClientFactory
 from core.db.models import init_db
-from core.logs import core_logger
+from core.logs import core_logger, init_file_loggers
 from core.utils.ip_utils import IPQueue, generate_ip_addresses
 from core.watchdog.events import ConnectionEvents
 from core.wg.wg_work import WGHub
@@ -18,6 +18,8 @@ db_cfg = cfg.get_database_config()
 bot_cfg = cfg.get_bot_config()
 server_cfg = cfg.get_server_config()
 core_cfg = cfg.get_core_config()
+
+init_file_loggers(core_cfg.logs_path)
 
 RESERVED_IP_ADDRESSES = [
     server_cfg.user_ip + ".0",
@@ -43,7 +45,8 @@ wghub = WGHub(server_cfg.path)
 
 connections_observer = ConnectionEvents(
     wghub,
-    listen_timer=30,
-    update_timer=30,
+    listen_timer=core_cfg.connection_listen_timer,
+    update_timer=core_cfg.connection_update_timer,
+    connected_only_listen_timer=core_cfg.connection_connected_only_listen_timer,
     active_hours=core_cfg.peer_active_time
 )

@@ -15,25 +15,32 @@ logger.add(
     sys.stderr,
     format=STDERR_LOGS_FORMAT,
     enqueue=True, # ? makes logging to console asynchronous
-    colorize=True
+    colorize=True,
 )
 
-core_logger.add(
-    os.path.join(PATH_TO_LOGS, "core", "core.log"),
-    format=FILE_LOGS_FORMAT,
-    enqueue=True,
-    rotation="3 MB",
-    compression="zip",
-    filter=lambda record: record["extra"]["service"] == "core",
-    level="INFO"
-)
+def init_file_loggers(path: str):
+    core_logger.add(
+        os.path.join(path, "core", "core.log"),
+        format=FILE_LOGS_FORMAT,
+        enqueue=True,
+        rotation="3 MB",
+        compression="zip",
+        filter=lambda record: record["extra"]["service"] == "core",
+        level="INFO"
+    )
 
-bot_logger.add(
-    os.path.join(PATH_TO_LOGS, "bot", "bot.log"),
-    format=FILE_LOGS_FORMAT,
-    enqueue=True,
-    rotation="3 MB",
-    compression="zip",
-    filter=lambda record: record["extra"]["service"] == "bot",
-    level="INFO"
-)
+    bot_logger.add(
+        os.path.join(path, "bot", "bot.log"),
+        format=FILE_LOGS_FORMAT,
+        enqueue=True,
+        rotation="3 MB",
+        compression="zip",
+        filter=lambda record: record["extra"]["service"] == "bot",
+        level="INFO"
+    )
+
+    core_logger.info("File loggers initialized")
+
+
+if __name__ == "__main__":
+    init_file_loggers(PATH_TO_LOGS)

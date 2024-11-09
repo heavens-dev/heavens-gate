@@ -16,6 +16,7 @@ multimethod = "^1.12"
 icmplib = "^3.0.4"
 loguru = "^0.7.2"
 requests = "^2.32.3"
+colorama = "^0.4.6"
 
 
 [tool.poetry.group.dev.dependencies]

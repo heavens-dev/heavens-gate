@@ -39,7 +39,11 @@ class Config:
 
     def get_core_config(self):
         return self.Core(
-            peer_active_time=self.cfg.getint("core", "peer_active_time", fallback=6)
+            peer_active_time=self.cfg.getint("core", "peer_active_time", fallback=6),
+            connection_listen_timer=self.cfg.getint("core", "connection_listen_timer", fallback=2),
+            connection_update_timer=self.cfg.getint("core", "connection_update_timer", fallback=5),
+            connection_connected_only_listen_timer=self.cfg.getint("core", "connection_connected_only_listen_timer", fallback=1),
+            logs_path=self.cfg.get("core", "logs_path", fallback="./logs")
         )
 
     def write_changes(self) -> bool:
@@ -87,5 +91,14 @@ class Config:
             self.endpoint_port = endpoint_port
 
     class Core:
-        def __init__(self, peer_active_time: int):
+        def __init__(self,
+                     peer_active_time: int,
+                     connection_listen_timer: int,
+                     connection_update_timer: int,
+                     connection_connected_only_listen_timer: int,
+                     logs_path: str):
             self.peer_active_time = peer_active_time
+            self.connection_listen_timer = connection_listen_timer
+            self.connection_update_timer = connection_update_timer
+            self.connection_connected_only_listen_timer = connection_connected_only_listen_timer
+            self.logs_path = logs_path
