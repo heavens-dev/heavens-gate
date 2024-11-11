@@ -156,4 +156,6 @@ def extend_time_keyboard(user_id: int):
         callback_data=TimeExtenderCallbackData(user_id=user_id, extend_for="6M")
     )
 
+    builder.adjust(1, repeat=True)
+
     return builder.as_markup()

@@ -221,7 +221,7 @@ async def extend_usage_time_callback(callback: CallbackQuery, callback_data: Tim
     if not isinstance(client.userdata.expire_time, datetime.datetime) or client.userdata.expire_time < now:
         client.userdata.expire_time = now
 
-    client.set_expire_date(client.userdata.expire_time + time_to_add)
+    client.set_expire_time(client.userdata.expire_time + time_to_add)
     await callback.answer(f"✅ Время использования продлено на {callback_data.extend_for}.")
 
 
