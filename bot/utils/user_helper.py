@@ -36,9 +36,12 @@ def get_user_data_string(client: Client) -> str:
             peers_str += f"(активен до {timer})"
         peers_str += "\n"
 
+    expire_time = client.userdata.expire_time.strftime("%d %b %Y") if client.userdata.expire_time else "❌ Не оплачено"
+
     return f"""ℹ️ Информация об аккаунте:
 ID: {client.userdata.telegram_id}
 Текущий статус: {ClientStatusChoices.to_string(client.userdata.status)}
+Оплачен до: {expire_time}
 
 🛜 Пиры:
 {peers_str or '❌ Нет пиров\n'}

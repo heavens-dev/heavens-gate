@@ -8,7 +8,7 @@ from core.db.db_works import ClientFactory
 from core.db.models import init_db
 from core.logs import core_logger, init_file_loggers
 from core.utils.ip_utils import IPQueue, generate_ip_addresses
-from core.watchdog.events import ConnectionEvents
+from core.watchdog.events import ConnectionEvents, IntervalEvents
 from core.wg.wg_work import WGHub
 
 PATH_TO_CONFIG = "config.conf"
@@ -50,3 +50,5 @@ connections_observer = ConnectionEvents(
     connected_only_listen_timer=core_cfg.connection_connected_only_listen_timer,
     active_hours=core_cfg.peer_active_time
 )
+
+interval_observer = IntervalEvents(wghub)
