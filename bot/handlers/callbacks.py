@@ -11,9 +11,10 @@ from aiogram.utils.media_group import MediaGroupBuilder
 
 from bot.handlers.keyboards import (build_peer_configs_keyboard,
                                     build_user_actions_keyboard,
-                                    cancel_keyboard)
+                                    cancel_keyboard, extend_time_keyboard)
 from bot.utils.callback_data import (ConnectionPeerCallbackData,
                                      PreviewMessageCallbackData,
+                                     TimeExtenderCallbackData,
                                      UserActionsCallbackData, UserActionsEnum,
                                      YesOrNoEnum)
 from bot.utils.states import (ContactAdminStates, PreviewMessageStates,
@@ -24,6 +25,8 @@ from config.loader import (bot_cfg, bot_instance, connections_observer,
 from core.db.db_works import Client, ClientFactory
 from core.db.enums import ClientStatusChoices, PeerStatusChoices
 from core.db.model_serializer import ConnectionPeer
+from core.logs import bot_logger
+from core.utils.date_utils import parse_time
 from core.wg.wgconfig_helper import get_peer_config_str
 
 router = Router(name="callbacks")
@@ -191,6 +194,36 @@ async def change_peer_name_entering_callback(callback: CallbackQuery, callback_d
                                   reply_markup=cancel_keyboard())
     await state.set_state(RenamePeerStates.name_entering)
     await state.set_data({"tg_id": callback_data.user_id, "peer_id": callback_data.peer_id})
+
+@router.callback_query(
+    UserActionsCallbackData.filter(F.action == UserActionsEnum.EXTEND_USAGE_TIME)
+)
+async def extend_usage_time_dialog_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
+    client = ClientFactory(tg_id=callback_data.user_id).get_client()
+    keyboard = extend_time_keyboard(client.userdata.telegram_id)
+    keyboard.inline_keyboard.append(cancel_keyboard().inline_keyboard[0])
+    await callback.answer()
+    await callback.message.answer("🕒 На сколько продлить время использования?", reply_markup=keyboard)
+
+@router.callback_query(
+    TimeExtenderCallbackData.filter(),
+)
+async def extend_usage_time_callback(callback: CallbackQuery, callback_data: TimeExtenderCallbackData):
+    client = ClientFactory(tg_id=callback.from_user.id).get_client()
+    time_to_add = parse_time(callback_data.extend_for)
+    now = datetime.datetime.now()
+
+    if not time_to_add:
+        bot_logger.warning(f"Invalid time format, couldn't parse: {callback_data.extend_for}")
+        await callback.answer("❌ Неправильный формат времени.")
+        return
+
+    if not isinstance(client.userdata.expire_time, datetime.datetime) or client.userdata.expire_time < now:
+        client.userdata.expire_time = now
+
+    client.set_expire_date(client.userdata.expire_time + time_to_add)
+    await callback.answer(f"✅ Время использования продлено на {callback_data.extend_for}.")
+
 
 @router.callback_query(
     UserActionsCallbackData.filter(F.action == UserActionsEnum.CONTACT_ADMIN)
