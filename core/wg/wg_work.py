@@ -33,7 +33,7 @@ class WGHub:
             func(self, peer)
 
             self.wgconfig.write_file()
-            # self.sync_config()
+            self.sync_config()
 
             core_logger.info("Config applied and synced with Wireguard server.")
         return inner

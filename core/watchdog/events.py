@@ -234,4 +234,4 @@ class IntervalEvents:
 
     async def run_checkers(self):
         async with asyncio.TaskGroup() as group:
-            group.create_task(self.scheduled_runner(self.__check_users_expire_date, datetime.time(2, 21)))
+            group.create_task(self.scheduled_runner(self.__check_users_expire_date, datetime.time(3, 0)))
