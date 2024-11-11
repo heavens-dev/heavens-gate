@@ -13,7 +13,7 @@ class WGHub:
     def __init__(self, path: str):
         self.path = path
         self.interface_name = os.path.basename(path).split(".")[0]
-        core_logger.debug(f"Path to confuration file: {self.path} => Interface name: {self.interface_name}")
+        core_logger.debug(f"Path to configuration file: {self.path} => Interface name: {self.interface_name}")
         self.wgconfig = wgconfig.WGConfig(path)
         self.wgconfig.read_file()
 

@@ -95,8 +95,7 @@ async def ban_user_callback(callback: CallbackQuery, callback_data: UserActionsC
     peers = client.get_peers()
     client.set_status(ClientStatusChoices.STATUS_ACCOUNT_BLOCKED)
     # if peer has no peers, it will raise KeyError, so we suppress it
-    with suppress(KeyError):
-        wghub.disable_peers(peers)
+    wghub.disable_peers(peers)
     for peer in peers:
         client.set_peer_status(peer.id, PeerStatusChoices.STATUS_BLOCKED)
     await callback.answer(f"✅ Пользователь {client.userdata.name} заблокирован.")
