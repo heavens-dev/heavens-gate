@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+from contextlib import suppress
 from typing import Callable, Coroutine, Union
 
 from icmplib import async_ping
@@ -74,11 +75,15 @@ class ConnectionEvents:
             async with self.__clients_lock:
                 async with asyncio.TaskGroup() as group:
                     for client, peers in self.clients:
+                        if client.userdata.status in [
+                            ClientStatusChoices.STATUS_ACCOUNT_BLOCKED,
+                            ClientStatusChoices.STATUS_TIME_EXPIRED]:
+                            continue
+
                         for peer in peers:
                             if peer.peer_status in [
                                 PeerStatusChoices.STATUS_TIME_EXPIRED,
-                                PeerStatusChoices.STATUS_BLOCKED
-                                ]:
+                                PeerStatusChoices.STATUS_BLOCKED]:
                                 continue
 
                             if connected_only:
@@ -155,9 +160,9 @@ class ConnectionEvents:
 class IntervalEvents:
     def __init__(self, wg_hub: WGHub):
         self.expire_date_warning_observer = EventObserver(required_types=[Client])
-        """Warns about the expiration date of the user's account. Requires `Client` as an argument."""
+        """Observer triggers if there's one day left before blocking user. Requires `Client` as an argument."""
         self.expire_date_block_observer = EventObserver(required_types=[Client])
-        """Blocks the user's account if the expiration date has passed. Requires `Client` as an argument."""
+        """Observer triggers if the expiration date has passed. Requires `Client` as an argument."""
         self.wg_hub = wg_hub
 
     async def interval_runner(self, func: Union[CallableObject, Callable, Coroutine], interval: datetime.timedelta, *args, **kwargs):
@@ -190,9 +195,6 @@ class IntervalEvents:
             run_at (datetime.time): The time at which the function should run each day.
         Raises:
             TypeError: If `func` is not an instance of CallableObject, Callable, or Coroutine.
-        Logs:
-            Logs the scheduled job and the next run time before sleeping.
-            Logs the completion of the job after it has been called.
         """
         if not isinstance(func, CallableObject):
             func = CallableObject(callback=func)
@@ -217,12 +219,19 @@ class IntervalEvents:
                 continue
 
             if client.userdata.expire_time.date() <= now.date():
-                await client.set_status(ClientStatusChoices.STATUS_ACCOUNT_BLOCKED)
+                core_logger.debug(f"Blocking user {client.userdata.name} due to expired account.")
+                client.set_status(ClientStatusChoices.STATUS_ACCOUNT_BLOCKED)
+                # if client has no peers, it will raise KeyError, so we suppress it
+                peers = client.get_peers()
+                with suppress(KeyError):
+                    self.wg_hub.disable_peers(peers)
+                for peer in peers:
+                    client.set_peer_status(peer.id, PeerStatusChoices.STATUS_BLOCKED)
                 await self.expire_date_block_observer.trigger(client)
-                self.wg_hub.disable_peers(client.get_peers())
             elif (client.userdata.expire_time - datetime.timedelta(days=1)).date() <= now.date():
+                core_logger.debug(f"Warning user {client.userdata.name} about the expiration date.")
                 await self.expire_date_warning_observer.trigger(client)
 
     async def run_checkers(self):
         async with asyncio.TaskGroup() as group:
-            group.create_task(self.scheduled_runner(self.__check_users_expire_date, datetime.time(3, 0)))
+            group.create_task(self.scheduled_runner(self.__check_users_expire_date, datetime.time(2, 21)))

@@ -20,9 +20,9 @@ from bot.utils.states import (ContactAdminStates, PreviewMessageStates,
                               RenamePeerStates)
 from bot.utils.user_helper import get_user_data_string
 from config.loader import (bot_cfg, bot_instance, connections_observer,
-                           interval_observer)
+                           interval_observer, wghub)
 from core.db.db_works import Client, ClientFactory
-from core.db.enums import ClientStatusChoices
+from core.db.enums import ClientStatusChoices, PeerStatusChoices
 from core.db.model_serializer import ConnectionPeer
 from core.wg.wgconfig_helper import get_peer_config_str
 
@@ -92,7 +92,13 @@ async def select_peer_callback(callback: CallbackQuery, callback_data: Connectio
 )
 async def ban_user_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
     client = ClientFactory(tg_id=callback_data.user_id).get_client()
+    peers = client.get_peers()
     client.set_status(ClientStatusChoices.STATUS_ACCOUNT_BLOCKED)
+    # if peer has no peers, it will raise KeyError, so we suppress it
+    with suppress(KeyError):
+        wghub.disable_peers(peers)
+    for peer in peers:
+        client.set_peer_status(peer.id, PeerStatusChoices.STATUS_BLOCKED)
     await callback.answer(f"✅ Пользователь {client.userdata.name} заблокирован.")
     await callback.message.edit_text(get_user_data_string(client))
     await callback.message.edit_reply_markup(reply_markup=build_user_actions_keyboard(client))
@@ -102,7 +108,11 @@ async def ban_user_callback(callback: CallbackQuery, callback_data: UserActionsC
 )
 async def pardon_user_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
     client = ClientFactory(tg_id=callback_data.user_id).get_client()
+    peers = client.get_peers()
     client.set_status(ClientStatusChoices.STATUS_CREATED)
+    wghub.enable_peers(peers)
+    for peer in peers:
+        client.set_peer_status(peer.id, PeerStatusChoices.STATUS_DISCONNECTED)
     await callback.answer(f"✅ Пользователь {client.userdata.name} разблокирован.")
     await callback.message.edit_text(
         text=get_user_data_string(client),

@@ -13,7 +13,7 @@ class WGHub:
     def __init__(self, path: str):
         self.path = path
         self.interface_name = os.path.basename(path).split(".")[0]
-        print(self.path, self.interface_name)
+        core_logger.debug(f"Path to confuration file: {self.path} => Interface name: {self.interface_name}")
         self.wgconfig = wgconfig.WGConfig(path)
         self.wgconfig.read_file()
 
@@ -32,8 +32,8 @@ class WGHub:
         def inner(self, peer: ConnectionPeer):
             func(self, peer)
 
-            self.wghub.write_file()
-            self.sync_config()
+            self.wgconfig.write_file()
+            # self.sync_config()
 
             core_logger.info("Config applied and synced with Wireguard server.")
         return inner
