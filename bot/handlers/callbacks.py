@@ -17,9 +17,9 @@ from bot.utils.callback_data import (ConnectionPeerCallbackData,
                                      TimeExtenderCallbackData,
                                      UserActionsCallbackData, UserActionsEnum,
                                      YesOrNoEnum)
-from bot.utils.states import (ContactAdminStates, PreviewMessageStates,
-                              RenamePeerStates)
-from bot.utils.user_helper import get_user_data_string
+from bot.utils.states import (ContactAdminStates, ExtendTimeStates,
+                              PreviewMessageStates, RenamePeerStates)
+from bot.utils.user_helper import extend_users_usage_time, get_user_data_string
 from config.loader import (bot_cfg, bot_instance, connections_observer,
                            interval_observer, wghub)
 from core.db.db_works import Client, ClientFactory
@@ -206,24 +206,33 @@ async def extend_usage_time_dialog_callback(callback: CallbackQuery, callback_da
     await callback.message.answer("🕒 На сколько продлить время использования?", reply_markup=keyboard)
 
 @router.callback_query(
-    TimeExtenderCallbackData.filter(),
+    TimeExtenderCallbackData.filter(F.extend_for != "custom")
 )
 async def extend_usage_time_callback(callback: CallbackQuery, callback_data: TimeExtenderCallbackData):
-    client = ClientFactory(tg_id=callback.from_user.id).get_client()
+    client = ClientFactory(tg_id=callback_data.user_id).get_client()
     time_to_add = parse_time(callback_data.extend_for)
-    now = datetime.datetime.now()
 
     if not time_to_add:
         bot_logger.warning(f"Invalid time format, couldn't parse: {callback_data.extend_for}")
-        await callback.answer("❌ Неправильный формат времени.")
+        await callback.answer(f"❌ Неправильный формат времени: {callback_data.extend_for}")
         return
 
-    if not isinstance(client.userdata.expire_time, datetime.datetime) or client.userdata.expire_time < now:
-        client.userdata.expire_time = now
+    if extend_users_usage_time(client, time_to_add):
+        await callback.answer(f"✅ Время использования продлено на {callback_data.extend_for}.")
+    else:
+        await callback.answer(f"❓ Что-то пошло не так во время операции. Проверь логи.")
 
-    client.set_expire_time(client.userdata.expire_time + time_to_add)
-    await callback.answer(f"✅ Время использования продлено на {callback_data.extend_for}.")
-
+@router.callback_query(
+    TimeExtenderCallbackData.filter(F.extend_for == "custom")
+)
+async def extend_usage_time_custom(callback: CallbackQuery, callback_data: TimeExtenderCallbackData, state: FSMContext):
+    await callback.answer()
+    await callback.message.delete()
+    await callback.message.answer(f"📅 Введи время, на которое ты хочешь продлить доступ в формате "
+                                  "<code>число</code> + <code>(d -- дни, w -- недели, M -- месяцы, Y -- годы)</code>: ",
+                                  reply_markup=cancel_keyboard())
+    await state.set_data({"user_id": callback_data.user_id, "extend_for": callback_data.extend_for})
+    await state.set_state(ExtendTimeStates.time_entering)
 
 @router.callback_query(
     UserActionsCallbackData.filter(F.action == UserActionsEnum.CONTACT_ADMIN)
@@ -271,3 +280,23 @@ async def contact_admin(message: Message, state: FSMContext):
             f"\n\n🔗 Ответить на сообщение: <code>/whisper {message.from_user.id}</code>"
         )
     await message.answer("✅ Сообщение отправлено администраторам. Ожидай обратной связи.")
+
+@router.message(ExtendTimeStates.time_entering)
+async def extend_usage_time_custom_entered(message: Message, state: FSMContext):
+    data = await state.get_data()
+    user_id, _ = data.values()
+
+    await state.clear()
+
+    time_to_add = parse_time(message.text)
+
+    if not time_to_add:
+        await message.answer(f"❌ Неправильный формат времени: {message.text}")
+        return
+
+    client = ClientFactory(tg_id=user_id).get_client()
+
+    if extend_users_usage_time(client, time_to_add):
+        await message.answer(f"✅ Время использования продлено на {message.text}.")
+    else:
+        await message.answer(f"❓ Что-то пошло не так во время операции. Проверь логи.")

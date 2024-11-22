@@ -136,24 +136,28 @@ def extend_time_keyboard(user_id: int):
     builder = InlineKeyboardBuilder()
 
     builder.button(
-        text="📅 Продлить на 1 день",
+        text="Продлить на 1 день",
         callback_data=TimeExtenderCallbackData(user_id=user_id, extend_for="1d")
     )
     builder.button(
-        text="📅 Продлить на 1 неделю",
+        text="Продлить на 1 неделю",
         callback_data=TimeExtenderCallbackData(user_id=user_id, extend_for="1w")
     )
     builder.button(
-        text="📅 Продлить на 1 месяц",
+        text="Продлить на 1 месяц",
         callback_data=TimeExtenderCallbackData(user_id=user_id, extend_for="1M")
     )
     builder.button(
-        text="📅 Продлить на 3 месяца",
+        text="Продлить на 3 месяца",
         callback_data=TimeExtenderCallbackData(user_id=user_id, extend_for="3M")
     )
     builder.button(
-        text="📅 Продлить на 6 месяцев",
+        text="Продлить на 6 месяцев",
         callback_data=TimeExtenderCallbackData(user_id=user_id, extend_for="6M")
+    )
+    builder.button(
+        text="Ввести время",
+        callback_data=TimeExtenderCallbackData(user_id=user_id, extend_for="custom")
     )
 
     builder.adjust(1, repeat=True)
