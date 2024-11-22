@@ -35,4 +35,5 @@ def parse_time(time: str) -> Optional[timedelta]:
                 time_params["days"] = int(param) * 365
             else:
                 time_params[name] = int(param)
-    return timedelta(**time_params)
+    parsed_time = timedelta(**time_params)
+    return parsed_time if parsed_time != timedelta(0) else None
