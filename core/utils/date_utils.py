@@ -25,6 +25,9 @@ def parse_time(time: str) -> Optional[timedelta]:
     if not parts:
         return None
 
+    if parts.lastindex is None:
+        return None
+
     parts = parts.groupdict()
     time_params = {}
     for name, param in parts.items():
