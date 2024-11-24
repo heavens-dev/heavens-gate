@@ -65,3 +65,6 @@ class ClientFactory(BaseModel):
 
     @staticmethod
     def get_ip_addresses() -> list[str]: ...
+
+    @staticmethod
+    def delete_peer(peer: ConnectionPeer) -> bool: ...

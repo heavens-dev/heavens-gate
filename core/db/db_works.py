@@ -212,3 +212,7 @@ class ClientFactory(BaseModel):
     @staticmethod
     def get_ip_addresses() -> list[str]:
         return [i.shared_ips for i in ConnectionPeerModel.select(ConnectionPeerModel.shared_ips)]
+
+    @staticmethod
+    def delete_peer(peer: ConnectionPeer) -> bool:
+        return ConnectionPeerModel.delete().where(ConnectionPeerModel.id == peer.id).execute() == 1
