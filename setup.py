@@ -94,7 +94,7 @@ def make_config(path):
 
     if manual_torture:
         server_config_data["PrivateKey"] = generate_private_key()
-        server_config_data["PrivateKey"] = generate_public_key(server_config_data["PrivateKey"])
+        server_config_data["PublicKey"] = generate_public_key(server_config_data["PrivateKey"])
         server_config_data["IP"] = get_ip_range()
         server_config_data["IPMask"] = input_with_default(REQUIRE_INPUT_STR + " Enter the mask for IP address (default: 32): ", 32)
         server_config_data["EndpointPort"] = get_endpoint_port()
