@@ -113,10 +113,10 @@ if __name__ == "__main__":
                         default=False,
                         help="Enable amnezia-wg functionality.",
                         action=argparse.BooleanOptionalAction)
-    
+
     args = parser.parse_args()
 
     if args.amnezia:
         wghub.change_command_mode(is_amnezia=True)
 
-    # asyncio.run(main())
+    asyncio.run(main())

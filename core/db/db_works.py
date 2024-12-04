@@ -90,7 +90,7 @@ class Client(BaseModel):
             is_amnezia=is_amnezia,
             Jc=Jc,
             Jmin=Jmin,
-            JMax=Jmax,
+            Jmax=Jmax,
         ))
 
     def __get_peers(self, *criteria) -> list[ConnectionPeerModel]:
