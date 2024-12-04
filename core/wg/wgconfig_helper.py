@@ -11,7 +11,7 @@ def get_peer_config_str(peer: ConnectionPeer, interface_args: dict = None) -> st
     for k, v in interface_args.items():
         if k == "Junk":
             junk_vals = ["S1", "S2", "H1", "H2", "H3", "H4"]
-            for ind, junk in enumerate(v.split()):
+            for ind, junk in enumerate(v.split(", ")):
                 interface_str += f"{junk_vals[ind]} = {junk}\n"
 
         else:
