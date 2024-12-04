@@ -54,7 +54,7 @@ def make_config(path):
     server_config_data = {}
     path_to_wg_config = input_with_default(REQUIRE_INPUT_STR + " Enter path to WireGuard config (leave empty to enter values manually): ", None)
 
-    is_amnezia = input_with_default(YES_OR_NO_STR + " Are you using Amnezia WG? (Y/n (default)): ", False)
+    is_amnezia = yes_or_no_input(YES_OR_NO_STR + " Are you using Amnezia WG? (Y/n (default)): ", False)
     manual_torture = False
 
     try:
@@ -131,8 +131,8 @@ def make_config(path):
     print(SUCCESS_STR + f" Config file created at {path}. Enjoy your ride!")
 
 def get_ip_range() -> str:
-    ip_range = input(YES_OR_NO_STR + " Are you okay with '10.28.98.X' range for your IP addresses? Y/N (default: Y) -> ")
-    if ip_range.lower() in ["", "y", "yes"]:
+    ip_range = yes_or_no_input(YES_OR_NO_STR + " Are you okay with '10.28.98.X' range for your IP addresses? Y/N (default: Y) -> ")
+    if ip_range:
         return "10.28.98"
     ip_range = input(REQUIRE_INPUT_STR + " Your IP range ('0.0.0'): ")
     if check_ip_address(ip_range + ".1"):
@@ -141,14 +141,19 @@ def get_ip_range() -> str:
     return get_ip_range()
 
 def get_endpoint_port() -> str:
-    endpoint_port = input(YES_OR_NO_STR + " Are you okay with 54817 (recommended one) port for your Wireguard Service IP? Y/N (default: Y) -> ")
-    if endpoint_port.lower() in ["", "y", "yes"]:
+    endpoint_port = yes_or_no_input(YES_OR_NO_STR + " Are you okay with 54817 (recommended one) port for your Wireguard Service IP? Y/N (default: Y) -> ")
+    if endpoint_port:
         return "54817"
     return input(REQUIRE_INPUT_STR + " Your endpoint port (check if it's free): ")
 
 def input_with_default(prompt: str, default: Any) -> Union[str, Any]:
     value = input(prompt)
     return value if value else default
+
+def yes_or_no_input(prompt: str, default: bool = True) -> bool:
+    if (prompt.lower() in ["y", "yes"]) or (not prompt and default is True):
+        return True
+    return False
 
 if __name__ == "__main__":
     make_config(os.getcwd() + "/config.conf")
