@@ -70,9 +70,9 @@ class Client(BaseModel):
 
         Returns `ConnectionPeer`.
         """
-        private_peer_key = private_key or generate_private_key()
-        public_peer_key = public_key or generate_public_key(private_peer_key)
-        preshared_peer_key = preshared_key or generate_preshared_key()
+        private_peer_key = private_key or generate_private_key(is_amnezia=is_amnezia)
+        public_peer_key = public_key or generate_public_key(private_peer_key, is_amnezia=is_amnezia)
+        preshared_peer_key = preshared_key or generate_preshared_key(is_amnezia=is_amnezia)
         Jc, Jmin, Jmax = None, None, None
         if is_amnezia:
             # ? recommended values for: -- [3, 10], Jmin = 50, Jmax = 1000
