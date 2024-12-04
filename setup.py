@@ -53,6 +53,8 @@ def make_config(path):
 
     server_config_data = {}
     path_to_wg_config = input_with_default(REQUIRE_INPUT_STR + " Enter path to WireGuard config (leave empty to enter values manually): ", None)
+
+    is_amnezia = input_with_default(YES_OR_NO_STR + " Are you using Amnezia WG? (Y/n (default)): ", False)
     manual_torture = False
 
     try:
@@ -76,6 +78,7 @@ def make_config(path):
 
             interface_data = wg_config.get_interface()
             server_config_data["PrivateKey"] = interface_data.get("PrivateKey")
+            server_config_data["PublicKey"] = generate_public_key(server_config_data["PrivateKey"], is_amnezia)
             server_ip = interface_data.get("Address")
             server_config_data["IP"] = get_ip_prefix(server_ip.split("/")[0])
             server_config_data["IPMask"] = server_ip.split("/")[1]
@@ -93,8 +96,8 @@ def make_config(path):
         manual_torture = True
 
     if manual_torture:
-        server_config_data["PrivateKey"] = generate_private_key()
-        server_config_data["PublicKey"] = generate_public_key(server_config_data["PrivateKey"])
+        server_config_data["PrivateKey"] = generate_private_key(is_amnezia)
+        server_config_data["PublicKey"] = generate_public_key(server_config_data["PrivateKey"], is_amnezia)
         server_config_data["IP"] = get_ip_range()
         server_config_data["IPMask"] = input_with_default(REQUIRE_INPUT_STR + " Enter the mask for IP address (default: 32): ", 32)
         server_config_data["EndpointPort"] = get_endpoint_port()

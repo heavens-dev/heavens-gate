@@ -69,6 +69,9 @@ async def select_peer_callback(callback: CallbackQuery, callback_data: Connectio
 
     if wghub.is_amnezia:
         additional_interface_data = {
+            "Jc": peers[0].Jc,
+            "Jmin": peers[0].Jmin,
+            "Jmax": peers[0].Jmax,
             "Junk": server_cfg.junk
         }
 

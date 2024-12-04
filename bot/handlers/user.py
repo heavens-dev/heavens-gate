@@ -31,6 +31,7 @@ async def me(message: Message):
 async def get_config(message: Message):
     client = ClientFactory(tg_id=message.from_user.id).get_client()
     peers = client.get_peers()
+    additional_interface_data = None
 
     if not peers:
         await message.answer("❌ У тебя нет активных пиров.")
@@ -44,6 +45,9 @@ async def get_config(message: Message):
     else:
         if wghub.is_amnezia:
             additional_interface_data = {
+                "Jc": peers[0].Jc,
+                "Jmin": peers[0].Jmin,
+                "Jmax": peers[0].Jmax,
                 "Junk": server_cfg.junk
             }
         config = BufferedInputFile(
