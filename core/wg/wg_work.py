@@ -12,9 +12,12 @@ from core.logs import core_logger
 class WGHub:
     def __init__(self, path: str, is_amnezia: bool = False):
         self.path = path
-        self.interface_name = os.path.basename(path).split(".")[0]
-        core_logger.debug(f"Path to configuration file: {self.path} => Interface name: {self.interface_name}")
+        self.is_amnezia = is_amnezia
         self.wgconfig = wgconfig.WGConfig(path)
+        self.interface_name = os.path.basename(path).split(".")[0]
+        self.is_amnezia = is_amnezia
+
+        core_logger.debug(f"Path to configuration file: {self.path} => Interface name: {self.interface_name}")
         self.wgconfig.read_file()
         self.change_command_mode(is_amnezia)
 
@@ -74,6 +77,7 @@ class WGHub:
             is_amnezia (bool): Change to amnezia or not
         """
         if is_amnezia:
+            self.is_amnezia = True
             self.command = "awg"
             core_logger.info("Changed behaviour to Amnezia WG.")
 

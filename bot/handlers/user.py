@@ -10,7 +10,7 @@ from bot.handlers.keyboards import (build_peer_configs_keyboard,
                                     cancel_keyboard)
 from bot.utils.states import ContactAdminStates, RenamePeerStates
 from bot.utils.user_helper import get_user_data_string
-from config.loader import core_cfg, wghub
+from config.loader import core_cfg, server_cfg, wghub
 from core.db.db_works import ClientFactory
 from core.db.enums import PeerStatusChoices
 from core.wg.wgconfig_helper import get_peer_config_str
@@ -42,8 +42,12 @@ async def get_config(message: Message):
             text="Выбери конфиг, который ты хочешь получить из клавиатуры: ",
             reply_markup=keyboard)
     else:
+        if wghub.is_amnezia:
+            additional_interface_data = {
+                "Junk": server_cfg.junk
+            }
         config = BufferedInputFile(
-            file=bytes(get_peer_config_str(peers[0]), encoding="utf-8"),
+            file=bytes(get_peer_config_str(peers[0], additional_interface_data), encoding="utf-8"),
             filename=f"{peers[0].peer_name or peers[0].id}_wg.conf")
         await message.answer_document(config, caption="Вот твой конфиг. Не распространяй его куда попало.")
 
