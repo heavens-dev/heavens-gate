@@ -37,7 +37,7 @@ class Config:
             endpoint_ip=self.cfg.get("Server", "EndpointIP", fallback="192.168.27.27"),
             endpoint_port=self.cfg.get("Server", "EndpointPort", fallback="10000"),
             dns_server=self.cfg.get("Server", "DNS", fallback="8.8.8.8"),
-            junk=self.cfg.get("Server", "Junk", fallback="")
+            junk=self.cfg.get("Server", "Junk", fallback=""),
             *args, **kwargs
         )
 
