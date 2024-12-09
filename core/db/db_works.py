@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, PrivateAttr
 from core.db.enums import ClientStatusChoices, PeerStatusChoices
 from core.db.model_serializer import ConnectionPeer, User
 from core.db.models import ConnectionPeerModel, UserModel
+from core.logs import core_logger
 from core.wg.keygen import (generate_preshared_key, generate_private_key,
                             generate_public_key)
 
@@ -141,11 +142,22 @@ class ClientFactory(BaseModel):
 
     tg_id: int
 
-    # FIXME: fix `UNIQUE constraint failed` when the same user tries to /start but with different name
     def get_or_create_client(self, name: str, **kwargs) -> Client:
         """Retrieves or creates a record of the user in the database.
         Use this method when you're unsure whether the user already exists in the database or not."""
-        model = UserModel.get_or_create(telegram_id=self.tg_id, name=name, **kwargs)[0]
+        try:
+            model: UserModel = UserModel.get(UserModel.telegram_id == self.tg_id)
+
+            if model.name != name:
+                model.name = name
+                model.save()
+                with core_logger.contextualize(model=model):
+                    core_logger.debug(f"User has changed his username, updating it in DB")
+        except DoesNotExist:
+            model: UserModel = UserModel.create(telegram_id=self.tg_id, name=name, **kwargs)
+            with core_logger.contextualize(model=model):
+                core_logger.info(f"New user was created.")
+
         return Client(model=model, userdata=User.model_validate(model))
 
     @multimethod
@@ -204,3 +216,7 @@ class ClientFactory(BaseModel):
     @staticmethod
     def get_ip_addresses() -> list[str]:
         return [i.shared_ips for i in ConnectionPeerModel.select(ConnectionPeerModel.shared_ips)]
+
+    @staticmethod
+    def delete_peer(peer: ConnectionPeer) -> bool:
+        return ConnectionPeerModel.delete().where(ConnectionPeerModel.id == peer.id).execute() == 1

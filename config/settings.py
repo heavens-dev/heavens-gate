@@ -40,9 +40,9 @@ class Config:
     def get_core_config(self):
         return self.Core(
             peer_active_time=self.cfg.getint("core", "peer_active_time", fallback=6),
-            connection_listen_timer=self.cfg.getint("core", "connection_listen_timer", fallback=2),
-            connection_update_timer=self.cfg.getint("core", "connection_update_timer", fallback=5),
-            connection_connected_only_listen_timer=self.cfg.getint("core", "connection_connected_only_listen_timer", fallback=1),
+            connection_listen_timer=self.cfg.getint("core", "connection_listen_timer", fallback=120),
+            connection_update_timer=self.cfg.getint("core", "connection_update_timer", fallback=360),
+            connection_connected_only_listen_timer=self.cfg.getint("core", "connection_connected_only_listen_timer", fallback=60),
             logs_path=self.cfg.get("core", "logs_path", fallback="./logs")
         )
 

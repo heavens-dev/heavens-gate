@@ -165,8 +165,9 @@ async def delete_peer(message: Message):
         return
 
     wghub.delete_peer(peer)
-    await message.answer("✅ Пир был успешно удалён.")
+    ClientFactory.delete_peer(peer)
     ip_queue.release_ip(peer.shared_ips)
+    await message.answer("✅ Пир был успешно удалён.")
     with bot_logger.contextualize(peer=peer):
         bot_logger.info(f"Peer (IP: {peer.shared_ips}) was deleted by {message.from_user.username}")
 
