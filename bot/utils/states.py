@@ -13,3 +13,6 @@ class ContactAdminStates(StatesGroup):
 
 class ExtendTimeStates(StatesGroup):
     time_entering = State()
+
+class WhisperStates(StatesGroup):
+    message_entering = State()

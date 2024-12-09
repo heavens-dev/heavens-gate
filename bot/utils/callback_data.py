@@ -12,6 +12,8 @@ class UserActionsEnum(StrEnum):
     CHANGE_PEER_NAME = "change_peer_name"
     CONTACT_ADMIN = "contact_admin"
     EXTEND_USAGE_TIME = "extend_usage_time"
+    WHISPER_USER = "whisper"
+
 
 class YesOrNoEnum(StrEnum):
     ANSWER_YES = "yes"
