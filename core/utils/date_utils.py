@@ -39,4 +39,4 @@ def parse_time(time: str) -> Optional[timedelta]:
             else:
                 time_params[name] = int(param)
     parsed_time = timedelta(**time_params)
-    return parsed_time if parsed_time != timedelta(0) else None
+    return parsed_time
