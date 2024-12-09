@@ -12,10 +12,8 @@ from core.logs import core_logger
 class WGHub:
     def __init__(self, path: str, is_amnezia: bool = False):
         self.path = path
-        self.is_amnezia = is_amnezia
         self.wgconfig = wgconfig.WGConfig(path)
         self.interface_name = os.path.basename(path).split(".")[0]
-        self.is_amnezia = is_amnezia
 
         core_logger.debug(f"Path to configuration file: {self.path} => Interface name: {self.interface_name}")
         self.wgconfig.read_file()

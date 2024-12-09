@@ -110,9 +110,8 @@ async def main() -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog="heavens-gate", description="Run bot with core service.")
     parser.add_argument("-awg", "--amnezia",
-                        default=False,
                         help="Enable amnezia-wg functionality.",
-                        action=argparse.BooleanOptionalAction)
+                        action="store_true")
 
     args = parser.parse_args()
 

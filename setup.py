@@ -123,7 +123,7 @@ def make_config(path):
         "logs_path": logs_path
     }
 
-    config["Server"] = server_config_data.copy()
+    config["Server"] = server_config_data
 
     with open(path, 'w') as server_config:
         config.write(server_config)
