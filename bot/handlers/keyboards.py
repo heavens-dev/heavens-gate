@@ -43,23 +43,6 @@ def build_user_actions_keyboard(client: Client, is_admin=True):
                 )
             )
 
-            builder.button(
-                text="📅 Продлить время",
-                callback_data=UserActionsCallbackData(
-                    action=UserActionsEnum.EXTEND_USAGE_TIME,
-                    user_id=client.userdata.telegram_id,
-                    is_admin=is_admin
-                )
-            )
-
-            builder.button(
-                text="✉️ Отправить сообщение",
-                callback_data=UserActionsCallbackData(
-                    action=UserActionsEnum.WHISPER_USER,
-                    user_id=client.userdata.telegram_id,
-                    is_admin=is_admin
-                )
-            )
         else:
             builder.button(
                 text="🚫 Заблокировать",
@@ -69,6 +52,23 @@ def build_user_actions_keyboard(client: Client, is_admin=True):
                     is_admin=is_admin
                 )
             )
+
+        builder.button(
+                text="📅 Продлить время",
+                callback_data=UserActionsCallbackData(
+                    action=UserActionsEnum.EXTEND_USAGE_TIME,
+                    user_id=client.userdata.telegram_id,
+                    is_admin=is_admin
+                )
+            )
+        builder.button(
+            text="✉️ Отправить сообщение",
+            callback_data=UserActionsCallbackData(
+                action=UserActionsEnum.WHISPER_USER,
+                user_id=client.userdata.telegram_id,
+                is_admin=is_admin
+            )
+        )
 
     if not is_admin:
         builder.button(
