@@ -77,10 +77,11 @@ class WGHub:
         if is_amnezia:
             self.is_amnezia = True
             self.command = "awg"
-            core_logger.info("Changed behaviour to Amnezia WG.")
+            core_logger.info("Behaviour is set to Amnezia WG.")
         else:
             self.is_amnezia = False
             self.command = "wg"
+            core_logger.info("Behaviour is set to default WG.")
 
 def disable_server(path: str) -> bool:
     """Returns True if server was disabled successfully"""
