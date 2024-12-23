@@ -60,7 +60,7 @@ async def unblock_timeout_connections(message: Message):
     client = ClientFactory(tg_id=message.from_user.id).get_client()
     peers = client.get_peers()
     for peer in peers:
-        if peer.peer_status != PeerStatusChoices.STATUS_TIME_EXPIRED:
+        if peer.peer_status == PeerStatusChoices.STATUS_TIME_EXPIRED:
             wghub.enable_peer(peer)
             client.set_peer_status(peer.id, PeerStatusChoices.STATUS_DISCONNECTED)
         elif peer.peer_status == PeerStatusChoices.STATUS_CONNECTED:
