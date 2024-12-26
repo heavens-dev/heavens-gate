@@ -162,6 +162,15 @@ async def update_user_message_data(callback: CallbackQuery, callback_data: UserA
             reply_markup=build_user_actions_keyboard(client, is_admin=callback_data.is_admin)
         )
 
+@router.callback_query(
+    UserActionsCallbackData.filter(F.action == UserActionsEnum.ADD_PEER)
+)
+async def add_peer_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
+    client = ClientFactory(tg_id=callback_data.user_id).get_client()
+    peer = client.add_peer(is_amnezia=wghub.is_amnezia)
+    wghub.add_peer(peer)
+    await callback.answer("✅ Пир добавлен.")
+
 @router.callback_query(PreviewMessageCallbackData.filter(), PreviewMessageStates.preview)
 async def preview_message_callback(callback: CallbackQuery, callback_data: PreviewMessageCallbackData, state: FSMContext):
     await callback.answer()
