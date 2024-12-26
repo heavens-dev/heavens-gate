@@ -112,6 +112,7 @@ class ConnectionEvents:
         client.set_status(ClientStatusChoices.STATUS_CONNECTED)
         # avoid triggering connection event multiple times
         peer.peer_status = PeerStatusChoices.STATUS_CONNECTED
+        peer.peer_timer = new_time
         await self.connected.trigger(client, peer)
 
     async def emit_disconnect(self, client: Client, peer: ConnectionPeer):
