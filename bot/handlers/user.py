@@ -12,7 +12,7 @@ from bot.utils.states import ContactAdminStates, RenamePeerStates
 from bot.utils.user_helper import get_user_data_string
 from config.loader import core_cfg, server_cfg, wghub
 from core.db.db_works import ClientFactory
-from core.db.enums import PeerStatusChoices
+from core.db.enums import ClientStatusChoices, PeerStatusChoices
 from core.wg.wgconfig_helper import get_peer_config_str
 
 router = Router(name="user")
@@ -60,9 +60,10 @@ async def unblock_timeout_connections(message: Message):
     client = ClientFactory(tg_id=message.from_user.id).get_client()
     peers = client.get_peers()
     for peer in peers:
-        if peer.peer_status != PeerStatusChoices.STATUS_TIME_EXPIRED:
+        if peer.peer_status == PeerStatusChoices.STATUS_TIME_EXPIRED:
             wghub.enable_peer(peer)
             client.set_peer_status(peer.id, PeerStatusChoices.STATUS_DISCONNECTED)
+            client.set_status(ClientStatusChoices.STATUS_DISCONNECTED)
         elif peer.peer_status == PeerStatusChoices.STATUS_CONNECTED:
             new_time = datetime.datetime.now() + datetime.timedelta(hours=core_cfg.peer_active_time)
             client.set_peer_timer(peer.id, peer_timer=new_time)
