@@ -13,6 +13,7 @@ from bot.handlers.keyboards import (build_peer_configs_keyboard,
                                     build_user_actions_keyboard,
                                     cancel_keyboard, extend_time_keyboard)
 from bot.utils.callback_data import (ConnectionPeerCallbackData,
+                                     GetUserCallbackData,
                                      PreviewMessageCallbackData,
                                      TimeExtenderCallbackData,
                                      UserActionsCallbackData, UserActionsEnum,
@@ -262,6 +263,16 @@ async def whisper_user_callback(callback: CallbackQuery, callback_data: UserActi
     await state.set_data({"user_id": callback_data.user_id})
     await state.set_state(WhisperStates.message_entering)
     await callback.message.answer("✏️ Введи сообщение:", reply_markup=cancel_keyboard())
+
+@router.callback_query(GetUserCallbackData.filter())
+async def get_user_callback(callback: CallbackQuery, callback_data: GetUserCallbackData):
+    client = ClientFactory(tg_id=callback_data.user_id).get_client()
+    await callback.answer()
+    await callback.message.answer(f"Пользователь: {client.userdata.name}")
+    await callback.message.answer(
+        get_user_data_string(client),
+        reply_markup=build_user_actions_keyboard(client, is_admin=True)
+    )
 
 # tecnically it is not a callback, but who cares...
 # idk how to call this func properly, so yes

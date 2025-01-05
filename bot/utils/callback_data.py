@@ -46,3 +46,6 @@ class UserActionsCallbackData(CallbackData, prefix="user_action"):
 
 class PreviewMessageCallbackData(CallbackData, prefix="preview"):
     answer: YesOrNoEnum
+
+class GetUserCallbackData(CallbackData, prefix="get_user"):
+    user_id: int
