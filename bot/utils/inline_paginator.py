@@ -1,4 +1,5 @@
 from contextlib import suppress
+from math import ceil
 
 from aiogram import F, Router
 from aiogram.exceptions import TelegramBadRequest
@@ -22,8 +23,7 @@ class UsersInlineKeyboardPaginator:
         self.items_per_page = items_per_page
         self.current_page = 1 if current_page < 1 else current_page
 
-        # little hack to always round up the division
-        self.max_pages = len(data) // items_per_page + (len(data) % items_per_page > 0)
+        self.max_pages = ceil(len(data) / items_per_page)
         self.callback_prefix = callback_prefix
 
         self.__client_buttons = [self.__client_to_keyboard_converter(client) for client in self.data]
