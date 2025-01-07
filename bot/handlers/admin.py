@@ -96,7 +96,7 @@ async def add_peer(message: Message, client: Client):
     last_id = ClientFactory.get_latest_peer_id()
     try:
         ip_addr = ip_queue.get_ip()
-    except Exception as e:
+    except Exception:
         await message.answer("❌ Нет доступных IP-адресов!")
         bot_logger.critical("❌ Tried to add a peer, but no IP addresses are available.")
         return

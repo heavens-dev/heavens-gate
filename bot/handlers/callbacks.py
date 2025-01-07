@@ -23,7 +23,7 @@ from bot.utils.states import (ContactAdminStates, ExtendTimeStates,
                               WhisperStates)
 from bot.utils.user_helper import extend_users_usage_time, get_user_data_string
 from config.loader import (bot_cfg, bot_instance, connections_observer,
-                           interval_observer, server_cfg, wghub)
+                           interval_observer, ip_queue, server_cfg, wghub)
 from core.db.db_works import Client, ClientFactory
 from core.db.enums import ClientStatusChoices, PeerStatusChoices
 from core.db.model_serializer import ConnectionPeer
@@ -167,8 +167,17 @@ async def update_user_message_data(callback: CallbackQuery, callback_data: UserA
 )
 async def add_peer_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
     client = ClientFactory(tg_id=callback_data.user_id).get_client()
-    peer = client.add_peer(is_amnezia=wghub.is_amnezia)
-    wghub.add_peer(peer)
+    last_id = ClientFactory.get_latest_peer_id()
+    try:
+        ip_addr = ip_queue.get_ip()
+    except Exception:
+        await callback.message.answer("❌ Нет доступных IP-адресов!")
+        bot_logger.critical("❌ Tried to add a peer, but no IP addresses are available.")
+        return
+    new_peer = client.add_peer(shared_ips=ip_addr, peer_name=f"{client.userdata.name}_{last_id}", is_amnezia=wghub.is_amnezia)
+    wghub.add_peer(new_peer)
+    with bot_logger.contextualize(peer=new_peer):
+        bot_logger.info(f"New peer was created manually by {callback.message.from_user.username}")
     await callback.answer("✅ Пир добавлен.")
 
 @router.callback_query(PreviewMessageCallbackData.filter(), PreviewMessageStates.preview)

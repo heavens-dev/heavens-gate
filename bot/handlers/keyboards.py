@@ -65,7 +65,7 @@ def build_user_actions_keyboard(client: Client, is_admin=True):
         builder.button(
             text="➕ Добавить пир",
             callback_data=UserActionsCallbackData(
-                action=UserActionsEnum,
+                action=UserActionsEnum.ADD_PEER,
                 user_id=client.userdata.telegram_id,
                 is_admin=is_admin
             )
