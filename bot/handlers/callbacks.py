@@ -172,7 +172,7 @@ async def add_peer_callback(callback: CallbackQuery, callback_data: UserActionsC
         ip_addr = ip_queue.get_ip()
     except Exception:
         await callback.message.answer("❌ Нет доступных IP-адресов!")
-        bot_logger.critical("❌ Tried to add a peer, but no IP addresses are available.")
+        bot_logger.error("❌ Tried to add a peer, but no IP addresses are available.")
         return
     new_peer = client.add_peer(shared_ips=ip_addr, peer_name=f"{client.userdata.name}_{last_id}", is_amnezia=wghub.is_amnezia)
     wghub.add_peer(new_peer)
