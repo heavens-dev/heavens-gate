@@ -7,12 +7,12 @@ class UserActionsEnum(StrEnum):
     BAN_USER = "ban"
     PARDON_USER = "pardon"
     GET_CONFIGS = "configs"
-    TERMINATE_CONNECTION = "terconn" # TODO
     UPDATE_DATA = "update"
     CHANGE_PEER_NAME = "change_peer_name"
     CONTACT_ADMIN = "contact_admin"
     EXTEND_USAGE_TIME = "extend_usage_time"
     WHISPER_USER = "whisper"
+    ADD_PEER = "add_peer"
 
 
 class YesOrNoEnum(StrEnum):
