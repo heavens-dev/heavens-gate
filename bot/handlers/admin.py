@@ -8,6 +8,7 @@ from aiogram.types import Message
 
 from bot.handlers.keyboards import build_user_actions_keyboard, cancel_keyboard
 from bot.middlewares.client_getters_middleware import ClientGettersMiddleware
+from bot.utils.inline_paginator import UsersInlineKeyboardPaginator
 from bot.utils.message_utils import preview_message
 from bot.utils.states import WhisperStates
 from bot.utils.user_helper import get_user_data_string
@@ -165,3 +166,9 @@ async def syncconfig(message: Message):
     wghub.sync_config()
     bot_logger.info(f"Config was forcefully synchronized by {message.from_user.id}")
     await message.answer("✅ Конфиг синхронизирован с сервером.")
+
+@router.message(Command("users"))
+async def users(message: Message):
+    all_clients = ClientFactory.select_clients()
+    paginator = UsersInlineKeyboardPaginator(all_clients, router)
+    await message.answer("Список всех пользователей:", reply_markup=paginator.markup)
