@@ -18,10 +18,11 @@ class UsersInlineKeyboardPaginator:
     current_page_label = "{} / {}"
 
     def __init__(self, data: list[Client], router: Router, items_per_page: int = 5, current_page: int = 1, callback_prefix: str = "page_"):
+        self.__data = data
         self.router = router
         self.items_per_page = items_per_page
         self.current_page = 1 if current_page < 1 else current_page
-        self.set_data(data)
+        self.max_pages = ceil(len(self.__data) / self.items_per_page)
 
         self.callback_prefix = callback_prefix
 
@@ -72,7 +73,7 @@ class UsersInlineKeyboardPaginator:
             await callback.answer()
 
             fresh_data = ClientFactory.select_clients()
-            self.set_data(fresh_data)
+            self.data = fresh_data
             current_page = int(callback.data.split("_")[-1])
 
             if current_page < 1:
@@ -90,6 +91,11 @@ class UsersInlineKeyboardPaginator:
         self.handle_pagination_callback()
         return self.__build_keyboard(self.current_page)
 
-    def set_data(self, new_data: list[Client]) -> None:
-        self.data = new_data
-        self.max_pages = ceil(len(self.data) / self.items_per_page)
+    @property
+    def data(self):
+        return self.__data
+
+    @data.setter
+    def data(self, value: list[Client]) -> None:
+        self.__data = value
+        self.max_pages = ceil(len(self.__data) / self.items_per_page)
