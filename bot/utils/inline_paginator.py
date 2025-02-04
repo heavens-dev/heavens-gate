@@ -7,7 +7,7 @@ from aiogram.types import (CallbackQuery, InlineKeyboardButton,
                            InlineKeyboardMarkup)
 
 from bot.utils.callback_data import GetUserCallbackData
-from core.db.db_works import Client
+from core.db.db_works import Client, ClientFactory
 
 
 class UsersInlineKeyboardPaginator:
@@ -18,15 +18,13 @@ class UsersInlineKeyboardPaginator:
     current_page_label = "{} / {}"
 
     def __init__(self, data: list[Client], router: Router, items_per_page: int = 5, current_page: int = 1, callback_prefix: str = "page_"):
-        self.data = data
+        self.__data = data
         self.router = router
         self.items_per_page = items_per_page
         self.current_page = 1 if current_page < 1 else current_page
+        self.max_pages = ceil(len(self.__data) / self.items_per_page)
 
-        self.max_pages = ceil(len(data) / items_per_page)
         self.callback_prefix = callback_prefix
-
-        self.__client_buttons = [self.__client_to_keyboard_converter(client) for client in self.data]
 
     def __client_to_keyboard_converter(self, client: Client) -> InlineKeyboardButton:
         return InlineKeyboardButton(
@@ -37,10 +35,11 @@ class UsersInlineKeyboardPaginator:
         )
 
     def __build_keyboard(self, page: int) -> InlineKeyboardMarkup:
+        client_buttons = [self.__client_to_keyboard_converter(client) for client in self.data]
         start_index = (page - 1) * self.items_per_page
         end_index = start_index + self.items_per_page
 
-        rows = [[a] for a in self.__client_buttons[start_index:end_index]]
+        rows = [[a] for a in client_buttons[start_index:end_index]]
 
         rows.append([
             InlineKeyboardButton(
@@ -73,6 +72,8 @@ class UsersInlineKeyboardPaginator:
         async def callback_handler(callback: CallbackQuery) -> None:
             await callback.answer()
 
+            fresh_data = ClientFactory.select_clients()
+            self.data = fresh_data
             current_page = int(callback.data.split("_")[-1])
 
             if current_page < 1:
@@ -89,3 +90,12 @@ class UsersInlineKeyboardPaginator:
     def markup(self) -> InlineKeyboardMarkup:
         self.handle_pagination_callback()
         return self.__build_keyboard(self.current_page)
+
+    @property
+    def data(self):
+        return self.__data
+
+    @data.setter
+    def data(self, value: list[Client]) -> None:
+        self.__data = value
+        self.max_pages = ceil(len(self.__data) / self.items_per_page)

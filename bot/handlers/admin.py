@@ -1,3 +1,4 @@
+import asyncio
 import os
 import sys
 
@@ -171,4 +172,6 @@ async def syncconfig(message: Message):
 async def users(message: Message):
     all_clients = ClientFactory.select_clients()
     paginator = UsersInlineKeyboardPaginator(all_clients, router)
-    await message.answer("Список всех пользователей:", reply_markup=paginator.markup)
+    msg = await message.answer("Список всех пользователей:", reply_markup=paginator.markup)
+    await asyncio.sleep(60)
+    await msg.delete()
