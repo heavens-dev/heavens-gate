@@ -66,7 +66,7 @@ async def unblock_timeout_connections(message: Message):
             client.set_status(ClientStatusChoices.STATUS_DISCONNECTED)
         elif peer.peer_status == PeerStatusChoices.STATUS_CONNECTED:
             new_time = datetime.datetime.now() + datetime.timedelta(hours=core_cfg.peer_active_time)
-            client.set_peer_timer(peer.id, peer_timer=new_time)
+            client.set_peer_timer(peer.id, time=new_time)
 
     await message.answer("✅ Соединения были разблокированы/обновлены. Можешь продолжать пользоваться VPN!")
 
