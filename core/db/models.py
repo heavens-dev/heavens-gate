@@ -5,6 +5,7 @@ from peewee import (BooleanField, CharField, DateTimeField, ForeignKeyField,
 from playhouse.sqlite_ext import AutoIncrementField, SqliteExtDatabase
 
 from core.db.enums import ClientStatusChoices, PeerStatusChoices
+from core.logs import core_logger
 
 db = SqliteExtDatabase(None, regexp_function=True)
 
@@ -58,4 +59,5 @@ def init_db(path: str):
     db.init(database=path, pragmas={"foreign_keys": 1})
     db.connect()
     db.create_tables((UserModel, ConnectionPeerModel))
+    core_logger.info(f"Database initialized at {path}")
     return db

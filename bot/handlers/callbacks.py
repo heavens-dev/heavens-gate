@@ -34,6 +34,8 @@ from core.wg.wgconfig_helper import get_peer_config_str
 
 router = Router(name="callbacks")
 
+# region [Observers]
+
 @connections_observer.timer_observer()
 async def warn_user_timeout(client: Client, peer: ConnectionPeer, disconnect: bool):
     time_left = peer.peer_timer - datetime.datetime.now()
@@ -44,6 +46,11 @@ async def warn_user_timeout(client: Client, peer: ConnectionPeer, disconnect: bo
         f"❗ Подключение {peer.peer_name} было разорвано из-за неактивности. ") +
         "Введи /unblock, чтобы обновить время действия подключения.")
 
+    with bot_logger.contextualize(peer=peer):
+        bot_logger.info("Informed user about peer timeout."
+                        if not disconnect else
+                        "Informed user about forced peer disconnection.")
+
 @interval_observer.expire_date_warning_observer()
 async def warn_user_expire_date(client: Client):
     await bot_instance.send_message(client.userdata.telegram_id,
@@ -51,12 +58,22 @@ async def warn_user_expire_date(client: Client):
         "Свяжись с администрацией для продления доступа."
     )
 
+    with bot_logger.contextualize(user=client.userdata):
+        bot_logger.info("Informed user about account expiration.")
+
 @interval_observer.expire_date_block_observer()
 async def block_user_expire_date(client: Client):
     await bot_instance.send_message(client.userdata.telegram_id,
         "❌ Твой аккаунт заблокирован из-за истечения оплаченного времени. "
         "Если ты хочешь продлить доступ, свяжись с нами."
     )
+
+    with bot_logger.contextualize(user=client.userdata):
+        bot_logger.info("Informed user about account blocking due to expiration.")
+
+# endregion
+
+# region [Callbacks]
 
 @router.callback_query(F.data == "cancel_action")
 async def cancel_action_callback(callback: CallbackQuery, state: FSMContext):
@@ -82,20 +99,13 @@ async def select_peer_callback(callback: CallbackQuery, callback_data: Connectio
         }
 
     for peer in peers:
-        if callback_data.peer_id == -1:
-            media_group.add_document(
-                media=BufferedInputFile(
-                    file=bytes(get_peer_config_str(peer, additional_interface_data), encoding="utf-8"),
-                    filename=f"{peer.peer_name or peer.id}_wg.conf"
-                )
+        media_group.add_document(
+            media=BufferedInputFile(
+                file=bytes(get_peer_config_str(peer, additional_interface_data), encoding="utf-8"),
+                filename=f"{peer.peer_name or peer.id}_wg.conf"
             )
-        elif peer.id == callback_data.peer_id:
-            media_group.add_document(
-                BufferedInputFile(
-                    file=bytes(get_peer_config_str(peer, additional_interface_data), encoding="utf-8"),
-                    filename=f"{peer.peer_name or peer.id}_wg.conf"
-                )
-            )
+        )
+        if peer.id == callback_data.peer_id:
             break
 
     await bot_instance.send_media_group(callback.from_user.id, media=media_group.build())
@@ -117,6 +127,9 @@ async def ban_user_callback(callback: CallbackQuery, callback_data: UserActionsC
     await callback.message.edit_text(get_user_data_string(client))
     await callback.message.edit_reply_markup(reply_markup=build_user_actions_keyboard(client))
 
+    with bot_logger.contextualize(client=client):
+        bot_logger.info("User was manually banned.")
+
 @router.callback_query(
     UserActionsCallbackData.filter(F.action == UserActionsEnum.PARDON_USER)
 )
@@ -132,6 +145,9 @@ async def pardon_user_callback(callback: CallbackQuery, callback_data: UserActio
         text=get_user_data_string(client),
         reply_markup=build_user_actions_keyboard(client)
     )
+
+    with bot_logger.contextualize(client=client):
+        bot_logger.info("User was manually pardoned.")
 
 @router.callback_query(
     UserActionsCallbackData.filter(F.action == UserActionsEnum.GET_CONFIGS)
@@ -292,6 +308,9 @@ async def get_user_callback(callback: CallbackQuery, callback_data: GetUserCallb
         reply_markup=build_user_actions_keyboard(client, is_admin=True)
     )
 
+# endregion
+
+# region [MessageStates]
 # tecnically it is not a callback, but who cares...
 # idk how to call this func properly, so yes
 @router.message(RenamePeerStates.name_entering)
@@ -359,3 +378,5 @@ async def whisper_state(message: Message, state: FSMContext):
         return
 
     await preview_message(message.text, message.from_user.id, state, [user_id])
+
+# endregion
