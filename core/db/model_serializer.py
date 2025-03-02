@@ -11,10 +11,10 @@ class User(BaseModel):
 
     telegram_id: int
     name: str
-    ip_address: Optional[str]
-    active_time: Optional[datetime]
+    ip_address: Optional[str] = None
+    active_time: Optional[datetime] = None
     status: ClientStatusChoices
-    expire_time: Optional[datetime]
+    expire_time: Optional[datetime] = None
     registered_at: datetime
 
 class ConnectionPeer(BaseModel):
@@ -26,10 +26,10 @@ class ConnectionPeer(BaseModel):
     private_key: str
     preshared_key: str
     shared_ips: str
-    peer_name: Optional[str]
+    peer_name: Optional[str] = None
     peer_status: PeerStatusChoices
-    peer_timer: Optional[datetime]
+    peer_timer: Optional[datetime] = None
     is_amnezia: bool
-    Jc: Optional[int]
-    Jmin: Optional[int]
-    Jmax: Optional[int]
+    Jc: Optional[int] = None
+    Jmin: Optional[int] = None
+    Jmax: Optional[int] = None
