@@ -6,10 +6,14 @@
 test.*
 .reboot
 .venv
+.coverage
+
+# Folders
+.vscode
+htmlcov
 
 # Byte-compiled / optimized / DLL files
 __pycache__
-.vscode
 .pytest_cache
 
 # not ignoring logs folder in core service
