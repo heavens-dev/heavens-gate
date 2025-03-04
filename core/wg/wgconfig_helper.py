@@ -1,9 +1,8 @@
-from config.loader import server_cfg
+from config.settings import Config
 from core.db.model_serializer import ConnectionPeer
 
 
-# TODO: add arguments for every server configuration paramenters since we are using configuration, which is bad
-def get_peer_config_str(peer: ConnectionPeer, interface_args: dict = None) -> str:
+def get_peer_config_str(server_cfg: Config.Server, peer: ConnectionPeer, interface_args: dict = None) -> str:
     """
     Generates config string based on given ConnectionPeer.
     """

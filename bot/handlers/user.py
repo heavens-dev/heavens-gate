@@ -51,7 +51,7 @@ async def get_config(message: Message):
                 "Junk": server_cfg.junk
             }
         config = BufferedInputFile(
-            file=bytes(get_peer_config_str(peers[0], additional_interface_data), encoding="utf-8"),
+            file=bytes(get_peer_config_str(server_cfg, peers[0], additional_interface_data), encoding="utf-8"),
             filename=f"{peers[0].peer_name or peers[0].id}_wg.conf")
         await message.answer_document(config, caption="Вот твой конфиг. Не распространяй его куда попало.")
 
