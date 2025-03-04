@@ -1,0 +1,14 @@
+[Unit]
+Description=Heaven's Gate Daemon
+After=network.target
+
+[Service]
+User=root
+Type=exec
+WorkingDirectory=/opt/heavens-gate
+ExecStart=/opt/heavens-gate/.venv/bin/python3 run_bot.py -awg
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

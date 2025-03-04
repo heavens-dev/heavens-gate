@@ -1,6 +1,7 @@
 import os
+import warnings
 from configparser import ConfigParser
-from typing import Type
+from typing import Optional, Type
 
 
 class Config:
@@ -57,9 +58,15 @@ class Config:
         return True
 
     class Bot:
-        def __init__(self, config_instance: Type["Config"], token: str, admins: str, faq_url: str):
+        def __init__(self, config_instance: Type["Config"], token: str, admins: str, faq_url: Optional[str]):
             self.token = token
             self.faq_url = faq_url
+
+            if self.faq_url and not self.faq_url.startswith("http"):
+                warnings.warn("FAQ URL should start with http or https", UserWarning)
+                self.faq_url = None
+            elif not self.faq_url or self.faq_url.lower() == "none":
+                self.faq_url = None
 
             if not self.token:
                 raise ValueError("Token MUST be specified in config file. For God's sake!")

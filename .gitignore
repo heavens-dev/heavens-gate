@@ -7,6 +7,7 @@ test.*
 .reboot
 .venv
 .coverage
+.service
 
 # Folders
 .vscode
@@ -16,6 +17,7 @@ htmlcov
 __pycache__
 .pytest_cache
 
+.service
 # not ignoring logs folder in core service
 /logs
 

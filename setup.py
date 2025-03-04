@@ -106,9 +106,9 @@ def make_config(path):
     config = ConfigParser()
     config.optionxform = str
     config["TelegramBot"] = {
-        "token": tg_token,
-        "admins": admins,
-        "faq_url": faq_url,
+        "token": str(tg_token),
+        "admins": str(admins),
+        "faq_url": faq_url or "",
     }
 
     config["db"] = {
