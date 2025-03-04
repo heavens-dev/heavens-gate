@@ -1,5 +1,6 @@
 import pytest
 
+from config.settings import Config
 from core.db.enums import PeerStatusChoices
 from core.db.model_serializer import ConnectionPeer
 from core.db.models import init_db
@@ -46,7 +47,7 @@ def default_peers() -> dict[str, ConnectionPeer]:
     return DEFAULT_PEERS
 
 @pytest.fixture(scope="function")
-def wg_hub(tmp_path):
+def wg_hub(tmp_path) -> WGHub:
     with open(tmp_path / "wg0.conf", "w+b") as wg_file:
         wg_file.write(b"""[Interface]
 Address = 10.0.0.1/24, ffff:ffff:ffff:ffff::1/64
@@ -77,3 +78,17 @@ def db():
     yield
 
     db_instance.close()
+
+@pytest.fixture(scope="module")
+def server_config():
+    return Config.Server(
+        path="wg0.conf",
+        user_ip="10.0.0",
+        user_ip_mask="24",
+        public_key="TRZ4K+Hg8locDUbTaSRwqo9pBABN3gBJoQp7BQ3QbQY=",
+        private_key="+HBpjH+3M0/CFRGjoi5uKy6okJRzHo87X0XP+37hUFw=",
+        endpoint_ip="127.0.0.1",
+        endpoint_port="12345",
+        dns_server="8.8.8.8",
+        junk=""
+    )

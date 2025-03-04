@@ -1,0 +1,68 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches:
+      - master
+      - canary
+  pull_request:
+    branches:
+      - master
+      - canary
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Deploy to...'
+        required: true
+        default: 'canary'
+        type: 'choice'
+        options:
+          - master
+          - canary
+      skip:
+        description: 'Skip tests'
+        required: false
+        default: false
+        type: 'boolean'
+
+jobs:
+  tests:
+    if: ${{ !github.event.inputs.skip }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.12'
+          cache: 'pip' # Caches installed dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          pip install coverage
+      - name: Test core modules
+        id: core_tests
+        run: python -m coverage run pytest tests/core/ -v --setup-show
+
+      - name: Generate coverage report
+        run: python -m coverage report -m
+
+  deploy:
+    if: >-
+        ${{
+          github.event_name == 'workflow_dispatch' ||
+          (
+            github.event_name == 'push' &&
+            github.ref == 'refs/heads/${{ github.event.inputs.branch }}'
+          )
+        }}
+    needs: [tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: 'Deploy branch to server'
+        run: echo 'To be implemented'
