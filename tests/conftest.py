@@ -79,7 +79,7 @@ def db():
 
     db_instance.close()
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def server_config():
     return Config.Server(
         path="wg0.conf",
