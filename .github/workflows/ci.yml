@@ -29,10 +29,16 @@ on:
         required: false
         default: false
         type: 'boolean'
+      no_pre_commit:
+        description: 'Skip pre-commit checks'
+        required: false
+        default: false
+        type: 'boolean'
 
 jobs:
   pre-commit:
     name: Pre-commit checks
+    if: ${{ !github.event.inputs.no_pre_commit }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -86,7 +92,7 @@ jobs:
             (github.ref_name == 'master' || github.ref_name == 'canary')
           ))
         }}
-    needs: [tests]
+    needs: [tests, pre-commit]
     runs-on: ubuntu-latest
     # TODO: ADD MASTER SSH KEYS!
     env:
