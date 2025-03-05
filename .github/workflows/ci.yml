@@ -19,16 +19,42 @@ on:
         options:
           - master
           - canary
-      skip:
+      no_tests:
         description: 'Skip tests'
+        required: false
+        default: false
+        type: 'boolean'
+      no_deploy:
+        description: 'Skip deployment'
         required: false
         default: false
         type: 'boolean'
 
 jobs:
+  pre-commit:
+    name: Pre-commit checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Cache pre-commit
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: ${{ runner.os }}-pre-commit-${{ hashFiles('**/.pre-commit-config.yaml') }}
+      - name: Run pre-commit
+        run: pre-commit run --all-files --show-diff-on-failure --color=always
+
   tests:
     name: Run tests
-    if: ${{ !github.event.inputs.skip }}
+    if: ${{ !github.event.inputs.no_tests }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -46,7 +72,6 @@ jobs:
       - name: Test core modules
         id: core_tests
         run: python -m coverage run -m pytest tests/core/ -v --setup-show
-
       - name: Generate coverage report
         run: python -m coverage report -m
 
@@ -54,11 +79,12 @@ jobs:
     name: Deploy to server
     if: >-
         ${{
+          (success() || failure()) && (!github.event.inputs.no_deploy) && (
           github.event_name == 'workflow_dispatch' ||
           (
             github.event_name == 'push' &&
             (github.ref_name == 'master' || github.ref_name == 'canary')
-          )
+          ))
         }}
     needs: [tests]
     runs-on: ubuntu-latest
@@ -79,7 +105,8 @@ jobs:
 
       - name: 'Deploy to ${{ github.ref_name }}'
         run: |
-          ssh $SSH_USER@$SSH_HOST 'cd /opt/heavens-gate
+          ssh $SSH_USER@$SSH_HOST 'set -e
+          cd /opt/heavens-gate
           git checkout ${{ github.ref_name }}
           git pull
           systemctl restart heavens-gate'
