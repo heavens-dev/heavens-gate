@@ -27,6 +27,7 @@ on:
 
 jobs:
   tests:
+    name: Run tests
     if: ${{ !github.event.inputs.skip }}
     runs-on: ubuntu-latest
     steps:
@@ -50,6 +51,7 @@ jobs:
         run: python -m coverage report -m
 
   deploy:
+    name: Deploy to server
     if: >-
         ${{
           github.event_name == 'workflow_dispatch' ||
