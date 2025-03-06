@@ -35,6 +35,7 @@ Junk=<junk_values>
 """)
     return path
 
+
 def test_load_config(config_path):
     config = Config(config_path)
 
