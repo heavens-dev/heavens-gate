@@ -7,10 +7,10 @@ from bot.utils.callback_data import (ConnectionPeerCallbackData,
                                      YesOrNoEnum)
 from core.db.db_works import Client
 from core.db.enums import ClientStatusChoices
-from core.db.model_serializer import ConnectionPeer
+from core.db.model_serializer import WireguardPeer
 
 
-def build_peer_configs_keyboard(user_id: int, peers: list[ConnectionPeer], display_all=True):
+def build_peer_configs_keyboard(user_id: int, peers: list[WireguardPeer], display_all=True):
     builder = InlineKeyboardBuilder()
 
     if display_all:
@@ -38,7 +38,7 @@ def build_user_actions_keyboard(client: Client, is_admin=True):
                 text="🔓 Разблокировать",
                 callback_data=UserActionsCallbackData(
                     action=UserActionsEnum.PARDON_USER,
-                    user_id=client.userdata.telegram_id,
+                    user_id=client.userdata.user_id,
                     is_admin=is_admin
                 )
             )
@@ -48,7 +48,7 @@ def build_user_actions_keyboard(client: Client, is_admin=True):
                 text="🚫 Заблокировать",
                 callback_data=UserActionsCallbackData(
                     action=UserActionsEnum.BAN_USER,
-                    user_id=client.userdata.telegram_id,
+                    user_id=client.userdata.user_id,
                     is_admin=is_admin
                 )
             )
@@ -57,7 +57,7 @@ def build_user_actions_keyboard(client: Client, is_admin=True):
             text="📅 Продлить время",
             callback_data=UserActionsCallbackData(
                 action=UserActionsEnum.EXTEND_USAGE_TIME,
-                user_id=client.userdata.telegram_id,
+                user_id=client.userdata.user_id,
                 is_admin=is_admin
             )
         )
@@ -66,7 +66,7 @@ def build_user_actions_keyboard(client: Client, is_admin=True):
             text="➕ Добавить пир",
             callback_data=UserActionsCallbackData(
                 action=UserActionsEnum.ADD_PEER,
-                user_id=client.userdata.telegram_id,
+                user_id=client.userdata.user_id,
                 is_admin=is_admin
             )
         )
@@ -74,7 +74,7 @@ def build_user_actions_keyboard(client: Client, is_admin=True):
             text="✉️ Отправить сообщение",
             callback_data=UserActionsCallbackData(
                 action=UserActionsEnum.WHISPER_USER,
-                user_id=client.userdata.telegram_id,
+                user_id=client.userdata.user_id,
                 is_admin=is_admin
             )
         )
@@ -84,7 +84,7 @@ def build_user_actions_keyboard(client: Client, is_admin=True):
             text="✏️ Переименовать конфиги",
             callback_data=UserActionsCallbackData(
                 action=UserActionsEnum.CHANGE_PEER_NAME,
-                user_id=client.userdata.telegram_id,
+                user_id=client.userdata.user_id,
                 is_admin=is_admin
             )
         )
@@ -92,7 +92,7 @@ def build_user_actions_keyboard(client: Client, is_admin=True):
             text="📞 Связаться с администрацией",
             callback_data=UserActionsCallbackData(
                 action=UserActionsEnum.CONTACT_ADMIN,
-                user_id=client.userdata.telegram_id,
+                user_id=client.userdata.user_id,
                 is_admin=is_admin
             )
         )
@@ -101,7 +101,7 @@ def build_user_actions_keyboard(client: Client, is_admin=True):
         text="📒 Получить конфиги",
         callback_data=UserActionsCallbackData(
             action=UserActionsEnum.GET_CONFIGS,
-            user_id=client.userdata.telegram_id,
+            user_id=client.userdata.user_id,
             is_admin=is_admin
         )
     )
@@ -110,7 +110,7 @@ def build_user_actions_keyboard(client: Client, is_admin=True):
         text="🔄 Обновить данные",
         callback_data=UserActionsCallbackData(
             action=UserActionsEnum.UPDATE_DATA,
-            user_id=client.userdata.telegram_id,
+            user_id=client.userdata.user_id,
             is_admin=is_admin
         )
     )

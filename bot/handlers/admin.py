@@ -49,9 +49,9 @@ async def broadcast(message: Message, state: FSMContext):
     msg = message.html_text.split(maxsplit=1)[1]
 
     for client in all_clients:
-        if message.chat.id == client.userdata.telegram_id:
+        if message.chat.id == client.userdata.user_id:
             continue
-        clients_list.append(client.userdata.telegram_id)
+        clients_list.append(client.userdata.user_id)
 
     await preview_message(msg, message.chat.id, state, clients_list)
 
@@ -60,20 +60,20 @@ async def whisper(message: Message, client: Client, state: FSMContext):
     args = message.html_text.split()
 
     if len(args) <= 2:
-        await state.set_data({"user_id": client.userdata.telegram_id})
+        await state.set_data({"user_id": client.userdata.user_id})
         await state.set_state(WhisperStates.message_entering)
         await message.answer("✏️ Введи сообщение:", reply_markup=cancel_keyboard())
         return
 
     msg = message.html_text.split(maxsplit=2)[2]
 
-    await preview_message(msg, message.chat.id, state, [client.userdata.telegram_id])
+    await preview_message(msg, message.chat.id, state, [client.userdata.user_id])
 
 @router.message(Command("ban", "anathem"))
 async def ban(message: Message, client: Client):
     client.set_status(ClientStatusChoices.STATUS_ACCOUNT_BLOCKED)
     await message.answer(
-        f"✅ Пользователь <code>{client.userdata.name}:{client.userdata.telegram_id}:{client.userdata.ip_address}</code> заблокирован."
+        f"✅ Пользователь <code>{client.userdata.name}:{client.userdata.user_id}:{client.userdata.ip_address}</code> заблокирован."
     )
     # TODO: notify user about blocking and reject any ongoing connections
 
@@ -81,7 +81,7 @@ async def ban(message: Message, client: Client):
 async def unban(message: Message, client: Client):
     client.set_status(ClientStatusChoices.STATUS_CREATED)
     await message.answer(
-        f"✅ Пользователь <code>{client.userdata.name}:{client.userdata.telegram_id}:{client.userdata.ip_address}</code> разблокирован."
+        f"✅ Пользователь <code>{client.userdata.name}:{client.userdata.user_id}:{client.userdata.ip_address}</code> разблокирован."
     )
     # TODO: notify user about pardon
 
@@ -102,7 +102,7 @@ async def add_peer(message: Message, client: Client):
         await message.answer("❌ Нет доступных IP-адресов!")
         bot_logger.critical("❌ Tried to add a peer, but no IP addresses are available.")
         return
-    new_peer = client.add_peer(shared_ips=ip_addr, peer_name=f"{client.userdata.name}_{last_id}", is_amnezia=wghub.is_amnezia)
+    new_peer = client.add_wireguard_peer(shared_ips=ip_addr, peer_name=f"{client.userdata.name}_{last_id}", is_amnezia=wghub.is_amnezia)
     wghub.add_peer(new_peer)
     with bot_logger.contextualize(peer=new_peer):
         bot_logger.info(f"New peer was created manually by {message.from_user.username}")
@@ -128,7 +128,7 @@ async def manage_peer(message: Message):
         wghub.disable_peer(peer)
         await message.answer("✅ Пир отключён.")
         await message.bot.send_message(
-            client.userdata.telegram_id,
+            client.userdata.user_id,
             f"‼️ Пир {peer.peer_name} был принудительно заблокирован. Обратись к администрации, чтобы уточнить детали."
         )
         bot_logger.info(f"Peer (IP: {peer.shared_ips}) was blocked by {message.from_user.username}")
@@ -137,7 +137,7 @@ async def manage_peer(message: Message):
         wghub.enable_peer(peer)
         await message.answer("✅ Пир включён.")
         await message.bot.send_message(
-            client.userdata.telegram_id,
+            client.userdata.user_id,
             f"‼️ Пир {peer.peer_name} был разблокирован. Можешь начать пользоваться в течение короткого времени."
         )
         bot_logger.info(f"Peer (IP: {peer.shared_ips}) was unblocked by {message.from_user.username}")

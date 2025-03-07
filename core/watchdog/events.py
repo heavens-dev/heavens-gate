@@ -7,7 +7,7 @@ from icmplib import async_ping
 
 from core.db.db_works import Client, ClientFactory
 from core.db.enums import ClientStatusChoices, PeerStatusChoices
-from core.db.model_serializer import ConnectionPeer
+from core.db.model_serializer import WireguardPeer
 from core.logs import core_logger
 from core.watchdog.object import CallableObject
 from core.watchdog.observer import EventObserver
@@ -27,17 +27,17 @@ class ConnectionEvents:
         self.active_hours = active_hours
         self.wghub = wghub
 
-        self.connected = EventObserver(required_types=[Client, ConnectionPeer])
+        self.connected = EventObserver(required_types=[Client, WireguardPeer])
         """Decorated methods must have a `Client` and `ConnectionPeer` argument"""
-        self.disconnected = EventObserver(required_types=[Client, ConnectionPeer])
+        self.disconnected = EventObserver(required_types=[Client, WireguardPeer])
         """Decorated methods must have a `Client` and `ConnectionPeer` argument"""
-        self.timer_observer = EventObserver(required_types=[Client, ConnectionPeer, bool])
+        self.timer_observer = EventObserver(required_types=[Client, WireguardPeer, bool])
         """Decorated methods must have a `Client`, `ConnectionPeer` and `disconnect` boolean argument.
         `disconnect` describes whether the trigger is a warning (**False**) or a disconnect (**True**)"""
         self.startup = EventObserver()
 
-        self.clients: list[tuple[Client, list[ConnectionPeer]]] = [
-            (client, client.get_peers()) for client in ClientFactory.select_clients()
+        self.clients: list[tuple[Client, list[WireguardPeer]]] = [
+            (client, client.get_wireguard_peers()) for client in ClientFactory.select_clients()
         ]
         """List of all `Client`s and their `ConnectionPeer`s"""
 
@@ -45,7 +45,7 @@ class ConnectionEvents:
         """Internal lock that prevents updating `self.clients`
         during client connection checks"""
 
-    async def __check_connection(self, client: Client, peer: ConnectionPeer, warn: bool = False) -> bool:
+    async def __check_connection(self, client: Client, peer: WireguardPeer, warn: bool = False) -> bool:
         if isinstance(peer.peer_timer, datetime.datetime) and peer.peer_status == PeerStatusChoices.STATUS_CONNECTED:
             timedelta = peer.peer_timer - datetime.datetime.now()
 
@@ -100,7 +100,7 @@ class ConnectionEvents:
                 core_logger.debug(f"Done listening for connections. Sleeping for {listen_timer} sec")
             await asyncio.sleep(listen_timer)
 
-    async def emit_connect(self, client: Client, peer: ConnectionPeer):
+    async def emit_connect(self, client: Client, peer: WireguardPeer):
         """Propagates connection event to handlers.
         Sets the time until which the connection can be active.
 
@@ -115,7 +115,7 @@ class ConnectionEvents:
         peer.peer_timer = new_time
         await self.connected.trigger(client, peer)
 
-    async def emit_disconnect(self, client: Client, peer: ConnectionPeer):
+    async def emit_disconnect(self, client: Client, peer: WireguardPeer):
         """Propagates disconnect event to handlers.
 
         Updates Client status to `ClientStatusChoices.STATUS_DISCONNECTED`
@@ -127,7 +127,7 @@ class ConnectionEvents:
             client.set_status(ClientStatusChoices.STATUS_DISCONNECTED)
         await self.disconnected.trigger(client, peer)
 
-    async def emit_timeout_disconnect(self, client: Client, peer: ConnectionPeer):
+    async def emit_timeout_disconnect(self, client: Client, peer: WireguardPeer):
         client.set_peer_status(peer.id, PeerStatusChoices.STATUS_TIME_EXPIRED)
         # avoid triggering the timer_observer multiple times
         peer.peer_status = PeerStatusChoices.STATUS_TIME_EXPIRED
@@ -140,7 +140,7 @@ class ConnectionEvents:
         while True:
             async with self.__clients_lock:
                 self.clients = [
-                    (client, client.get_peers()) for client in ClientFactory.select_clients()
+                    (client, client.get_wireguard_peers()) for client in ClientFactory.select_clients()
                 ]
                 core_logger.debug(f"Done updating clients list. Sleeping for {self.update_timer} sec")
 
@@ -227,7 +227,7 @@ class IntervalEvents:
                 core_logger.debug(f"Blocking user {client.userdata.name} due to expired account.")
                 client.set_status(ClientStatusChoices.STATUS_ACCOUNT_BLOCKED)
                 # if client has no peers, it will raise KeyError, so we suppress it
-                peers = client.get_peers()
+                peers = client.get_wireguard_peers()
                 with suppress(KeyError):
                     self.wg_hub.disable_peers(peers)
                 for peer in peers:

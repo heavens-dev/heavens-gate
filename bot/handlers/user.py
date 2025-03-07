@@ -30,7 +30,7 @@ async def me(message: Message):
 @router.message(Command("config"))
 async def get_config(message: Message):
     client = ClientFactory(tg_id=message.from_user.id).get_client()
-    peers = client.get_peers()
+    peers = client.get_wireguard_peers()
     additional_interface_data = None
 
     if not peers:
@@ -55,10 +55,11 @@ async def get_config(message: Message):
             filename=f"{peers[0].peer_name or peers[0].id}_wg.conf")
         await message.answer_document(config, caption="Вот твой конфиг. Не распространяй его куда попало.")
 
+# TODO: add Xray support
 @router.message(Command("unblock"))
 async def unblock_timeout_connections(message: Message):
     client = ClientFactory(tg_id=message.from_user.id).get_client()
-    peers = client.get_peers()
+    peers = client.get_wireguard_peers()
     for peer in peers:
         if peer.peer_status == PeerStatusChoices.STATUS_TIME_EXPIRED:
             wghub.enable_peer(peer)
@@ -73,7 +74,7 @@ async def unblock_timeout_connections(message: Message):
 @router.message(Command("change_peer_name"))
 async def change_peer_name(message: Message, state: FSMContext):
     client = ClientFactory(tg_id=message.from_user.id).get_client()
-    keyboard = build_peer_configs_keyboard(client.userdata.telegram_id, client.get_peers(), display_all=False)
+    keyboard = build_peer_configs_keyboard(client.userdata.user_id, client.get_wireguard_peers(), display_all=False)
     keyboard.inline_keyboard.append(cancel_keyboard().inline_keyboard[0])
     await message.answer(
         text="Выбери конфиг, который хочешь переименовать:",

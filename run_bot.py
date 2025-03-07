@@ -15,7 +15,7 @@ from config.loader import (bot_cfg, bot_dispatcher, bot_instance,
                            connections_observer, db_instance,
                            interval_observer, wghub)
 from core.db.db_works import Client, ClientFactory
-from core.db.model_serializer import ConnectionPeer
+from core.db.model_serializer import BasePeer
 from core.logs import bot_logger
 
 
@@ -88,12 +88,12 @@ async def on_connections_observer_startup():
     bot_logger.info("Observer is running!")
 
 @connections_observer.connected()
-async def on_connected(client: Client, peer: ConnectionPeer):
+async def on_connected(client: Client, peer: BasePeer):
     with bot_logger.contextualize(client=client, peer=peer):
         bot_logger.info("Client connected")
 
 @connections_observer.disconnected()
-async def on_disconnected(client: Client, peer: ConnectionPeer):
+async def on_disconnected(client: Client, peer: BasePeer):
     with bot_logger.contextualize(client=client, peer=peer):
         bot_logger.info("Client disconnected")
 

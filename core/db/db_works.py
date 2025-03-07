@@ -6,13 +6,20 @@ from multimethod import multimethod
 from peewee import SQL, DoesNotExist
 from pydantic import BaseModel, ConfigDict, PrivateAttr
 
-from core.db.enums import ClientStatusChoices, PeerStatusChoices
-from core.db.model_serializer import ConnectionPeer, User
-from core.db.models import ConnectionPeerModel, UserModel
+from core.db.enums import ClientStatusChoices, PeerStatusChoices, ProtocolType
+from core.db.model_serializer import BasePeer, User, WireguardPeer
+from core.db.models import (PeersTableModel, UserModel, WireguardPeerModel,
+                            XrayPeerModel, db)
 from core.logs import core_logger
 from core.wg.keygen import (generate_preshared_key, generate_private_key,
                             generate_public_key)
 
+BASE_PEER_FIELDS = ("id",
+                    "user_id",
+                    "peer_name",
+                    "peer_type",
+                    "peer_status",
+                    "peer_timer")
 
 class Client(BaseModel):
     model_config = ConfigDict(ignored_types=(multimethod, ))
@@ -27,32 +34,79 @@ class Client(BaseModel):
         self.__model = kwargs["model"]
 
     def __update_client(self, **kwargs) -> bool:
-        """Updates a user in database. Not ConnectionPeer
+        """
+        Updates client data in the database using provided keyword arguments.
 
         Args:
-            kwargs: DB fields
+            **kwargs: Variable keyword arguments containing fields and values to update for the client.
+
         Returns:
-            True if operation was successfull. False otherwise.
+            bool: True if exactly one record was updated, False otherwise.
         """
         return (self.__model.update(**kwargs)
-                .where(UserModel.telegram_id == self.userdata.telegram_id)
+                .where(UserModel.user_id == self.userdata.user_id)
                 .execute()) == 1
 
     def __update_peer(self, peer_id: int, **kwargs) -> bool:
-        """Updates a ConnectionPeer by peer id.
+        """
+        Updates information for a specific peer in the database.
+        This method updates both base peer fields and protocol-specific fields for a given peer ID.
 
         Args:
-            kwargs: DB fields
+            peer_id (int): The ID of the peer to update.
+            **kwargs: Arbitrary keyword arguments containing the fields to update.
+                     Can include both base peer fields and protocol-specific fields.
         Returns:
-            True if operation was successfull. False otherwise.
+            bool: True if the update was successful. Returns False in cases of:
+            - Peer not found
+            - Unknown protocol type
+            - Database errors during update
+            - Transaction failures
+        Raises:
+            No exceptions are raised as they are caught and logged internally.
+        Example:
+            >>> Client(...).__update_peer(1, name="new_name", public_key="new_key")
+            True
         """
-        return (ConnectionPeerModel.update(**kwargs)
-                .where(ConnectionPeerModel.id == peer_id)
-                .execute()) == 1
+        peer_fields = {}
+        protocol_specific_fields = {}
 
-    def set_ip_address(self, ip_address: str) -> bool:
-        self.userdata.ip_address = ip_address
-        return self.__update_client(ip_address=ip_address)
+        for k, v in kwargs.items():
+            if k in BASE_PEER_FIELDS:
+                peer_fields[k] = v
+            else:
+                protocol_specific_fields[k] = v
+
+        with db.atomic() as transaction:
+            try:
+                if peer_fields:
+                    is_updated = (
+                        PeersTableModel.update(**peer_fields)
+                        .where(PeersTableModel.id == peer_id)
+                        .execute()
+                    ) == 1
+                    if not is_updated:
+                        core_logger.error(f"Something went wrong while updating peer: {peer_id}")
+                        return False
+                if protocol_specific_fields:
+                    protocol = PeersTableModel.get(PeersTableModel.id == peer_id).peer_type
+                    match protocol:
+                        case (ProtocolType.WIREGUARD,
+                              ProtocolType.AMNEZIA_WIREGUARD):
+                            return (WireguardPeerModel.update(**protocol_specific_fields)
+                                .where(WireguardPeerModel.id == peer_id)
+                                .execute()) == 1
+                        case ProtocolType.XRAY:
+                            return (XrayPeerModel.update(**protocol_specific_fields)
+                                .where(XrayPeerModel.id == peer_id)
+                                .execute()) == 1
+                        case _:
+                            core_logger.warning(f"Unknown protocol type: {protocol}")
+                            return False
+            except Exception as e:
+                transaction.rollback()
+                core_logger.error(f"Error while updating peer: {e}")
+                return False
 
     def set_status(self, status: ClientStatusChoices) -> bool:
         self.userdata.status = status
@@ -62,17 +116,17 @@ class Client(BaseModel):
         self.userdata.expire_time = expire_time
         return self.__update_client(expire_time=expire_time)
 
-    def add_peer(self,
+    def add_wireguard_peer(self,
                  shared_ips: str,
                  public_key: Optional[str] = None,
                  private_key: Optional[str] = None,
                  preshared_key: Optional[str] = None,
                  is_amnezia: Optional[bool] = False,
-                 peer_name: str = None) -> ConnectionPeer:
+                 peer_name: str = None) -> WireguardPeer:
         """
-        Adds peer to database. Automatically generates peer keys if they're not present in arguments.
+        Adds wireguard peer to database. Automatically generates peer keys if they're not present in arguments.
 
-        Returns `ConnectionPeer`.
+        Returns `WireguardPeer`.
         """
         private_peer_key = private_key or generate_private_key(is_amnezia=is_amnezia)
         public_peer_key = public_key or generate_public_key(private_peer_key, is_amnezia=is_amnezia)
@@ -84,7 +138,7 @@ class Client(BaseModel):
             Jc = random.randint(3, 127)
             Jmin = random.randint(3, 700)
             Jmax = random.randint(Jmin + 1, 1270)
-        return ConnectionPeer.model_validate(ConnectionPeerModel.create(
+        return WireguardPeer.model_validate(WireguardPeerModel.create(
             user=self.__model,
             public_key=public_peer_key,
             private_key=private_peer_key,
@@ -97,15 +151,15 @@ class Client(BaseModel):
             Jmax=Jmax,
         ))
 
-    def __get_peers(self, *criteria) -> list[ConnectionPeerModel]:
+    def __get_peers(self, *criteria) -> list[BasePeer]:
         """Private method for working with peers"""
-        return list(ConnectionPeerModel.select()
-                    .where(ConnectionPeerModel.user == self.__model, *criteria))
+        return list(PeersTableModel.select()
+                    .where(PeersTableModel.user_id == self.__model, *criteria))
 
-    def get_peers(self) -> list[ConnectionPeer]:
+    def get_peers(self) -> list[BasePeer]:
         """Get validated peers model(s)"""
         return [
-            ConnectionPeer.model_validate(model)
+            BasePeer.model_validate(model)
             for model in self.__get_peers()
         ]
 
@@ -118,12 +172,14 @@ class Client(BaseModel):
     def set_peer_timer(self, peer_id, time: datetime.datetime):
         self.__update_peer(peer_id, peer_timer=time)
 
-    def get_connected_peers(self) -> list[ConnectionPeer]:
+    # TODO: include Xray peers
+    def get_connected_peers(self) -> list[WireguardPeer]:
         return [
-            ConnectionPeer.model_validate(model)
-            for model in self.__get_peers(ConnectionPeerModel.peer_status == PeerStatusChoices.STATUS_CONNECTED.value)
+            WireguardPeer.model_validate(model)
+            for model in self.__get_peers(WireguardPeerModel.peer_status == PeerStatusChoices.STATUS_CONNECTED.value)
         ]
 
+    # TODO: get rid of multimethod
     @multimethod
     def delete_peer(self) -> bool:
         """Delete peers by `telegram_id`
@@ -131,10 +187,11 @@ class Client(BaseModel):
         Returns:
             bool: True if successfull. False otherwise
         """
-        return (ConnectionPeerModel.delete()
-                .where(UserModel.telegram_id == self.userdata.telegram_id)
+        return (WireguardPeerModel.delete()
+                .where(UserModel.user_id == self.userdata.user_id)
                 .execute()) == 1
 
+    # TODO: get rid of multimethod
     @multimethod
     def delete_peer(self, ip_address: str) -> bool:
         """Delete single peer by `ip_address`
@@ -144,10 +201,10 @@ class Client(BaseModel):
         """
         # ? weird flex but okay.
         formatted_ip = ip_address.replace(".", "\\.")
-        return (ConnectionPeerModel.delete()
-                .where(ConnectionPeerModel.shared_ips.regexp(
+        return (WireguardPeerModel.delete()
+                .where(WireguardPeerModel.shared_ips.regexp(
                     rf"(?:[, ]|^){formatted_ip}(?:[, ]|$)"
-                ) & ConnectionPeerModel.user == self.__model)
+                ) & WireguardPeerModel.user == self.__model)
                 .execute()) == 1
 
 class ClientFactory(BaseModel):
@@ -159,7 +216,7 @@ class ClientFactory(BaseModel):
         """Retrieves or creates a record of the user in the database.
         Use this method when you're unsure whether the user already exists in the database or not."""
         try:
-            model: UserModel = UserModel.get(UserModel.telegram_id == self.tg_id)
+            model: UserModel = UserModel.get(UserModel.user_id == self.tg_id)
 
             if model.name != name:
                 model.name = name
@@ -173,14 +230,16 @@ class ClientFactory(BaseModel):
 
         return Client(model=model, userdata=User.model_validate(model))
 
+    # TODO: get rid of multimethod
     @multimethod
     def get_client(self) -> Optional[Client]:
         try:
-            model = UserModel.get(UserModel.telegram_id == self.tg_id)
+            model = UserModel.get(UserModel.user_id == self.tg_id)
             return Client(model=model, userdata=User.model_validate(model))
         except DoesNotExist:
             return None
 
+    # TODO: get rid of multimethod
     @multimethod
     @staticmethod
     def get_client(ip_address: str) -> Optional[Client]:
@@ -194,23 +253,26 @@ class ClientFactory(BaseModel):
     def select_clients() -> list[Client]:
         return [Client(model=i, userdata=User.model_validate(i)) for i in UserModel.select()]
 
+    # ! Candidate for removal. Not used in any real code.
     @staticmethod
-    def select_peers() -> list[ConnectionPeer]:
-        return [ConnectionPeer.model_validate(i) for i in ConnectionPeerModel.select()]
+    def select_peers() -> list[WireguardPeer]:
+        return [WireguardPeer.model_validate(i) for i in WireguardPeerModel.select()]
 
     @staticmethod
-    def get_peer(ip_address: str) -> Optional[ConnectionPeer]:
+    def get_peer(ip_address: str) -> Optional[WireguardPeer]:
         try:
-            model = ConnectionPeerModel.get(ConnectionPeerModel.shared_ips == ip_address)
-            return ConnectionPeer.model_validate(model)
+            model = WireguardPeerModel.get(WireguardPeerModel.shared_ips == ip_address)
+            return WireguardPeer.model_validate(model)
         except DoesNotExist:
             return None
 
+    # TODO: get rid of multimethod
     @multimethod
     @staticmethod
     def delete_client(ip_address: str) -> bool:
         return UserModel.delete().where(UserModel.ip_address.contains(ip_address)).execute() == 1
 
+    # TODO: get rid of multimethod
     @multimethod
     def delete_client(self) -> bool:
         return UserModel.delete_by_id(self.tg_id)
@@ -222,14 +284,14 @@ class ClientFactory(BaseModel):
     @staticmethod
     def get_latest_peer_id() -> int:
         try:
-            return ConnectionPeerModel.select(ConnectionPeerModel.id).order_by(SQL("id").desc()).limit(1)[0].id
+            return PeersTableModel.select(PeersTableModel.id).order_by(SQL("id").desc()).limit(1)[0].id
         except IndexError: #? assuming that there're no peers in DB
             return 0
 
     @staticmethod
-    def get_ip_addresses() -> list[str]:
-        return [i.shared_ips for i in ConnectionPeerModel.select(ConnectionPeerModel.shared_ips)]
+    def get_used_ip_addresses() -> list[str]:
+        return [i.shared_ips for i in WireguardPeerModel.select(WireguardPeerModel.shared_ips)]
 
     @staticmethod
-    def delete_peer(peer: ConnectionPeer) -> bool:
-        return ConnectionPeerModel.delete().where(ConnectionPeerModel.id == peer.id).execute() == 1
+    def delete_peer(peer: BasePeer) -> bool:
+        return PeersTableModel.delete().where(PeersTableModel.id == peer.id).execute() == 1

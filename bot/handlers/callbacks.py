@@ -27,7 +27,7 @@ from config.loader import (bot_cfg, bot_instance, connections_observer,
                            interval_observer, ip_queue, server_cfg, wghub)
 from core.db.db_works import Client, ClientFactory
 from core.db.enums import ClientStatusChoices, PeerStatusChoices
-from core.db.model_serializer import ConnectionPeer
+from core.db.model_serializer import WireguardPeer
 from core.logs import bot_logger
 from core.utils.date_utils import parse_time
 from core.wg.wgconfig_helper import get_peer_config_str
@@ -35,10 +35,10 @@ from core.wg.wgconfig_helper import get_peer_config_str
 router = Router(name="callbacks")
 
 @connections_observer.timer_observer()
-async def warn_user_timeout(client: Client, peer: ConnectionPeer, disconnect: bool):
+async def warn_user_timeout(client: Client, peer: WireguardPeer, disconnect: bool):
     time_left = peer.peer_timer - datetime.datetime.now()
     delta_as_time = time.gmtime(time_left.total_seconds())
-    await bot_instance.send_message(client.userdata.telegram_id,
+    await bot_instance.send_message(client.userdata.user_id,
         (f"⚠️ Подключение {peer.peer_name} будет разорвано через {delta_as_time.tm_min} минут. "
         if not disconnect else
         f"❗ Подключение {peer.peer_name} было разорвано из-за неактивности. ") +
@@ -46,14 +46,14 @@ async def warn_user_timeout(client: Client, peer: ConnectionPeer, disconnect: bo
 
 @interval_observer.expire_date_warning_observer()
 async def warn_user_expire_date(client: Client):
-    await bot_instance.send_message(client.userdata.telegram_id,
+    await bot_instance.send_message(client.userdata.user_id,
         "⚠️ Твой аккаунт будет заблокирован через 24 часа из-за истечения оплаченного времени. "
         "Свяжись с администрацией для продления доступа."
     )
 
 @interval_observer.expire_date_block_observer()
 async def block_user_expire_date(client: Client):
-    await bot_instance.send_message(client.userdata.telegram_id,
+    await bot_instance.send_message(client.userdata.user_id,
         "❌ Твой аккаунт заблокирован из-за истечения оплаченного времени. "
         "Если ты хочешь продлить доступ, свяжись с нами."
     )
@@ -68,7 +68,7 @@ async def cancel_action_callback(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(ConnectionPeerCallbackData.filter(), default_state)
 async def select_peer_callback(callback: CallbackQuery, callback_data: ConnectionPeerCallbackData, state: FSMContext):
     client = ClientFactory(tg_id=callback_data.user_id).get_client()
-    peers = client.get_peers()
+    peers = client.get_wireguard_peers()
     media_group = MediaGroupBuilder()
     additional_interface_data = None
     await state.clear()
@@ -107,7 +107,7 @@ async def select_peer_callback(callback: CallbackQuery, callback_data: Connectio
 )
 async def ban_user_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
     client = ClientFactory(tg_id=callback_data.user_id).get_client()
-    peers = client.get_peers()
+    peers = client.get_wireguard_peers()
     client.set_status(ClientStatusChoices.STATUS_ACCOUNT_BLOCKED)
     # if peer has no peers, it will raise KeyError, so we suppress it
     wghub.disable_peers(peers)
@@ -122,7 +122,7 @@ async def ban_user_callback(callback: CallbackQuery, callback_data: UserActionsC
 )
 async def pardon_user_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
     client = ClientFactory(tg_id=callback_data.user_id).get_client()
-    peers = client.get_peers()
+    peers = client.get_wireguard_peers()
     client.set_status(ClientStatusChoices.STATUS_CREATED)
     wghub.enable_peers(peers)
     for peer in peers:
@@ -137,7 +137,7 @@ async def pardon_user_callback(callback: CallbackQuery, callback_data: UserActio
     UserActionsCallbackData.filter(F.action == UserActionsEnum.GET_CONFIGS)
 )
 async def get_user_configs_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
-    peers = ClientFactory(tg_id=callback_data.user_id).get_client().get_peers()
+    peers = ClientFactory(tg_id=callback_data.user_id).get_client().get_wireguard_peers()
 
     await callback.answer()
     if peers:
@@ -175,7 +175,7 @@ async def add_peer_callback(callback: CallbackQuery, callback_data: UserActionsC
         await callback.message.answer("❌ Нет доступных IP-адресов!")
         bot_logger.error("❌ Tried to add a peer, but no IP addresses are available.")
         return
-    new_peer = client.add_peer(shared_ips=ip_addr, peer_name=f"{client.userdata.name}_{last_id}", is_amnezia=wghub.is_amnezia)
+    new_peer = client.add_wireguard_peer(shared_ips=ip_addr, peer_name=f"{client.userdata.name}_{last_id}", is_amnezia=wghub.is_amnezia)
     wghub.add_peer(new_peer)
     with bot_logger.contextualize(peer=new_peer):
         bot_logger.info(f"New peer was created manually by {callback.message.from_user.username}")
@@ -207,7 +207,7 @@ async def preview_message_callback(callback: CallbackQuery, callback_data: Previ
 )
 async def change_peer_name_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData, state: FSMContext):
     client = ClientFactory(tg_id=callback.from_user.id).get_client()
-    keyboard = build_peer_configs_keyboard(client.userdata.telegram_id, client.get_peers(), display_all=False)
+    keyboard = build_peer_configs_keyboard(client.userdata.user_id, client.get_wireguard_peers(), display_all=False)
     keyboard.inline_keyboard.append(cancel_keyboard().inline_keyboard[0])
     await callback.answer()
     await callback.message.answer(
@@ -230,7 +230,7 @@ async def change_peer_name_entering_callback(callback: CallbackQuery, callback_d
 )
 async def extend_usage_time_dialog_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
     client = ClientFactory(tg_id=callback_data.user_id).get_client()
-    keyboard = extend_time_keyboard(client.userdata.telegram_id)
+    keyboard = extend_time_keyboard(client.userdata.user_id)
     keyboard.inline_keyboard.append(cancel_keyboard().inline_keyboard[0])
     await callback.answer()
     await callback.message.answer("🕒 На сколько продлить время использования?", reply_markup=keyboard)

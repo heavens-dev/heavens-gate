@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Type
 
 
@@ -49,3 +49,13 @@ class PeerStatusChoices(Enum):
                 return "Заблокирован"
             case _:
                 return "Что-то тут нечисто..."
+
+    @staticmethod
+    def xray_enabled(status: Type["PeerStatusChoices"]) -> bool:
+        return status in [PeerStatusChoices.STATUS_CONNECTED, PeerStatusChoices.STATUS_DISCONNECTED]
+
+
+class ProtocolType(StrEnum):
+    WIREGUARD = "wg"
+    AMNEZIA_WIREGUARD = "awg"
+    XRAY = "xray"

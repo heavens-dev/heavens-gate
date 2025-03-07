@@ -8,6 +8,7 @@ from core.db.enums import ClientStatusChoices, PeerStatusChoices
 from core.utils.ip_utils import check_ip_address
 
 
+# TODO: remove deprecated "ip_address" argument, since it was never used
 def get_client_by_id_or_ip(id_or_ip: Union[str, int]) -> tuple[Optional[Client], Optional[str]]:
     """Tries to get client by it's id or ip.
     Returns `(Client, None)` if the user was found, `(None, "error_message")` otherwise"""
@@ -23,10 +24,11 @@ def get_client_by_id_or_ip(id_or_ip: Union[str, int]) -> tuple[Optional[Client],
         return None, f"❌ Пользователь <code>{id_or_ip}</code> не найден."
     return client, None
 
+# TODO: XRray peers support
 def get_user_data_string(client: Client) -> str:
     """Returns human-readable data about User.
     Recommended to use `parse_mode="HTML"`."""
-    peers = client.get_peers()
+    peers = client.get_wireguard_peers()
     peers_str = ""
 
     for peer in peers:
@@ -39,7 +41,7 @@ def get_user_data_string(client: Client) -> str:
     expire_time = client.userdata.expire_time.strftime("%d %b %Y") if client.userdata.expire_time else "❌ Не оплачено"
 
     return f"""ℹ️ Информация об аккаунте:
-ID: <code>{client.userdata.telegram_id}</code>
+ID: <code>{client.userdata.user_id}</code>
 Текущий статус: {ClientStatusChoices.to_string(client.userdata.status)}
 Оплачен до: {expire_time}
 
