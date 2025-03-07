@@ -24,7 +24,7 @@ DNS = {server_cfg.dns_server}
 PrivateKey = {peer.private_key}
 {interface_str}
 [Peer]
-PublicKey = {peer.public_key}
+PublicKey = {server_cfg.public_key}
 PresharedKey = {peer.preshared_key}
 AllowedIPs = 0.0.0.0/0
 Endpoint = {server_cfg.endpoint_ip}:{server_cfg.endpoint_port}

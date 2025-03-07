@@ -85,7 +85,7 @@ jobs:
     name: Deploy to server
     if: >-
         ${{
-          (success() || failure()) && (!github.event.inputs.no_deploy) && (
+          (always()) && (!github.event.inputs.no_deploy) && (
           github.event_name == 'workflow_dispatch' ||
           (
             github.event_name == 'push' &&
@@ -116,7 +116,3 @@ jobs:
           git checkout ${{ github.ref_name }}
           git pull
           systemctl restart heavens-gate'
-
-      - name: 'Cleanup SSH'
-        run: |
-          rm -rf ~/.ssh
