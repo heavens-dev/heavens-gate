@@ -19,7 +19,11 @@ bot_cfg = cfg.get_bot_config()
 server_cfg = cfg.get_server_config()
 core_cfg = cfg.get_core_config()
 
-init_file_loggers(core_cfg.logs_path)
+if cfg.debug:
+    core_logger.warning("DEBUG MODE IS ENABLED! Disable it in production! Every message will be logged.")
+
+
+init_file_loggers(core_cfg.logs_path, is_debug=cfg.debug)
 
 RESERVED_IP_ADDRESSES = [
     server_cfg.user_ip + ".0",

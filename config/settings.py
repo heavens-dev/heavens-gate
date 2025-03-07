@@ -15,6 +15,8 @@ class Config:
         self.cfg = ConfigParser(strict=False)
         self.cfg.read(path_to_config)
 
+        self.debug = self.cfg.getboolean("core", "debug", fallback=False)
+
     def get_bot_config(self):
         return self.Bot(
             config_instance=self,
