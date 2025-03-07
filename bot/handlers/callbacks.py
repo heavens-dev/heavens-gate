@@ -101,13 +101,20 @@ async def select_peer_callback(callback: CallbackQuery, callback_data: Connectio
         }
 
     for peer in peers:
-        media_group.add_document(
-            media=BufferedInputFile(
-                file=bytes(get_peer_config_str(peer, additional_interface_data), encoding="utf-8"),
-                filename=f"{peer.peer_name or peer.id}_wg.conf"
+        if callback_data.peer_id == -1:
+            media_group.add_document(
+                media=BufferedInputFile(
+                    file=bytes(get_peer_config_str(peer, additional_interface_data), encoding="utf-8"),
+                    filename=f"{peer.peer_name or peer.id}_wg.conf"
+                )
             )
-        )
-        if peer.id == callback_data.peer_id:
+        elif peer.id == callback_data.peer_id:
+            media_group.add_document(
+                BufferedInputFile(
+                    file=bytes(get_peer_config_str(peer, additional_interface_data), encoding="utf-8"),
+                    filename=f"{peer.peer_name or peer.id}_wg.conf"
+                )
+            )
             break
 
     await bot_instance.send_media_group(callback.from_user.id, media=media_group.build())
