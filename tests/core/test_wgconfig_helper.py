@@ -10,7 +10,7 @@ DNS = {server_config.dns_server}
 PrivateKey = {peer.private_key}
 
 [Peer]
-PublicKey = {peer.public_key}
+PublicKey = {server_config.public_key}
 PresharedKey = {peer.preshared_key}
 AllowedIPs = 0.0.0.0/0
 Endpoint = {server_config.endpoint_ip}:{server_config.endpoint_port}

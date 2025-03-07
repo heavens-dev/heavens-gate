@@ -6,7 +6,7 @@ from core.db.model_serializer import ConnectionPeer
 from core.db.models import init_db
 from core.wg.wg_work import WGHub
 
-PRIVATE_KEY = "+HBpjH+3M0/CFRGjoi5uKy6okJRzHo87X0XP+37hUFw="
+PRIVATE_KEY = "AMHCM2a1apUYPMnrpobc6Erjaz6r7z9rN9ieonhJK3U="
 
 DEFAULT_PEERS = {
     "iamuser_0": ConnectionPeer(
@@ -87,7 +87,7 @@ def server_config():
         path="wg0.conf",
         user_ip="10.0.0",
         user_ip_mask="24",
-        public_key="TRZ4K+Hg8locDUbTaSRwqo9pBABN3gBJoQp7BQ3QbQY=",
+        public_key="qrpLJiZHfl+zKJrO4Uim7Xq1WaYpK1vDbG2WlMf4f3c=",
         private_key=PRIVATE_KEY,
         endpoint_ip="127.0.0.1",
         endpoint_port="12345",
