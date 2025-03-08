@@ -59,6 +59,9 @@ class Config:
 
     class Bot:
         def __init__(self, config_instance: Type["Config"], token: str, admins: str, faq_url: Optional[str]):
+            if not token or token.lower() == "none":
+                raise ValueError("Token MUST be specified in config file. For God's sake!")
+
             self.token = token
             self.faq_url = faq_url
 
@@ -67,9 +70,6 @@ class Config:
                 self.faq_url = None
             elif not self.faq_url or self.faq_url.lower() == "none":
                 self.faq_url = None
-
-            if not self.token:
-                raise ValueError("Token MUST be specified in config file. For God's sake!")
 
             self.__admins = [int(admin_id) for admin_id in admins.split(",")] if admins else []
             self.__config_instance = config_instance
