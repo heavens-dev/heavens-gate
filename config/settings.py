@@ -28,8 +28,8 @@ class Config:
             path=self.cfg.get("db", "path", fallback="db.sqlite")
         )
 
-    def get_server_config(self, *args, **kwargs):
-        return self.Server(
+    def get_wireguard_server_config(self, *args, **kwargs):
+        return self.WireguardServer(
             path=self.cfg.get("Server", "Path", fallback=os.getcwd() + "/wg0.conf"),
             user_ip=self.cfg.get("Server", "IP", fallback="127.0.0"),
             user_ip_mask=self.cfg.get("Server", "IPMask", fallback=32),
@@ -49,6 +49,17 @@ class Config:
             connection_update_timer=self.cfg.getint("core", "connection_update_timer", fallback=360),
             connection_connected_only_listen_timer=self.cfg.getint("core", "connection_connected_only_listen_timer", fallback=60),
             logs_path=self.cfg.get("core", "logs_path", fallback="./logs")
+        )
+
+    def get_xray_server_config(self):
+        return self.XrayServer(
+            host=self.cfg.get("Xray", "host"),
+            port=self.cfg.get("Xray", "port"),
+            web_path=self.cfg.get("Xray", "web_path"),
+            username=self.cfg.get("Xray", "username"),
+            password=self.cfg.get("Xray", "password"),
+            token=self.cfg.get("Xray", "token", fallback=None),
+            tls=self.cfg.getboolean("Xray", "tls", fallback=True)
         )
 
     def write_changes(self) -> bool:
@@ -92,7 +103,7 @@ class Config:
         def __init__(self, path: str):
             self.path = path
 
-    class Server:
+    class WireguardServer:
         def __init__(self,
                      path: str,
                      user_ip: str,
@@ -115,6 +126,23 @@ class Config:
             # TODO: split junk into sections (H1, H2 etc...)
             self.junk = junk
             self.args, self.kwargs = args, kwargs
+
+    class XrayServer:
+        def __init__(self,
+                     host: str,
+                     port: str,
+                     web_path: str,
+                     username: str,
+                     password: str,
+                     token: Optional[str] = None,
+                     tls: bool = True):
+                self.host = host
+                self.port = port
+                self.web_path = web_path
+                self.username = username
+                self.password = password
+                self.token = token
+                self.tls = tls
 
     class Core:
         def __init__(self,

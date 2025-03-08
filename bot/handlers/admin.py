@@ -11,7 +11,7 @@ from bot.handlers.keyboards import build_user_actions_keyboard, cancel_keyboard
 from bot.middlewares.client_getters_middleware import ClientGettersMiddleware
 from bot.utils.inline_paginator import UsersInlineKeyboardPaginator
 from bot.utils.message_utils import preview_message
-from bot.utils.states import WhisperStates
+from bot.utils.states import AddPeerStates, WhisperStates
 from bot.utils.user_helper import get_user_data_string
 from config.loader import bot_cfg, ip_queue, wghub
 from core.db.db_works import Client, ClientFactory
@@ -94,20 +94,26 @@ async def get_user(message: Message, client: Client):
     )
 
 @router.message(Command("add_peer"))
-async def add_peer(message: Message, client: Client):
+async def add_peer(message: Message, client: Client, state: FSMContext):
     last_id = ClientFactory.get_latest_peer_id()
-    try:
-        ip_addr = ip_queue.get_ip()
-    except Exception:
-        await message.answer("❌ Нет доступных IP-адресов!")
-        bot_logger.critical("❌ Tried to add a peer, but no IP addresses are available.")
-        return
-    new_peer = client.add_wireguard_peer(shared_ips=ip_addr, peer_name=f"{client.userdata.name}_{last_id}", is_amnezia=wghub.is_amnezia)
-    wghub.add_peer(new_peer)
-    with bot_logger.contextualize(peer=new_peer):
-        bot_logger.info(f"New peer was created manually by {message.from_user.username}")
-    await message.answer("✅ Пир создан и добавлен в конфиг.")
 
+    await message.answer("ℹ️ Выбери протокол")
+
+    await state.set_state(AddPeerStates.select_protocol)
+
+    # try:
+    #     ip_addr = ip_queue.get_ip()
+    # except Exception:
+    #     await message.answer("❌ Нет доступных IP-адресов!")
+    #     bot_logger.critical("❌ Tried to add a peer, but no IP addresses are available.")
+    #     return
+    # new_peer = client.add_wireguard_peer(shared_ips=ip_addr, peer_name=f"{client.userdata.name}_{last_id}", is_amnezia=wghub.is_amnezia)
+    # wghub.add_peer(new_peer)
+    # with bot_logger.contextualize(peer=new_peer):
+    #     bot_logger.info(f"New peer was created manually by {message.from_user.username}")
+    # await message.answer("✅ Пир создан и добавлен в конфиг.")
+
+# TODO: split this command into two separate commands
 @router.message(Command("disable_peer", "enable_peer"))
 async def manage_peer(message: Message):
     if len(message.text.split()) <= 1:
@@ -122,7 +128,7 @@ async def manage_peer(message: Message):
         await message.answer("❌ IP-адрес не найден.")
         return
 
-    client = ClientFactory(tg_id=peer.user_id).get_client()
+    client = ClientFactory(user_id=peer.user_id).get_client()
     if is_disable:
         client.set_peer_status(peer.id, PeerStatusChoices.STATUS_BLOCKED)
         wghub.disable_peer(peer)
@@ -142,6 +148,7 @@ async def manage_peer(message: Message):
         )
         bot_logger.info(f"Peer (IP: {peer.shared_ips}) was unblocked by {message.from_user.username}")
 
+# TODO: delete peer also by peer_id
 @router.message(Command("delete_peer"))
 async def delete_peer(message: Message):
     splitted_message = message.text.split()
@@ -165,8 +172,8 @@ async def delete_peer(message: Message):
 @router.message(Command("syncconfig"))
 async def syncconfig(message: Message):
     wghub.sync_config()
-    bot_logger.info(f"Config was forcefully synchronized by {message.from_user.id}")
-    await message.answer("✅ Конфиг синхронизирован с сервером.")
+    bot_logger.info(f"Wireguard config was forcefully synchronized by {message.from_user.id}")
+    await message.answer("✅ Конфиг Wireguard был синхронизирован с сервером.")
 
 @router.message(Command("users"))
 async def users(message: Message):

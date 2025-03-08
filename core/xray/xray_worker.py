@@ -22,29 +22,81 @@ class XrayWorker:
         self.api = Api(host, username, password, token, use_tls_verify=tls)
 
         self.api.login()
+        core_logger.info("Successfully logged into 3x-ui.")
+
+    @staticmethod
+    def peer_to_client(peer: XrayPeer) -> Client:
+        return Client(
+            id=str(peer.id), # explicitly converting to string, bug in py3xui
+            email=peer.peer_name,
+            enable=PeerStatusChoices.xray_enabled(peer.peer_status),
+            flow=peer.flow,
+            inbound_id=peer.inbound_id,
+            # tg_id="",
+            # sub_id=""
+        )
 
     @core_logger.catch()
-    def add_peers(self, peers: list[XrayPeer]):
+    def add_peers(self, inbound_id: int, peers: list[XrayPeer]) -> None:
         """Adds a peer to the 3x-ui API"""
         clients = []
 
         for peer in peers:
-            clients.append(Client(
-                id=peer.id,
-                email=peer.peer_name,
-                enable=PeerStatusChoices.xray_enabled(peer.peer_status),
-                flow=peer.flow,
-                inboundId=peer.inbound_id,
-            ))
+            if peer.inbound_id != inbound_id:
+                with core_logger.contextualize(peer_id=peer.id):
+                    core_logger.warning(
+                        f"Inbound ID does not match the peer's inbound ID: {peer.inbound_id} != {inbound_id}"
+                    )
+            clients.append(self.peer_to_client(peer))
 
-        self.api.client.add(peers.inbound_id, clients)
+        self.api.client.add(inbound_id, clients)
 
         with core_logger.contextualize(xray_peers=peers):
-            core_logger.info(f"Added Xray peers {peers.peer_name}.")
+            core_logger.info(f"Added new Xray peers.")
+
+    @core_logger.catch()
+    def update_peer(self, peer: XrayPeer) -> None:
+        client = self.peer_to_client(peer)
+        self.api.client.update(client.id, client)
+
+        with core_logger.contextualize(xray_peer=peer):
+            core_logger.info(f"Updated Xray peer.")
+
+    @core_logger.catch()
+    def delete_peer(self, peer: XrayPeer) -> None:
+        client = self.peer_to_client(peer)
+        self.api.client.delete(client.inbound_id, client.id)
+
+        with core_logger.contextualize(xray_peer=peer):
+            core_logger.info(f"Deleted Xray peer.")
+
+    @core_logger.catch()
+    def is_connected(self, peer: XrayPeer) -> bool:
+        # because `api.client.online()` returns a list of strings
+        # there is may be a problem when user has changed his name
+        # FIXME later
+        online_clients = self.api.client.online()
+        for client in online_clients:
+            if client == peer.peer_name:
+                return True
+        core_logger.debug(f"Peer {peer.peer_name} is not connected, online clients: {online_clients}.")
+        return False
+
+    @core_logger.catch()
+    def enable_peer(self, peer: XrayPeer) -> None:
+        peer.enable = True
+        self.api.client.update(peer.id, self.peer_to_client(peer))
+
+    @core_logger.catch()
+    def disable_peer(self, peer: XrayPeer):
+        peer.enable = False
+        self.api.client.update(peer.id, self.peer_to_client(peer))
 
     # TODO list:
     # [] edit peers
     # [] delete peers
     # [] get peers
     # [] ensure login
-    # [] disable peers
+    # [x] enable peer
+    # [x] disable peer
+    # [x] is connected

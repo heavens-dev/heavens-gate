@@ -20,7 +20,7 @@ class YesOrNoEnum(StrEnum):
     ANSWER_NO = "no"
 
 
-class ConnectionPeerCallbackData(CallbackData, prefix="peer"):
+class PeerCallbackData(CallbackData, prefix="peer"):
     """Peer callback data for keyboards.
 
     Args:

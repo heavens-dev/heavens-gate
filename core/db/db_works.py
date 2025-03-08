@@ -1,13 +1,12 @@
 import datetime
 import random
-from typing import Optional
+from typing import Optional, Union
 
-from multimethod import multimethod
 from peewee import SQL, DoesNotExist
 from pydantic import BaseModel, ConfigDict, PrivateAttr
 
 from core.db.enums import ClientStatusChoices, PeerStatusChoices, ProtocolType
-from core.db.model_serializer import BasePeer, User, WireguardPeer
+from core.db.model_serializer import BasePeer, User, WireguardPeer, XrayPeer
 from core.db.models import (PeersTableModel, UserModel, WireguardPeerModel,
                             XrayPeerModel, db)
 from core.logs import core_logger
@@ -22,7 +21,7 @@ BASE_PEER_FIELDS = ("id",
                     "peer_timer")
 
 class Client(BaseModel):
-    model_config = ConfigDict(ignored_types=(multimethod, ))
+    model_config = ConfigDict()
 
     userdata: User
     __model: UserModel = PrivateAttr(init=True)
@@ -46,6 +45,52 @@ class Client(BaseModel):
         return (self.__model.update(**kwargs)
                 .where(UserModel.user_id == self.userdata.user_id)
                 .execute()) == 1
+
+    def __add_peer(self,
+                   peer_name: str,
+                   peer_type: ProtocolType,
+                   **kwargs
+                   ) -> Optional[Union[WireguardPeer, XrayPeer]]:
+        """
+        Adds a new peer to the database, based on the provided peer type and keyword arguments.
+
+        Args:
+            peer_type (ProtocolType): The type of the peer to add.
+            **kwargs: Arbitrary keyword arguments containing the fields to add to the peer.
+
+        Returns:
+            Optional[BasePeer]: A validated peer model if the peer was added successfully,
+                               or None if the peer was not added.
+        """
+        with db.atomic() as transaction:
+            try:
+                peer = BasePeer.model_validate(PeersTableModel.create(
+                    user=self.__model,
+                    peer_type=peer_type.value,
+                    peer_name=peer_name
+                ))
+                match peer_type:
+                    case ProtocolType.WIREGUARD | ProtocolType.AMNEZIA_WIREGUARD:
+                        return WireguardPeer.model_validate(
+                            WireguardPeerModel.create(
+                                id=peer.id,
+                                **kwargs
+                            )
+                        )
+                    case ProtocolType.XRAY:
+                        return XrayPeer.model_validate(
+                            XrayPeerModel.create(
+                                id=peer.id,
+                                **kwargs
+                            )
+                        )
+                    case _:
+                        core_logger.warning(f"Unknown protocol type: {peer_type}")
+                        return None
+            except Exception as e:
+                transaction.rollback()
+                core_logger.error(f"Error while adding peer: {e}")
+                return None
 
     def __update_peer(self, peer_id: int, **kwargs) -> bool:
         """
@@ -91,8 +136,8 @@ class Client(BaseModel):
                 if protocol_specific_fields:
                     protocol = PeersTableModel.get(PeersTableModel.id == peer_id).peer_type
                     match protocol:
-                        case (ProtocolType.WIREGUARD,
-                              ProtocolType.AMNEZIA_WIREGUARD):
+                        case ProtocolType.WIREGUARD | \
+                             ProtocolType.AMNEZIA_WIREGUARD:
                             return (WireguardPeerModel.update(**protocol_specific_fields)
                                 .where(WireguardPeerModel.id == peer_id)
                                 .execute()) == 1
@@ -108,29 +153,40 @@ class Client(BaseModel):
                 core_logger.error(f"Error while updating peer: {e}")
                 return False
 
-    def set_status(self, status: ClientStatusChoices) -> bool:
-        self.userdata.status = status
-        return self.__update_client(status=status.value)
-
-    def set_expire_time(self, expire_time: datetime.datetime) -> bool:
-        self.userdata.expire_time = expire_time
-        return self.__update_client(expire_time=expire_time)
-
     def add_wireguard_peer(self,
                  shared_ips: str,
                  public_key: Optional[str] = None,
                  private_key: Optional[str] = None,
                  preshared_key: Optional[str] = None,
                  is_amnezia: Optional[bool] = False,
-                 peer_name: str = None) -> WireguardPeer:
+                 peer_name: Optional[str] = None
+                 ) -> WireguardPeer:
         """
         Adds wireguard peer to database. Automatically generates peer keys if they're not present in arguments.
 
-        Returns `WireguardPeer`.
+        Args:
+            shared_ips (str): Comma-separated list of IPs.
+            public_key (Optional[str]): Public key of the peer. Defaults to None.
+            private_key (Optional[str]): Private key of the peer. Defaults to None.
+            preshared_key (Optional[str]): Preshared key of the peer. Defaults to None.
+            is_amnezia (Optional[bool]): True if the peer is an Amnezia peer. Defaults to False.
+            peer_name (Optional[str]): Name of the peer. Defaults to None.
+
+        Returns:
+            `WireguardPeer`: Validated `WireguardPeer` model if the peer was added successfully.
         """
-        private_peer_key = private_key or generate_private_key(is_amnezia=is_amnezia)
-        public_peer_key = public_key or generate_public_key(private_peer_key, is_amnezia=is_amnezia)
-        preshared_peer_key = preshared_key or generate_preshared_key(is_amnezia=is_amnezia)
+        wireguard_args = {
+            "shared_ips": shared_ips
+        }
+        wireguard_args["private_key"] = private_key or generate_private_key(is_amnezia=is_amnezia)
+        wireguard_args["public_key"] = public_key or generate_public_key(private_key, is_amnezia=is_amnezia)
+        wireguard_args["preshared_key"] = preshared_key or generate_preshared_key(is_amnezia=is_amnezia)
+
+        if not peer_name:
+            peer_name = f"{self.userdata.name}_{ClientFactory.get_latest_peer_id()}"
+
+        wireguard_args["peer_name"] = peer_name
+
         Jc, Jmin, Jmax = None, None, None
         if is_amnezia:
             # ? recommended values for: -- [3, 10], Jmin = 50, Jmax = 1000
@@ -138,25 +194,45 @@ class Client(BaseModel):
             Jc = random.randint(3, 127)
             Jmin = random.randint(3, 700)
             Jmax = random.randint(Jmin + 1, 1270)
-        return WireguardPeer.model_validate(WireguardPeerModel.create(
-            user=self.__model,
-            public_key=public_peer_key,
-            private_key=private_peer_key,
-            preshared_key=preshared_peer_key,
-            shared_ips=shared_ips,
+
+        wireguard_args["Jc"] = Jc
+        wireguard_args["Jmin"] = Jmin
+        wireguard_args["Jmax"] = Jmax
+
+        return self.__add_peer(
             peer_name=peer_name,
-            is_amnezia=is_amnezia,
-            Jc=Jc,
-            Jmin=Jmin,
-            Jmax=Jmax,
-        ))
+            peer_type=ProtocolType.AMNEZIA_WIREGUARD if is_amnezia else ProtocolType.WIREGUARD,
+            **wireguard_args
+        )
 
-    def __get_peers(self, *criteria) -> list[BasePeer]:
+    def add_xray_peer(self, peer_name: str, flow: str, inbound_id: int) -> XrayPeer:
+        return self.__add_peer(
+            peer_name=peer_name,
+            peer_type=ProtocolType.XRAY,
+            flow=flow,
+            inbound_id=inbound_id,
+        )
+
+    def __get_peers(self,
+                    protocol_type: Optional[ProtocolType] = None,
+                    *criteria
+                    ) -> Optional[list[Union[BasePeer, WireguardPeer, XrayPeer]]]:
         """Private method for working with peers"""
-        return list(PeersTableModel.select()
-                    .where(PeersTableModel.user_id == self.__model, *criteria))
+        match protocol_type:
+            case ProtocolType.WIREGUARD | ProtocolType.AMNEZIA_WIREGUARD:
+                return list(WireguardPeerModel.select()
+                            .where(WireguardPeerModel.user == self.__model, *criteria)
+                            )
+            case ProtocolType.XRAY:
+                return list(XrayPeerModel.select()
+                            .where(XrayPeerModel.user == self.__model, *criteria)
+                            )
+            case _:
+                return list(PeersTableModel.select()
+                            .where(PeersTableModel.user == self.__model, *criteria)
+                            )
 
-    def get_peers(self) -> list[BasePeer]:
+    def get_all_peers(self) -> list[BasePeer]:
         """Get validated peers model(s)"""
         return [
             BasePeer.model_validate(model)
@@ -166,23 +242,28 @@ class Client(BaseModel):
     def change_peer_name(self, peer_id: int, peer_name: str):
         self.__update_peer(peer_id, peer_name=peer_name)
 
-    def set_peer_status(self, peer_id: int, peer_status: PeerStatusChoices):
-        self.__update_peer(peer_id, peer_status=peer_status.value)
+    def set_status(self, status: ClientStatusChoices) -> bool:
+        self.userdata.status = status
+        return self.__update_client(status=status.value)
 
-    def set_peer_timer(self, peer_id, time: datetime.datetime):
-        self.__update_peer(peer_id, peer_timer=time)
+    def set_expire_time(self, expire_time: datetime.datetime) -> bool:
+        self.userdata.expire_time = expire_time
+        return self.__update_client(expire_time=expire_time)
 
-    # TODO: include Xray peers
-    def get_connected_peers(self) -> list[WireguardPeer]:
+    def set_peer_status(self, peer_id: int, peer_status: PeerStatusChoices) -> bool:
+        return self.__update_peer(peer_id, peer_status=peer_status.value)
+
+    def set_peer_timer(self, peer_id: int, time: datetime.datetime) -> bool:
+        return self.__update_peer(peer_id, peer_timer=time)
+
+    def get_connected_peers(self) -> list[BasePeer]:
         return [
-            WireguardPeer.model_validate(model)
-            for model in self.__get_peers(WireguardPeerModel.peer_status == PeerStatusChoices.STATUS_CONNECTED.value)
+            PeersTableModel.model_validate(model)
+            for model in self.__get_peers(PeersTableModel.peer_status == PeerStatusChoices.STATUS_CONNECTED.value)
         ]
 
-    # TODO: get rid of multimethod
-    @multimethod
-    def delete_peer(self) -> bool:
-        """Delete peers by `telegram_id`
+    def delete_peers(self) -> bool:
+        """Delete peers by `user_id`
 
         Returns:
             bool: True if successfull. False otherwise
@@ -191,10 +272,8 @@ class Client(BaseModel):
                 .where(UserModel.user_id == self.userdata.user_id)
                 .execute()) == 1
 
-    # TODO: get rid of multimethod
-    @multimethod
-    def delete_peer(self, ip_address: str) -> bool:
-        """Delete single peer by `ip_address`
+    def delete_wireguard_peer_by_ip(self, ip_address: str) -> bool:
+        """Delete wireguard peer by `ip_address`
 
         Returns:
             bool: True if successfull. False otherwise
@@ -208,15 +287,15 @@ class Client(BaseModel):
                 .execute()) == 1
 
 class ClientFactory(BaseModel):
-    model_config = ConfigDict(ignored_types=(multimethod, ))
+    model_config = ConfigDict()
 
-    tg_id: int
+    user_id: int
 
     def get_or_create_client(self, name: str, **kwargs) -> Client:
         """Retrieves or creates a record of the user in the database.
         Use this method when you're unsure whether the user already exists in the database or not."""
         try:
-            model: UserModel = UserModel.get(UserModel.user_id == self.tg_id)
+            model: UserModel = UserModel.get(UserModel.user_id == self.user_id)
 
             if model.name != name:
                 model.name = name
@@ -224,27 +303,40 @@ class ClientFactory(BaseModel):
                 with core_logger.contextualize(model=model):
                     core_logger.debug(f"User has changed his username, updating it in DB")
         except DoesNotExist:
-            model: UserModel = UserModel.create(telegram_id=self.tg_id, name=name, **kwargs)
+            model: UserModel = UserModel.create(user_id=self.user_id, name=name, **kwargs)
             with core_logger.contextualize(model=model):
                 core_logger.info(f"New user was created.")
 
         return Client(model=model, userdata=User.model_validate(model))
 
-    # TODO: get rid of multimethod
-    @multimethod
     def get_client(self) -> Optional[Client]:
+        """
+        Retrieves a Client instance associated with the user ID.
+
+        Returns:
+            Optional[Client]: A Client instance containing the user model and validated user data,
+                             or None if the user does not exist in the database.
+        """
         try:
-            model = UserModel.get(UserModel.user_id == self.tg_id)
+            model = UserModel.get(UserModel.user_id == self.user_id)
             return Client(model=model, userdata=User.model_validate(model))
         except DoesNotExist:
             return None
 
-    # TODO: get rid of multimethod
-    @multimethod
     @staticmethod
-    def get_client(ip_address: str) -> Optional[Client]:
+    def get_client_by_id(user_id: Union[int, str]) -> Optional[Client]:
+        """
+        Retrieve a client by their user ID.
+
+        Args:
+            user_id (Union[int, str]): The unique identifier of the user to find.
+
+        Returns:
+            Optional[Client]: A Client instance containing the user model and validated user data,
+                             or None if the user does not exist in the database.
+        """
         try:
-            model = UserModel.get(UserModel.ip_address == ip_address)
+            model = UserModel.get(UserModel.user_id == user_id)
             return Client(model=model, userdata=User.model_validate(model))
         except DoesNotExist:
             return None
@@ -253,32 +345,24 @@ class ClientFactory(BaseModel):
     def select_clients() -> list[Client]:
         return [Client(model=i, userdata=User.model_validate(i)) for i in UserModel.select()]
 
-    # ! Candidate for removal. Not used in any real code.
     @staticmethod
-    def select_peers() -> list[WireguardPeer]:
-        return [WireguardPeer.model_validate(i) for i in WireguardPeerModel.select()]
-
-    @staticmethod
-    def get_peer(ip_address: str) -> Optional[WireguardPeer]:
+    def get_wireguard_peer(ip_address: str) -> Optional[WireguardPeer]:
         try:
             model = WireguardPeerModel.get(WireguardPeerModel.shared_ips == ip_address)
             return WireguardPeer.model_validate(model)
         except DoesNotExist:
             return None
 
-    # TODO: get rid of multimethod
-    @multimethod
-    @staticmethod
-    def delete_client(ip_address: str) -> bool:
-        return UserModel.delete().where(UserModel.ip_address.contains(ip_address)).execute() == 1
-
-    # TODO: get rid of multimethod
-    @multimethod
     def delete_client(self) -> bool:
-        return UserModel.delete_by_id(self.tg_id)
+        return UserModel.delete_by_id(self.user_id)
+
+    @staticmethod
+    def delete_client_by_id(user_id: Union[int, str]) -> bool:
+        return UserModel.delete_by_id(user_id)
 
     @staticmethod
     def count_clients() -> int:
+        """Returns the number of clients in the database."""
         return UserModel.select().count()
 
     @staticmethod

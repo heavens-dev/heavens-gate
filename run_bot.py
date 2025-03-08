@@ -32,7 +32,7 @@ async def cmd_start(message: Message) -> None:
 
     with db_instance.atomic():
         # just in case.
-        ClientFactory(tg_id=message.chat.id).get_or_create_client(
+        ClientFactory(user_id=message.chat.id).get_or_create_client(
             name=message.chat.username
         )
 

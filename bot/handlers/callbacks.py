@@ -12,8 +12,7 @@ from aiogram.utils.media_group import MediaGroupBuilder
 from bot.handlers.keyboards import (build_peer_configs_keyboard,
                                     build_user_actions_keyboard,
                                     cancel_keyboard, extend_time_keyboard)
-from bot.utils.callback_data import (ConnectionPeerCallbackData,
-                                     GetUserCallbackData,
+from bot.utils.callback_data import (GetUserCallbackData, PeerCallbackData,
                                      PreviewMessageCallbackData,
                                      TimeExtenderCallbackData,
                                      UserActionsCallbackData, UserActionsEnum,
@@ -38,6 +37,7 @@ router = Router(name="callbacks")
 async def warn_user_timeout(client: Client, peer: WireguardPeer, disconnect: bool):
     time_left = peer.peer_timer - datetime.datetime.now()
     delta_as_time = time.gmtime(time_left.total_seconds())
+    # TODO: write an ip address with a peer name
     await bot_instance.send_message(client.userdata.user_id,
         (f"⚠️ Подключение {peer.peer_name} будет разорвано через {delta_as_time.tm_min} минут. "
         if not disconnect else
@@ -65,9 +65,9 @@ async def cancel_action_callback(callback: CallbackQuery, state: FSMContext):
     await callback.message.delete()
     await callback.message.answer("❌ Действие отменено.")
 
-@router.callback_query(ConnectionPeerCallbackData.filter(), default_state)
-async def select_peer_callback(callback: CallbackQuery, callback_data: ConnectionPeerCallbackData, state: FSMContext):
-    client = ClientFactory(tg_id=callback_data.user_id).get_client()
+@router.callback_query(PeerCallbackData.filter(), default_state)
+async def select_peer_callback(callback: CallbackQuery, callback_data: PeerCallbackData, state: FSMContext):
+    client = ClientFactory(user_id=callback_data.user_id).get_client()
     peers = client.get_wireguard_peers()
     media_group = MediaGroupBuilder()
     additional_interface_data = None
@@ -106,7 +106,7 @@ async def select_peer_callback(callback: CallbackQuery, callback_data: Connectio
     UserActionsCallbackData.filter(F.action == UserActionsEnum.BAN_USER)
 )
 async def ban_user_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
-    client = ClientFactory(tg_id=callback_data.user_id).get_client()
+    client = ClientFactory(user_id=callback_data.user_id).get_client()
     peers = client.get_wireguard_peers()
     client.set_status(ClientStatusChoices.STATUS_ACCOUNT_BLOCKED)
     # if peer has no peers, it will raise KeyError, so we suppress it
@@ -121,7 +121,7 @@ async def ban_user_callback(callback: CallbackQuery, callback_data: UserActionsC
     UserActionsCallbackData.filter(F.action == UserActionsEnum.PARDON_USER)
 )
 async def pardon_user_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
-    client = ClientFactory(tg_id=callback_data.user_id).get_client()
+    client = ClientFactory(user_id=callback_data.user_id).get_client()
     peers = client.get_wireguard_peers()
     client.set_status(ClientStatusChoices.STATUS_CREATED)
     wghub.enable_peers(peers)
@@ -137,7 +137,7 @@ async def pardon_user_callback(callback: CallbackQuery, callback_data: UserActio
     UserActionsCallbackData.filter(F.action == UserActionsEnum.GET_CONFIGS)
 )
 async def get_user_configs_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
-    peers = ClientFactory(tg_id=callback_data.user_id).get_client().get_wireguard_peers()
+    peers = ClientFactory(user_id=callback_data.user_id).get_client().get_wireguard_peers()
 
     await callback.answer()
     if peers:
@@ -155,7 +155,7 @@ async def get_user_configs_callback(callback: CallbackQuery, callback_data: User
     UserActionsCallbackData.filter(F.action == UserActionsEnum.UPDATE_DATA)
 )
 async def update_user_message_data(callback: CallbackQuery, callback_data: UserActionsCallbackData):
-    client = ClientFactory(tg_id=callback_data.user_id).get_client()
+    client = ClientFactory(user_id=callback_data.user_id).get_client()
     await callback.answer(f"Данные пользователя {client.userdata.name} обновлены.")
     with suppress(TelegramBadRequest):
         await callback.message.edit_text(
@@ -167,7 +167,7 @@ async def update_user_message_data(callback: CallbackQuery, callback_data: UserA
     UserActionsCallbackData.filter(F.action == UserActionsEnum.ADD_PEER)
 )
 async def add_peer_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
-    client = ClientFactory(tg_id=callback_data.user_id).get_client()
+    client = ClientFactory(user_id=callback_data.user_id).get_client()
     last_id = ClientFactory.get_latest_peer_id()
     try:
         ip_addr = ip_queue.get_ip()
@@ -206,7 +206,7 @@ async def preview_message_callback(callback: CallbackQuery, callback_data: Previ
     UserActionsCallbackData.filter(F.action == UserActionsEnum.CHANGE_PEER_NAME)
 )
 async def change_peer_name_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData, state: FSMContext):
-    client = ClientFactory(tg_id=callback.from_user.id).get_client()
+    client = ClientFactory(user_id=callback.from_user.id).get_client()
     keyboard = build_peer_configs_keyboard(client.userdata.user_id, client.get_wireguard_peers(), display_all=False)
     keyboard.inline_keyboard.append(cancel_keyboard().inline_keyboard[0])
     await callback.answer()
@@ -216,8 +216,8 @@ async def change_peer_name_callback(callback: CallbackQuery, callback_data: User
     )
     await state.set_state(RenamePeerStates.peer_selection)
 
-@router.callback_query(ConnectionPeerCallbackData.filter(), RenamePeerStates.peer_selection)
-async def change_peer_name_entering_callback(callback: CallbackQuery, callback_data: ConnectionPeerCallbackData, state: FSMContext):
+@router.callback_query(PeerCallbackData.filter(), RenamePeerStates.peer_selection)
+async def change_peer_name_entering_callback(callback: CallbackQuery, callback_data: PeerCallbackData, state: FSMContext):
     await callback.answer()
     await callback.message.delete()
     await callback.message.answer("🔤 Введи новое имя для конфига (или <code>отмена</code>, если передумал):",
@@ -229,7 +229,7 @@ async def change_peer_name_entering_callback(callback: CallbackQuery, callback_d
     UserActionsCallbackData.filter(F.action == UserActionsEnum.EXTEND_USAGE_TIME)
 )
 async def extend_usage_time_dialog_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
-    client = ClientFactory(tg_id=callback_data.user_id).get_client()
+    client = ClientFactory(user_id=callback_data.user_id).get_client()
     keyboard = extend_time_keyboard(client.userdata.user_id)
     keyboard.inline_keyboard.append(cancel_keyboard().inline_keyboard[0])
     await callback.answer()
@@ -239,7 +239,7 @@ async def extend_usage_time_dialog_callback(callback: CallbackQuery, callback_da
     TimeExtenderCallbackData.filter(F.extend_for != "custom")
 )
 async def extend_usage_time_callback(callback: CallbackQuery, callback_data: TimeExtenderCallbackData):
-    client = ClientFactory(tg_id=callback_data.user_id).get_client()
+    client = ClientFactory(user_id=callback_data.user_id).get_client()
     time_to_add = parse_time(callback_data.extend_for)
 
     if not time_to_add:
@@ -284,7 +284,7 @@ async def whisper_user_callback(callback: CallbackQuery, callback_data: UserActi
 
 @router.callback_query(GetUserCallbackData.filter())
 async def get_user_callback(callback: CallbackQuery, callback_data: GetUserCallbackData):
-    client = ClientFactory(tg_id=callback_data.user_id).get_client()
+    client = ClientFactory(user_id=callback_data.user_id).get_client()
     await callback.answer()
     await callback.message.answer(f"Пользователь: {client.userdata.name}")
     await callback.message.answer(
@@ -310,7 +310,7 @@ async def finally_change_peer_name(message: Message, state: FSMContext):
 
     data = await state.get_data()
     user_id, peer_id = data.values()
-    client = ClientFactory(tg_id=user_id).get_client()
+    client = ClientFactory(user_id=user_id).get_client()
     client.change_peer_name(peer_id, new_name)
     await state.clear()
     await message.answer("✅ Конфиг был успешно переименован!")
@@ -343,7 +343,7 @@ async def extend_usage_time_custom_entered(message: Message, state: FSMContext):
         await message.answer(f"❌ Неправильный формат времени: {message.text}")
         return
 
-    client = ClientFactory(tg_id=user_id).get_client()
+    client = ClientFactory(user_id=user_id).get_client()
 
     if extend_users_usage_time(client, time_to_add):
         await message.answer(f"✅ Время использования продлено на {message.text}.")
