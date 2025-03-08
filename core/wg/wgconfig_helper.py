@@ -1,9 +1,8 @@
-from config.loader import server_cfg
-from core.db.model_serializer import WireguardPeer
+from config.settings import Config
+from core.db.model_serializer import ConnectionPeer
 
 
-# TODO: add arguments for every server configuration paramenters since we are using configuration, which is bad
-def get_peer_config_str(peer: WireguardPeer, interface_args: dict = None) -> str:
+def get_peer_config_str(server_cfg: Config.Server, peer: ConnectionPeer, interface_args: dict = None) -> str:
     """
     Generates config string based on given ConnectionPeer.
     """
@@ -24,7 +23,6 @@ Address = {peer.shared_ips}/{server_cfg.user_ip_mask}
 DNS = {server_cfg.dns_server}
 PrivateKey = {peer.private_key}
 {interface_str}
-
 [Peer]
 PublicKey = {server_cfg.public_key}
 PresharedKey = {peer.preshared_key}

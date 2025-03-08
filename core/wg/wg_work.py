@@ -10,10 +10,11 @@ from core.logs import core_logger
 
 
 class WGHub:
-    def __init__(self, path: str, is_amnezia: bool = False):
+    def __init__(self, path: str, is_amnezia: bool = False, auto_sync: bool = True):
         self.path = path
         self.wgconfig = wgconfig.WGConfig(path)
         self.interface_name = os.path.basename(path).split(".")[0]
+        self.auto_sync = auto_sync
 
         core_logger.debug(f"Path to configuration file: {self.path} => Interface name: {self.interface_name}")
         self.wgconfig.read_file()
@@ -35,9 +36,12 @@ class WGHub:
             func(self, peer)
 
             self.wgconfig.write_file()
-            self.sync_config()
+            if self.auto_sync:
+                self.sync_config()
+                core_logger.info("Config applied and synced with Wireguard server.")
+            else:
+                core_logger.warning("Auto sync is disabled. Config was applied to file, consider syncing it manually.")
 
-            core_logger.info("Config applied and synced with Wireguard server.")
         return inner
 
     @apply_and_sync
