@@ -50,7 +50,7 @@ class BasePeer(BaseModel):
     @classmethod
     def test(cls, data):
         if not isinstance(data, (dict, PeersTableModel)):
-            if hasattr(data, "peer"):
+            if hasattr(data, "peer") and issubclass(data.peer.__class__, PeersTableModel):
                 data.user_id = data.peer.user_id
                 data.peer_name = data.peer.peer_name
                 data.peer_type = data.peer.peer_type

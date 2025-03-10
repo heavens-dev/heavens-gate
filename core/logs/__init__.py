@@ -16,6 +16,7 @@ logger.add(
     format=STDERR_LOGS_FORMAT,
     enqueue=True, # ? makes logging to console asynchronous
     colorize=True,
+    backtrace=False,
 )
 
 def init_file_loggers(path: str):

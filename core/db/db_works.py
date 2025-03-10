@@ -47,6 +47,7 @@ class Client(BaseModel):
                 .where(UserModel.user_id == self.userdata.user_id)
                 .execute()) == 1
 
+    @core_logger.catch()
     def __add_peer(self,
                    peer_name: str,
                    peer_type: ProtocolType,
@@ -70,7 +71,7 @@ class Client(BaseModel):
                     peer_type=peer_type.value,
                     peer_name=peer_name
                 ))
-                core_logger.debug(f"Created a new peer with ID: {peer.id}")
+                core_logger.debug(f"Created a new base peer with ID: {peer.id}")
                 match peer_type:
                     case ProtocolType.WIREGUARD | ProtocolType.AMNEZIA_WIREGUARD:
                         wg_peer_model = WireguardPeerModel.create(
@@ -88,10 +89,10 @@ class Client(BaseModel):
                         )
                     case ProtocolType.XRAY:
                         xray_peer = XrayPeerModel.create(
-                            peer=peer,
+                            peer=peer.id,
                             **kwargs
                         )
-                        return XrayPeer.model_validate(
+                        return XrayPeer(
                             **peer.model_dump(exclude=("id",)),
                             **model_to_dict(
                                 xray_peer,
@@ -103,7 +104,7 @@ class Client(BaseModel):
                         return None
             except Exception as e:
                 transaction.rollback()
-                core_logger.error(f"Error while adding peer: {e}")
+                core_logger.exception(f"Error while adding peer: {e}")
                 return None
 
     def __update_peer(self, peer_id: int, **kwargs) -> bool:
@@ -217,7 +218,10 @@ class Client(BaseModel):
             **wireguard_args
         )
 
-    def add_xray_peer(self, peer_name: str, flow: str, inbound_id: int) -> XrayPeer:
+    def add_xray_peer(self, flow: str, inbound_id: int, peer_name: Optional[str] = None) -> XrayPeer:
+        if not peer_name:
+            peer_name = f"{self.userdata.name}_{ClientFactory.get_latest_peer_id()}"
+
         return self.__add_peer(
             peer_name=peer_name,
             peer_type=ProtocolType.XRAY,
@@ -241,19 +245,27 @@ class Client(BaseModel):
                     .where(PeersTableModel.user == self.__model, *criteria)
                 )
             case ProtocolType.XRAY:
-                return list(XrayPeerModel.select()
-                            .where(XrayPeerModel.user == self.__model, *criteria)
+                return list(XrayPeerModel.select(PeersTableModel, XrayPeerModel)
+                            .join(
+                                PeersTableModel,
+                                on=(PeersTableModel.id == XrayPeerModel.peer)
+                            )
+                            .where(PeersTableModel.user == self.__model, *criteria)
                             )
             case _:
                 return list(PeersTableModel.select()
                             .where(PeersTableModel.user == self.__model, *criteria)
                             )
 
-    def get_wireguard_peers(self, is_amnezia: bool) -> Optional[list[WireguardPeer]]:
+    def get_wireguard_peers(self, is_amnezia: bool) -> list[WireguardPeer]:
         peer_models = self.__get_peers(ProtocolType.WIREGUARD if not is_amnezia
-                                           else ProtocolType.AMNEZIA_WIREGUARD)
+                                       else ProtocolType.AMNEZIA_WIREGUARD)
 
         return [WireguardPeer.model_validate(model) for model in peer_models]
+
+    def get_xray_peers(self) -> list[XrayPeer]:
+        peer_models = self.__get_peers(ProtocolType.XRAY)
+        return [XrayPeer.model_validate(model) for model in peer_models]
 
     def get_all_peers(self) -> list[BasePeer]:
         """Get validated peers model(s)"""
@@ -391,7 +403,9 @@ class ClientFactory(BaseModel):
     @staticmethod
     def get_latest_peer_id() -> int:
         try:
-            return PeersTableModel.select(PeersTableModel.id).order_by(SQL("id").desc()).limit(1)[0].id
+            return (PeersTableModel.select(PeersTableModel.id)
+                   .order_by(SQL("id").desc())
+                   .limit(1)[0].id)
         except IndexError: #? assuming that there're no peers in DB
             return 0
 
