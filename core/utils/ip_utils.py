@@ -11,7 +11,7 @@ class IPQueue:
         for ip in ip_list:
             self._ip_queue.put(ip)
 
-    def get_ip(self) -> str:
+    def bget_ip(self) -> str:
         """
         Retrieve an IP address from the queue.
 
@@ -23,7 +23,7 @@ class IPQueue:
         """
         if self._ip_queue.empty():
             core_logger.critical("No IP addresses available!")
-            raise Exception("No IP addresses available")
+            raise IndexError("No IP addresses available")
         return self._ip_queue.get()
 
     def release_ip(self, ip: str) -> None:
