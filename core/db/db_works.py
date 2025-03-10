@@ -3,6 +3,7 @@ import random
 from typing import Optional, Union
 
 from peewee import SQL, DoesNotExist
+from playhouse.shortcuts import model_to_dict
 from pydantic import BaseModel, ConfigDict, PrivateAttr
 
 from core.db.enums import ClientStatusChoices, PeerStatusChoices, ProtocolType
@@ -65,24 +66,37 @@ class Client(BaseModel):
         with db.atomic() as transaction:
             try:
                 peer = BasePeer.model_validate(PeersTableModel.create(
-                    user=self.__model,
+                    user_id=self.__model,
                     peer_type=peer_type.value,
                     peer_name=peer_name
                 ))
+                core_logger.debug(f"Created a new peer with ID: {peer.id}")
                 match peer_type:
                     case ProtocolType.WIREGUARD | ProtocolType.AMNEZIA_WIREGUARD:
-                        return WireguardPeer.model_validate(
-                            WireguardPeerModel.create(
-                                id=peer.id,
-                                **kwargs
-                            )
+                        wg_peer_model = WireguardPeerModel.create(
+                            peer=peer.id,
+                            **kwargs
+                        )
+                        # there's probably an easier way to extract all data
+                        # but i'm lazy, so leaving it like that until idk
+                        return WireguardPeer(
+                            **peer.model_dump(exclude=("id",)),
+                            **model_to_dict(
+                                wg_peer_model,
+                                exclude=[WireguardPeerModel.peer]
+                            ),
                         )
                     case ProtocolType.XRAY:
+                        xray_peer = XrayPeerModel.create(
+                            peer=peer,
+                            **kwargs
+                        )
                         return XrayPeer.model_validate(
-                            XrayPeerModel.create(
-                                id=peer.id,
-                                **kwargs
-                            )
+                            **peer.model_dump(exclude=("id",)),
+                            **model_to_dict(
+                                xray_peer,
+                                exclude=[XrayPeerModel.peer]
+                            ),
                         )
                     case _:
                         core_logger.warning(f"Unknown protocol type: {peer_type}")
@@ -160,7 +174,7 @@ class Client(BaseModel):
                  preshared_key: Optional[str] = None,
                  is_amnezia: Optional[bool] = False,
                  peer_name: Optional[str] = None
-                 ) -> WireguardPeer:
+                 ) -> Optional[WireguardPeer]:
         """
         Adds wireguard peer to database. Automatically generates peer keys if they're not present in arguments.
 
@@ -184,8 +198,6 @@ class Client(BaseModel):
 
         if not peer_name:
             peer_name = f"{self.userdata.name}_{ClientFactory.get_latest_peer_id()}"
-
-        wireguard_args["peer_name"] = peer_name
 
         Jc, Jmin, Jmax = None, None, None
         if is_amnezia:
@@ -216,13 +228,18 @@ class Client(BaseModel):
     def __get_peers(self,
                     protocol_type: Optional[ProtocolType] = None,
                     *criteria
-                    ) -> Optional[list[Union[BasePeer, WireguardPeer, XrayPeer]]]:
+                    ) -> Optional[list[Union[PeersTableModel, WireguardPeerModel, XrayPeerModel]]]:
         """Private method for working with peers"""
         match protocol_type:
             case ProtocolType.WIREGUARD | ProtocolType.AMNEZIA_WIREGUARD:
-                return list(WireguardPeerModel.select()
-                            .where(WireguardPeerModel.user == self.__model, *criteria)
-                            )
+                return list(
+                    WireguardPeerModel.select(PeersTableModel, WireguardPeerModel)
+                    .join(
+                        PeersTableModel,
+                        on=(PeersTableModel.id == WireguardPeerModel.peer)
+                    )
+                    .where(PeersTableModel.user == self.__model, *criteria)
+                )
             case ProtocolType.XRAY:
                 return list(XrayPeerModel.select()
                             .where(XrayPeerModel.user == self.__model, *criteria)
@@ -231,6 +248,12 @@ class Client(BaseModel):
                 return list(PeersTableModel.select()
                             .where(PeersTableModel.user == self.__model, *criteria)
                             )
+
+    def get_wireguard_peers(self, is_amnezia: bool) -> Optional[list[WireguardPeer]]:
+        peer_models = self.__get_peers(ProtocolType.WIREGUARD if not is_amnezia
+                                           else ProtocolType.AMNEZIA_WIREGUARD)
+
+        return [WireguardPeer.model_validate(model) for model in peer_models]
 
     def get_all_peers(self) -> list[BasePeer]:
         """Get validated peers model(s)"""
@@ -289,7 +312,7 @@ class Client(BaseModel):
 class ClientFactory(BaseModel):
     model_config = ConfigDict()
 
-    user_id: int
+    user_id: Union[int, str]
 
     def get_or_create_client(self, name: str, **kwargs) -> Client:
         """Retrieves or creates a record of the user in the database.

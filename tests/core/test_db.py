@@ -4,28 +4,30 @@ from core.db.db_works import Client, ClientFactory
 
 
 def test_create_client(db):
-    ClientFactory(tg_id=123).get_or_create_client(name="iamuser", ip_address="127.0.0.1")
+    ClientFactory(user_id=123).get_or_create_client(name="iamuser")
 
-    client = ClientFactory(tg_id=123).get_client()
+    client = ClientFactory(user_id=123).get_client()
 
     assert isinstance(client, Client)
     assert client.userdata.name == "iamuser"
-    assert client.userdata.telegram_id == 123
-    assert client.userdata.ip_address == "127.0.0.1"
+    assert client.userdata.user_id == "123"
 
 def test_add_peer(db, default_peers):
-    client = ClientFactory(tg_id=123).get_or_create_client(name="iamuser")
+    client = ClientFactory(user_id=123).get_or_create_client(name="iamuser")
 
     assert isinstance(client, Client)
 
-    client.add_peer(**default_peers["iamuser_0"].model_dump(include={
-        "shared_ips", "public_key", "private_key", "preshared_key", "peer_name"
+    peer1 = client.add_wireguard_peer(**default_peers["iamuser_0"].model_dump(include={
+        "shared_ips", "public_key", "private_key", "preshared_key"
     }))
-    client.add_peer(**default_peers["iamuser_1"].model_dump(include={
-        "shared_ips", "public_key", "private_key", "preshared_key", "peer_name"
+    peer2 = client.add_wireguard_peer(**default_peers["iamuser_1"].model_dump(include={
+        "shared_ips", "public_key", "private_key", "preshared_key"
     }))
 
-    peers = client.get_peers()
+    assert peer1 is not None
+    assert peer2 is not None
+
+    peers = client.get_wireguard_peers(is_amnezia=False)
 
     assert len(peers) == 2
     assert peers[0].peer_name == default_peers["iamuser_0"].peer_name

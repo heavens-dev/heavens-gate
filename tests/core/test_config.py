@@ -47,7 +47,7 @@ def test_load_config(config_path):
     db_cfg = config.get_database_config()
     assert db_cfg.path == "db.sqlite"
 
-    server_cfg = config.get_server_config()
+    server_cfg = config.get_wireguard_server_config()
     assert server_cfg.path == "./wg0.conf"
     assert server_cfg.user_ip == "10.0.0"
     assert server_cfg.user_ip_mask == "32"

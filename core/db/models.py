@@ -31,7 +31,8 @@ class UserModel(BaseModel):
 
 class PeersTableModel(BaseModel):
     id = AutoIncrementField()
-    user_id = ForeignKeyField(UserModel, backref="peer", on_delete="CASCADE")
+    user = ForeignKeyField(UserModel, backref="peer", on_delete="CASCADE")
+    """User ID field"""
     peer_name = CharField()
     peer_type = CharField(
         choices=tuple(
@@ -50,7 +51,8 @@ class PeersTableModel(BaseModel):
 
 
 class WireguardPeerModel(BaseModel):
-    id = ForeignKeyField(PeersTableModel, backref="wireguard_peer", on_delete="CASCADE")
+    peer = ForeignKeyField(PeersTableModel, backref="wireguard_peer", on_delete="CASCADE")
+    """Peer ID field"""
 
     public_key = CharField()
     private_key = CharField()
@@ -68,7 +70,8 @@ class WireguardPeerModel(BaseModel):
 
 
 class XrayPeerModel(BaseModel):
-    id = ForeignKeyField(PeersTableModel, backref="xray_peer", on_delete="CASCADE")
+    peer = ForeignKeyField(PeersTableModel, backref="xray_peer", on_delete="CASCADE")
+    """Peer ID field"""
 
     inbound_id = IntegerField()
     flow = CharField()
@@ -80,5 +83,5 @@ class XrayPeerModel(BaseModel):
 def init_db(path: str):
     db.init(database=path, pragmas={"foreign_keys": 1})
     db.connect()
-    db.create_tables((UserModel, WireguardPeerModel, XrayPeerModel))
+    db.create_tables((UserModel, PeersTableModel, WireguardPeerModel, XrayPeerModel))
     return db
