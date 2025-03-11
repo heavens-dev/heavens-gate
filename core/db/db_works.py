@@ -26,6 +26,7 @@ class Client(BaseModel):
             raise AttributeError("model attribute was not found in kwargs.")
         self.__model = kwargs["model"]
 
+    @core_logger.catch()
     def __update_client(self, **kwargs) -> bool:
         """Updates a user in database. Not ConnectionPeer
 
@@ -38,6 +39,7 @@ class Client(BaseModel):
                 .where(UserModel.telegram_id == self.userdata.telegram_id)
                 .execute()) == 1
 
+    @core_logger.catch()
     def __update_peer(self, peer_id: int, **kwargs) -> bool:
         """Updates a ConnectionPeer by peer id.
 
@@ -52,7 +54,10 @@ class Client(BaseModel):
 
     def set_ip_address(self, ip_address: str) -> bool:
         self.userdata.ip_address = ip_address
-        return self.__update_client(ip_address=ip_address)
+        result = self.__update_client(ip_address=ip_address)
+        with core_logger.contextualize(ip_address=ip_address, result=result):
+            core_logger.info(f"Tried to change IP address.")
+        return result
 
     def set_status(self, status: ClientStatusChoices) -> bool:
         self.userdata.status = status
@@ -62,6 +67,7 @@ class Client(BaseModel):
         self.userdata.expire_time = expire_time
         return self.__update_client(expire_time=expire_time)
 
+    @core_logger.catch()
     def add_peer(self,
                  shared_ips: str,
                  public_key: Optional[str] = None,
@@ -84,7 +90,7 @@ class Client(BaseModel):
             Jc = random.randint(3, 127)
             Jmin = random.randint(3, 700)
             Jmax = random.randint(Jmin + 1, 1270)
-        return ConnectionPeer.model_validate(ConnectionPeerModel.create(
+        peer = ConnectionPeer.model_validate(ConnectionPeerModel.create(
             user=self.__model,
             public_key=public_peer_key,
             private_key=private_peer_key,
@@ -96,12 +102,16 @@ class Client(BaseModel):
             Jmin=Jmin,
             Jmax=Jmax,
         ))
+        with core_logger.contextualize(peer=peer):
+            core_logger.info(f"New peer was created.")
+        return peer
 
     def __get_peers(self, *criteria) -> list[ConnectionPeerModel]:
         """Private method for working with peers"""
         return list(ConnectionPeerModel.select()
                     .where(ConnectionPeerModel.user == self.__model, *criteria))
 
+    @core_logger.catch()
     def get_peers(self) -> list[ConnectionPeer]:
         """Get validated peers model(s)"""
         return [
@@ -109,15 +119,28 @@ class Client(BaseModel):
             for model in self.__get_peers()
         ]
 
-    def change_peer_name(self, peer_id: int, peer_name: str):
-        self.__update_peer(peer_id, peer_name=peer_name)
+    @core_logger.catch()
+    def change_peer_name(self, peer_id: int, peer_name: str) -> bool:
+        result = self.__update_peer(peer_id, peer_name=peer_name)
+        with core_logger.contextualize(peer_id=peer_id, result=result):
+            core_logger.info(f"Tried to change Peer name to {peer_name}")
+        return result
 
-    def set_peer_status(self, peer_id: int, peer_status: PeerStatusChoices):
-        self.__update_peer(peer_id, peer_status=peer_status.value)
+    @core_logger.catch()
+    def set_peer_status(self, peer_id: int, peer_status: PeerStatusChoices) -> bool:
+        result = self.__update_peer(peer_id, peer_status=peer_status.value)
+        with core_logger.contextualize(peer_id=peer_id, result=result):
+            core_logger.debug(f"Tried to change peer status to {peer_status}")
+        return result
 
-    def set_peer_timer(self, peer_id, time: datetime.datetime):
-        self.__update_peer(peer_id, peer_timer=time)
+    @core_logger.catch()
+    def set_peer_timer(self, peer_id, time: datetime.datetime) -> bool:
+        result = self.__update_peer(peer_id, peer_timer=time)
+        with core_logger.contextualize(peer_id=peer_id, result=result):
+            core_logger.debug(f"Tried to change peer timer to {time}")
+        return result
 
+    @core_logger.catch()
     def get_connected_peers(self) -> list[ConnectionPeer]:
         return [
             ConnectionPeer.model_validate(model)
@@ -125,17 +148,20 @@ class Client(BaseModel):
         ]
 
     @multimethod
+    @core_logger.catch()
     def delete_peer(self) -> bool:
         """Delete peers by `telegram_id`
 
         Returns:
             bool: True if successfull. False otherwise
         """
+        core_logger.info(f"Deleted all peers for user {self.userdata.telegram_id}")
         return (ConnectionPeerModel.delete()
                 .where(UserModel.telegram_id == self.userdata.telegram_id)
                 .execute()) == 1
 
     @multimethod
+    @core_logger.catch()
     def delete_peer(self, ip_address: str) -> bool:
         """Delete single peer by `ip_address`
 
@@ -144,6 +170,7 @@ class Client(BaseModel):
         """
         # ? weird flex but okay.
         formatted_ip = ip_address.replace(".", "\\.")
+        core_logger.info(f"Deleted peer with ip {ip_address}")
         return (ConnectionPeerModel.delete()
                 .where(ConnectionPeerModel.shared_ips.regexp(
                     rf"(?:[, ]|^){formatted_ip}(?:[, ]|$)"
@@ -165,7 +192,7 @@ class ClientFactory(BaseModel):
                 model.name = name
                 model.save()
                 with core_logger.contextualize(model=model):
-                    core_logger.debug(f"User has changed his username, updating it in DB")
+                    core_logger.info(f"User has changed his username, updating it in DB")
         except DoesNotExist:
             model: UserModel = UserModel.create(telegram_id=self.tg_id, name=name, **kwargs)
             with core_logger.contextualize(model=model):
