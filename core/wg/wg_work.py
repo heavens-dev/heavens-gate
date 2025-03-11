@@ -33,7 +33,7 @@ class WGHub:
         core_logger.info("Configuration synced with Wireguard server.")
 
     def apply_and_sync(func: Callable):
-        @core_logger.catch()
+        @core_logger.catch(reraise=True)
         def inner(self, peer: ConnectionPeer):
             func(self, peer)
 
