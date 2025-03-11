@@ -6,8 +6,8 @@ from typing import Callable, Coroutine, Union
 from icmplib import async_ping
 
 from core.db.db_works import Client, ClientFactory
-from core.db.enums import ClientStatusChoices, PeerStatusChoices
-from core.db.model_serializer import WireguardPeer
+from core.db.enums import ClientStatusChoices, PeerStatusChoices, ProtocolType
+from core.db.model_serializer import BasePeer, WireguardPeer, XrayPeer
 from core.logs import core_logger
 from core.watchdog.object import CallableObject
 from core.watchdog.observer import EventObserver
@@ -27,17 +27,17 @@ class ConnectionEvents:
         self.active_hours = active_hours
         self.wghub = wghub
 
-        self.connected = EventObserver(required_types=[Client, WireguardPeer])
+        self.connected = EventObserver(required_types=[Client, BasePeer])
         """Decorated methods must have a `Client` and `ConnectionPeer` argument"""
-        self.disconnected = EventObserver(required_types=[Client, WireguardPeer])
+        self.disconnected = EventObserver(required_types=[Client, BasePeer])
         """Decorated methods must have a `Client` and `ConnectionPeer` argument"""
-        self.timer_observer = EventObserver(required_types=[Client, WireguardPeer, bool])
+        self.timer_observer = EventObserver(required_types=[Client, BasePeer, bool])
         """Decorated methods must have a `Client`, `ConnectionPeer` and `disconnect` boolean argument.
         `disconnect` describes whether the trigger is a warning (**False**) or a disconnect (**True**)"""
         self.startup = EventObserver()
 
-        self.clients: list[tuple[Client, list[WireguardPeer]]] = [
-            (client, client.get_wireguard_peers()) for client in ClientFactory.select_clients()
+        self.clients: list[tuple[Client, list[Union[WireguardPeer, XrayPeer]]]] = [
+            (client, client.get_all_peers(serialized=True)) for client in ClientFactory.select_clients()
         ]
         """List of all `Client`s and their `ConnectionPeer`s"""
 
@@ -45,7 +45,7 @@ class ConnectionEvents:
         """Internal lock that prevents updating `self.clients`
         during client connection checks"""
 
-    async def __check_connection(self, client: Client, peer: WireguardPeer, warn: bool = False) -> bool:
+    async def __check_connection(self, client: Client, peer: BasePeer, warn: bool = False) -> bool:
         if isinstance(peer.peer_timer, datetime.datetime) and peer.peer_status == PeerStatusChoices.STATUS_CONNECTED:
             timedelta = peer.peer_timer - datetime.datetime.now()
 
@@ -58,16 +58,18 @@ class ConnectionEvents:
                 # False is warning
                 await self.timer_observer.trigger(client, peer, disconnect=False)
 
-        host = await async_ping(peer.shared_ips)
+        if peer.peer_type in (ProtocolType.WIREGUARD, ProtocolType.AMNEZIA_WIREGUARD):
+            host = await async_ping(peer.shared_ips)
+            if host.is_alive:
+                if peer.peer_status == PeerStatusChoices.STATUS_DISCONNECTED:
+                    await self.emit_connect(client, peer)
+                return True
 
-        if host.is_alive:
-            if peer.peer_status == PeerStatusChoices.STATUS_DISCONNECTED:
-                await self.emit_connect(client, peer)
-            return True
-
-        if peer.peer_status == PeerStatusChoices.STATUS_CONNECTED:
-            await self.emit_disconnect(client, peer)
-        return False
+            if peer.peer_status == PeerStatusChoices.STATUS_CONNECTED:
+                await self.emit_disconnect(client, peer)
+            return False
+        else:
+            ...
 
     async def __listen_clients(self, listen_timer: int, connected_only: bool = False):
         while True:
@@ -140,7 +142,7 @@ class ConnectionEvents:
         while True:
             async with self.__clients_lock:
                 self.clients = [
-                    (client, client.get_wireguard_peers()) for client in ClientFactory.select_clients()
+                    (client, client.get_all_peers(serialized=True)) for client in ClientFactory.select_clients()
                 ]
                 core_logger.debug(f"Done updating clients list. Sleeping for {self.update_timer} sec")
 

@@ -11,7 +11,7 @@ class IPQueue:
         for ip in ip_list:
             self._ip_queue.put(ip)
 
-    def bget_ip(self) -> str:
+    def get_ip(self) -> str:
         """
         Retrieve an IP address from the queue.
 

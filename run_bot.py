@@ -83,20 +83,6 @@ async def on_startup(*args):
         os.remove(".reboot")
     bot_logger.info("Bot is running!")
 
-@connections_observer.startup()
-async def on_connections_observer_startup():
-    bot_logger.info("Observer is running!")
-
-@connections_observer.connected()
-async def on_connected(client: Client, peer: BasePeer):
-    with bot_logger.contextualize(client=client, peer=peer):
-        bot_logger.info("Client connected")
-
-@connections_observer.disconnected()
-async def on_disconnected(client: Client, peer: BasePeer):
-    with bot_logger.contextualize(client=client, peer=peer):
-        bot_logger.info("Client disconnected")
-
 async def main() -> None:
     bot_dispatcher.include_router(get_handlers_router())
 

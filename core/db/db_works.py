@@ -194,7 +194,7 @@ class Client(BaseModel):
             "shared_ips": shared_ips
         }
         wireguard_args["private_key"] = private_key or generate_private_key(is_amnezia=is_amnezia)
-        wireguard_args["public_key"] = public_key or generate_public_key(private_key, is_amnezia=is_amnezia)
+        wireguard_args["public_key"] = public_key or generate_public_key(wireguard_args["private_key"], is_amnezia=is_amnezia)
         wireguard_args["preshared_key"] = preshared_key or generate_preshared_key(is_amnezia=is_amnezia)
 
         if not peer_name:
@@ -258,6 +258,7 @@ class Client(BaseModel):
                             )
 
     def get_wireguard_peers(self, is_amnezia: bool) -> list[WireguardPeer]:
+        # is_amnezia doesn't really matter here, but it's here for consistency
         peer_models = self.__get_peers(ProtocolType.WIREGUARD if not is_amnezia
                                        else ProtocolType.AMNEZIA_WIREGUARD)
 
@@ -267,8 +268,25 @@ class Client(BaseModel):
         peer_models = self.__get_peers(ProtocolType.XRAY)
         return [XrayPeer.model_validate(model) for model in peer_models]
 
-    def get_all_peers(self) -> list[BasePeer]:
-        """Get validated peers model(s)"""
+    def get_all_peers(
+            self,
+            serialized: bool = False
+            ) -> Union[list[BasePeer], list[Union[WireguardPeer, XrayPeer]]]:
+        """
+        Retrieve all peers from the database.
+        This method fetches both Wireguard and Xray peers from the database. The peers can be
+        returned either as base peer models or as serialized specific peer types.
+        Args:
+            serialized (bool): If True, returns serialized Wireguard and Xray peers.
+                                If False, returns base peer models. Defaults to False.
+        Returns:
+            Union[list[BasePeer], list[Union[WireguardPeer, XrayPeer]]]: A list of peers.
+            When serialized is False, returns a list of BasePeer objects.
+            When serialized is True, returns a concatenated list of WireguardPeer and XrayPeer objects.
+        """
+        if serialized:
+            return self.get_wireguard_peers(is_amnezia=True) + self.get_xray_peers()
+
         return [
             BasePeer.model_validate(model)
             for model in self.__get_peers()
@@ -303,8 +321,8 @@ class Client(BaseModel):
         Returns:
             bool: True if successfull. False otherwise
         """
-        return (WireguardPeerModel.delete()
-                .where(UserModel.user_id == self.userdata.user_id)
+        return (PeersTableModel.delete()
+                .where(PeersTableModel.user == self.userdata.user_id)
                 .execute()) == 1
 
     def delete_wireguard_peer_by_ip(self, ip_address: str) -> bool:
@@ -378,7 +396,45 @@ class ClientFactory(BaseModel):
 
     @staticmethod
     def select_clients() -> list[Client]:
+        """
+        Retrieves all clients from the database.
+
+        Returns:
+            list[Client]: A list of Client objects.
+        """
         return [Client(model=i, userdata=User.model_validate(i)) for i in UserModel.select()]
+
+    @staticmethod
+    def get_peer_by_id(peer_id: int) -> Optional[BasePeer]:
+        try:
+            model = PeersTableModel.get(PeersTableModel.id == peer_id)
+            return BasePeer.model_validate(model)
+        except DoesNotExist:
+            return None
+        except Exception as e:
+            core_logger.exception(f"Error while getting peer: {e}")
+            return None
+
+    @staticmethod
+    def get_peer_by_ip(ip_address: str) -> Optional[WireguardPeer]:
+        """
+        Retrieve a WireguardPeer by IP address from the database.
+
+        Args:
+            ip_address (str): The IP address to search for.
+
+        Returns:
+            Optional[WireguardPeer]: The WireguardPeer object if found, None otherwise.
+                Returns None if the peer doesn't exist or if there's an error during retrieval.
+        """
+        try:
+            model = WireguardPeerModel.get(WireguardPeerModel.shared_ips == ip_address)
+            return WireguardPeer.model_validate(model)
+        except DoesNotExist:
+            return None
+        except Exception as e:
+            core_logger.exception(f"Error while getting peer: {e}")
+            return None
 
     @staticmethod
     def get_wireguard_peer(ip_address: str) -> Optional[WireguardPeer]:

@@ -23,8 +23,11 @@ router = Router(name="user")
 async def me(message: Message):
     client = ClientFactory(user_id=message.chat.id).get_client()
 
+    user_data = get_user_data_string(client)
+
+    await message.answer(user_data[0])
     await message.answer(
-        get_user_data_string(client),
+        text=user_data[1],
         reply_markup=build_user_actions_keyboard(client, is_admin=False)
     )
 
@@ -54,7 +57,7 @@ async def unblock_connections(message: Message):
 @router.message(Command("change_peer_name"))
 async def change_peer_name(message: Message, state: FSMContext):
     client = ClientFactory(user_id=message.from_user.id).get_client()
-    keyboard = build_peer_configs_keyboard(client.userdata.user_id, client.get_wireguard_peers(), display_all=False)
+    keyboard = build_peer_configs_keyboard(client.userdata.user_id, client.get_all_peers(), display_all=False)
     keyboard.inline_keyboard.append(cancel_keyboard().inline_keyboard[0])
     await message.answer(
         text="Выбери конфиг, который хочешь переименовать:",

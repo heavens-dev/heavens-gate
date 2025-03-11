@@ -1,62 +1,35 @@
-import datetime
-import time
 from contextlib import suppress
 
 from aiogram import F, Router
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
-from aiogram.types import BufferedInputFile, CallbackQuery, Message
+from aiogram.types import BufferedInputFile, CallbackQuery
 from aiogram.utils.media_group import MediaGroupBuilder
 
 from bot.handlers.keyboards import (build_peer_configs_keyboard,
+                                    build_protocols_keyboard,
                                     build_user_actions_keyboard,
                                     cancel_keyboard, extend_time_keyboard)
 from bot.utils.callback_data import (GetUserCallbackData, PeerCallbackData,
                                      PreviewMessageCallbackData,
+                                     ProtocolChoiceCallbackData,
                                      TimeExtenderCallbackData,
                                      UserActionsCallbackData, UserActionsEnum,
                                      YesOrNoEnum)
-from bot.utils.message_utils import preview_message
-from bot.utils.states import (ContactAdminStates, ExtendTimeStates,
-                              PreviewMessageStates, RenamePeerStates,
-                              WhisperStates)
+from bot.utils.states import (AddPeerStates, ContactAdminStates,
+                              ExtendTimeStates, PreviewMessageStates,
+                              RenamePeerStates, WhisperStates)
 from bot.utils.user_helper import extend_users_usage_time, get_user_data_string
-from config.loader import (bot_cfg, bot_instance, connections_observer,
-                           interval_observer, ip_queue, server_cfg, wghub)
-from core.db.db_works import Client, ClientFactory
+from config.loader import bot_instance, server_cfg, wghub
+from core.db.db_works import ClientFactory
 from core.db.enums import ClientStatusChoices, PeerStatusChoices
-from core.db.model_serializer import WireguardPeer
 from core.logs import bot_logger
 from core.utils.date_utils import parse_time
 from core.wg.wgconfig_helper import get_peer_config_str
 
 router = Router(name="callbacks")
 
-@connections_observer.timer_observer()
-async def warn_user_timeout(client: Client, peer: WireguardPeer, disconnect: bool):
-    time_left = peer.peer_timer - datetime.datetime.now()
-    delta_as_time = time.gmtime(time_left.total_seconds())
-    # TODO: write an ip address with a peer name
-    await bot_instance.send_message(client.userdata.user_id,
-        (f"⚠️ Подключение {peer.peer_name} будет разорвано через {delta_as_time.tm_min} минут. "
-        if not disconnect else
-        f"❗ Подключение {peer.peer_name} было разорвано из-за неактивности. ") +
-        "Введи /unblock, чтобы обновить время действия подключения.")
-
-@interval_observer.expire_date_warning_observer()
-async def warn_user_expire_date(client: Client):
-    await bot_instance.send_message(client.userdata.user_id,
-        "⚠️ Твой аккаунт будет заблокирован через 24 часа из-за истечения оплаченного времени. "
-        "Свяжись с администрацией для продления доступа."
-    )
-
-@interval_observer.expire_date_block_observer()
-async def block_user_expire_date(client: Client):
-    await bot_instance.send_message(client.userdata.user_id,
-        "❌ Твой аккаунт заблокирован из-за истечения оплаченного времени. "
-        "Если ты хочешь продлить доступ, свяжись с нами."
-    )
 
 @router.callback_query(F.data == "cancel_action")
 async def cancel_action_callback(callback: CallbackQuery, state: FSMContext):
@@ -68,7 +41,8 @@ async def cancel_action_callback(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(PeerCallbackData.filter(), default_state)
 async def select_peer_callback(callback: CallbackQuery, callback_data: PeerCallbackData, state: FSMContext):
     client = ClientFactory(user_id=callback_data.user_id).get_client()
-    peers = client.get_wireguard_peers()
+
+    peers = client.get_wireguard_peers(is_amnezia=wghub.is_amnezia)
     media_group = MediaGroupBuilder()
     additional_interface_data = None
     await state.clear()
@@ -114,7 +88,8 @@ async def ban_user_callback(callback: CallbackQuery, callback_data: UserActionsC
     for peer in peers:
         client.set_peer_status(peer.id, PeerStatusChoices.STATUS_BLOCKED)
     await callback.answer(f"✅ Пользователь {client.userdata.name} заблокирован.")
-    await callback.message.edit_text(get_user_data_string(client))
+    # see docstring in get_user_data_string for more info
+    await callback.message.edit_text(get_user_data_string(client)[1])
     await callback.message.edit_reply_markup(reply_markup=build_user_actions_keyboard(client))
 
 @router.callback_query(
@@ -129,7 +104,8 @@ async def pardon_user_callback(callback: CallbackQuery, callback_data: UserActio
         client.set_peer_status(peer.id, PeerStatusChoices.STATUS_DISCONNECTED)
     await callback.answer(f"✅ Пользователь {client.userdata.name} разблокирован.")
     await callback.message.edit_text(
-        text=get_user_data_string(client),
+        # see docstring in get_user_data_string for more info
+        text=get_user_data_string(client)[1],
         reply_markup=build_user_actions_keyboard(client)
     )
 
@@ -137,7 +113,7 @@ async def pardon_user_callback(callback: CallbackQuery, callback_data: UserActio
     UserActionsCallbackData.filter(F.action == UserActionsEnum.GET_CONFIGS)
 )
 async def get_user_configs_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
-    peers = ClientFactory(user_id=callback_data.user_id).get_client().get_wireguard_peers()
+    peers = ClientFactory(user_id=callback_data.user_id).get_client().get_all_peers()
 
     await callback.answer()
     if peers:
@@ -159,27 +135,40 @@ async def update_user_message_data(callback: CallbackQuery, callback_data: UserA
     await callback.answer(f"Данные пользователя {client.userdata.name} обновлены.")
     with suppress(TelegramBadRequest):
         await callback.message.edit_text(
-            text=get_user_data_string(client),
+            # see docstring in get_user_data_string for more info
+            text=get_user_data_string(client)[1],
             reply_markup=build_user_actions_keyboard(client, is_admin=callback_data.is_admin)
         )
 
 @router.callback_query(
     UserActionsCallbackData.filter(F.action == UserActionsEnum.ADD_PEER)
 )
-async def add_peer_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
+async def add_peer_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData, state: FSMContext):
     client = ClientFactory(user_id=callback_data.user_id).get_client()
-    last_id = ClientFactory.get_latest_peer_id()
-    try:
-        ip_addr = ip_queue.get_ip()
-    except Exception:
-        await callback.message.answer("❌ Нет доступных IP-адресов!")
-        bot_logger.error("❌ Tried to add a peer, but no IP addresses are available.")
-        return
-    new_peer = client.add_wireguard_peer(shared_ips=ip_addr, peer_name=f"{client.userdata.name}_{last_id}", is_amnezia=wghub.is_amnezia)
-    wghub.add_peer(new_peer)
-    with bot_logger.contextualize(peer=new_peer):
-        bot_logger.info(f"New peer was created manually by {callback.message.from_user.username}")
-    await callback.answer("✅ Пир добавлен.")
+
+    keyboard = build_protocols_keyboard()
+    keyboard.inline_keyboard.append(cancel_keyboard().inline_keyboard[0])
+
+    await callback.message.answer("ℹ️ Выбери протокол", reply_markup=keyboard)
+
+    await state.set_state(AddPeerStates.select_protocol)
+    await state.set_data({
+        "user_id": client.userdata.user_id,
+    })
+
+    await callback.answer()
+
+    # try:
+    #     ip_addr = ip_queue.get_ip()
+    # except Exception:
+    #     await callback.message.answer("❌ Нет доступных IP-адресов!")
+    #     bot_logger.error("❌ Tried to add a peer, but no IP addresses are available.")
+    #     return
+    # new_peer = client.add_wireguard_peer(shared_ips=ip_addr, peer_name=f"{client.userdata.name}_{last_id}", is_amnezia=wghub.is_amnezia)
+    # wghub.add_peer(new_peer)
+    # with bot_logger.contextualize(peer=new_peer):
+    #     bot_logger.info(f"New peer was created manually by {callback.message.from_user.username}")
+    # await callback.answer("✅ Пир добавлен.")
 
 @router.callback_query(PreviewMessageCallbackData.filter(), PreviewMessageStates.preview)
 async def preview_message_callback(callback: CallbackQuery, callback_data: PreviewMessageCallbackData, state: FSMContext):
@@ -207,7 +196,7 @@ async def preview_message_callback(callback: CallbackQuery, callback_data: Previ
 )
 async def change_peer_name_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData, state: FSMContext):
     client = ClientFactory(user_id=callback.from_user.id).get_client()
-    keyboard = build_peer_configs_keyboard(client.userdata.user_id, client.get_wireguard_peers(), display_all=False)
+    keyboard = build_peer_configs_keyboard(client.userdata.user_id, client.get_all_peers(), display_all=False)
     keyboard.inline_keyboard.append(cancel_keyboard().inline_keyboard[0])
     await callback.answer()
     await callback.message.answer(
@@ -286,76 +275,32 @@ async def whisper_user_callback(callback: CallbackQuery, callback_data: UserActi
 async def get_user_callback(callback: CallbackQuery, callback_data: GetUserCallbackData):
     client = ClientFactory(user_id=callback_data.user_id).get_client()
     await callback.answer()
-    await callback.message.answer(f"Пользователь: {client.userdata.name}")
+    user_data = get_user_data_string(client)
+    await callback.message.answer(f"Пользователь: {client.userdata.name}\n" + user_data[0])
     await callback.message.answer(
-        get_user_data_string(client),
+        user_data[1],
         reply_markup=build_user_actions_keyboard(client, is_admin=True)
     )
 
-# tecnically it is not a callback, but who cares...
-# idk how to call this func properly, so yes
-@router.message(RenamePeerStates.name_entering)
-async def finally_change_peer_name(message: Message, state: FSMContext):
-    new_name = message.text
-
-    if new_name.lower() in ["отмена", "cancel"]:
-        await state.clear()
-        await message.answer("❌ Действие отменено.")
-        return
-
-    if len(new_name) >= 16:
-        await message.answer("❌ Название конфига должно содержать меньше 16 символов!")
-        await state.clear()
-        return
+@router.callback_query(ProtocolChoiceCallbackData.filter())
+async def protocol_choice_callback(
+    callback: CallbackQuery,
+    callback_data: ProtocolChoiceCallbackData,
+    state: FSMContext):
 
     data = await state.get_data()
-    user_id, peer_id = data.values()
-    client = ClientFactory(user_id=user_id).get_client()
-    client.change_peer_name(peer_id, new_name)
-    await state.clear()
-    await message.answer("✅ Конфиг был успешно переименован!")
 
-@router.message(ContactAdminStates.message_entering)
-async def contact_admin(message: Message, state: FSMContext):
-    await state.clear()
-    if message.text.lower() in ["отмена", "cancel"]:
-        await message.answer("❌ Действие отменено.")
-        return
-
-    for admin_id in bot_cfg.admins:
-        await bot_instance.send_message(
-            chat_id=admin_id,
-            text=f"📩 Сообщение от пользователя {message.from_user.username} ({message.from_user.id}):\n\n{message.text}"
-            f"\n\n🔗 Ответить на сообщение: <code>/whisper {message.from_user.id}</code>"
-        )
-    await message.answer("✅ Сообщение отправлено администраторам. Ожидай обратной связи.")
-
-@router.message(ExtendTimeStates.time_entering)
-async def extend_usage_time_custom_entered(message: Message, state: FSMContext):
-    data = await state.get_data()
-    user_id, _ = data.values()
-
-    await state.clear()
-
-    time_to_add = parse_time(message.text)
-
-    if not time_to_add:
-        await message.answer(f"❌ Неправильный формат времени: {message.text}")
-        return
-
-    client = ClientFactory(user_id=user_id).get_client()
-
-    if extend_users_usage_time(client, time_to_add):
-        await message.answer(f"✅ Время использования продлено на {message.text}.")
-    else:
-        await message.answer(f"❓ Что-то пошло не так во время операции. Проверь логи.")
-
-@router.message(WhisperStates.message_entering)
-async def whisper_state(message: Message, state: FSMContext):
-    user_id = (await state.get_data())["user_id"]
-    if message.text.lower() in ["отмена", "cancel"]:
-        await message.answer("❌ Действие отменено.")
+    if data.get("user_id", None) is None:
+        await callback.answer("❌ Ты начал процедуру добавления пира не с команды /add_peer или кнопки.")
         await state.clear()
         return
 
-    await preview_message(message.text, message.from_user.id, state, [user_id])
+    await callback.message.answer(
+        "Введи количество пиров, которое ты хочешь добавить (или <code>отмена</code>, если передумал):",
+        reply_markup=cancel_keyboard()
+    )
+
+    await state.set_state(AddPeerStates.select_amount)
+    await state.update_data(protocol=callback_data.protocol)
+
+    await callback.answer()

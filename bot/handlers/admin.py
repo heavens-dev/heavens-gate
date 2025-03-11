@@ -7,7 +7,9 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
-from bot.handlers.keyboards import build_user_actions_keyboard, cancel_keyboard
+from bot.handlers.keyboards import (build_protocols_keyboard,
+                                    build_user_actions_keyboard,
+                                    cancel_keyboard)
 from bot.middlewares.client_getters_middleware import ClientGettersMiddleware
 from bot.utils.inline_paginator import UsersInlineKeyboardPaginator
 from bot.utils.message_utils import preview_message
@@ -15,8 +17,9 @@ from bot.utils.states import AddPeerStates, WhisperStates
 from bot.utils.user_helper import get_user_data_string
 from config.loader import bot_cfg, ip_queue, wghub
 from core.db.db_works import Client, ClientFactory
-from core.db.enums import ClientStatusChoices, PeerStatusChoices
+from core.db.enums import ClientStatusChoices, PeerStatusChoices, ProtocolType
 from core.logs import bot_logger
+from core.utils.ip_utils import check_ip_address
 
 router = Router(name="admin")
 router.message.filter(
@@ -88,30 +91,21 @@ async def unban(message: Message, client: Client):
 @router.message(Command("get_user"))
 async def get_user(message: Message, client: Client):
     await message.answer(f"Пользователь: {client.userdata.name}")
-    await message.answer(
-        get_user_data_string(client),
-        reply_markup=build_user_actions_keyboard(client)
-    )
+    user_string = get_user_data_string(client)
+    await message.answer(user_string[0])
+    await message.answer(user_string[1], reply_markup=build_user_actions_keyboard(client))
 
 @router.message(Command("add_peer"))
 async def add_peer(message: Message, client: Client, state: FSMContext):
-    last_id = ClientFactory.get_latest_peer_id()
+    keyboard = build_protocols_keyboard()
+    keyboard.inline_keyboard.append(cancel_keyboard().inline_keyboard[0])
 
-    await message.answer("ℹ️ Выбери протокол")
+    await message.answer("ℹ️ Выбери протокол", reply_markup=keyboard)
 
     await state.set_state(AddPeerStates.select_protocol)
-
-    # try:
-    #     ip_addr = ip_queue.get_ip()
-    # except Exception:
-    #     await message.answer("❌ Нет доступных IP-адресов!")
-    #     bot_logger.critical("❌ Tried to add a peer, but no IP addresses are available.")
-    #     return
-    # new_peer = client.add_wireguard_peer(shared_ips=ip_addr, peer_name=f"{client.userdata.name}_{last_id}", is_amnezia=wghub.is_amnezia)
-    # wghub.add_peer(new_peer)
-    # with bot_logger.contextualize(peer=new_peer):
-    #     bot_logger.info(f"New peer was created manually by {message.from_user.username}")
-    # await message.answer("✅ Пир создан и добавлен в конфиг.")
+    await state.set_data({
+        "user_id": client.userdata.user_id,
+    })
 
 # TODO: split this command into two separate commands
 @router.message(Command("disable_peer", "enable_peer"))
@@ -123,7 +117,7 @@ async def manage_peer(message: Message):
     ip = message.text.split()[1]
     is_disable = message.text.startswith("/disable")
 
-    peer = ClientFactory.get_peer(ip)
+    peer = ClientFactory.get_peer_by_id(ip)
     if not peer:
         await message.answer("❌ IP-адрес не найден.")
         return
@@ -148,26 +142,31 @@ async def manage_peer(message: Message):
         )
         bot_logger.info(f"Peer (IP: {peer.shared_ips}) was unblocked by {message.from_user.username}")
 
-# TODO: delete peer also by peer_id
 @router.message(Command("delete_peer"))
 async def delete_peer(message: Message):
     splitted_message = message.text.split()
     if len(splitted_message) <= 1:
-        await message.answer("❌ Сообщение должно содержать IP адрес пира.")
+        await message.answer("❌ Сообщение должно содержать ID или IP адрес пира (если это пир Wireguard).")
         return
-    ip_address = splitted_message[1]
+    id_or_ip = splitted_message[1]
 
-    peer = ClientFactory.get_peer(ip_address)
+    if check_ip_address(id_or_ip):
+        peer = ClientFactory.get_peer_by_ip(id_or_ip)
+    else:
+        peer = ClientFactory.get_peer_by_id(int(id_or_ip))
+
     if not peer:
-        await message.answer("❌ IP-адрес не найден.")
+        await message.answer("❌ Пир не найден.")
         return
 
-    wghub.delete_peer(peer)
+    if peer.peer_type in (ProtocolType.WIREGUARD, ProtocolType.AMNEZIA_WIREGUARD):
+        wghub.delete_peer(peer)
+        ip_queue.release_ip(peer.shared_ips)
+
     ClientFactory.delete_peer(peer)
-    ip_queue.release_ip(peer.shared_ips)
     await message.answer("✅ Пир был успешно удалён.")
     with bot_logger.contextualize(peer=peer):
-        bot_logger.info(f"Peer (IP: {peer.shared_ips}) was deleted by {message.from_user.username}")
+        bot_logger.info(f"Peer was deleted by {message.from_user.username}")
 
 @router.message(Command("syncconfig"))
 async def syncconfig(message: Message):

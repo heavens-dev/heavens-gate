@@ -2,6 +2,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot.utils.callback_data import (PeerCallbackData,
                                      PreviewMessageCallbackData,
+                                     ProtocolChoiceCallbackData,
                                      TimeExtenderCallbackData,
                                      UserActionsCallbackData, UserActionsEnum,
                                      YesOrNoEnum)
@@ -206,4 +207,11 @@ def build_protocols_keyboard():
     builder = InlineKeyboardBuilder()
 
     for protocol in ProtocolType:
-        builder.button(text="")
+        builder.button(
+            text=protocol.name,
+            callback_data=ProtocolChoiceCallbackData(protocol=protocol)
+        )
+
+    builder.adjust(2, repeat=True)
+
+    return builder.as_markup()
