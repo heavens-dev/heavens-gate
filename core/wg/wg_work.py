@@ -19,7 +19,7 @@ class WGHub:
         self.wgconfig.read_file()
         self.change_command_mode(is_amnezia)
 
-    @core_logger.catch
+    @core_logger.catch()
     def sync_config(self):
         strip = subprocess.run([f"{self.command}-quick", "strip", self.path], check=True, capture_output=True, text=True)
 
@@ -29,8 +29,10 @@ class WGHub:
 
             subprocess.run([self.command, "syncconf", self.interface_name, temp_file.name], check=True)
 
-    @core_logger.catch
+        core_logger.info("Configuration synced with Wireguard server.")
+
     def apply_and_sync(func: Callable):
+        @core_logger.catch()
         def inner(self, peer: ConnectionPeer):
             func(self, peer)
 
@@ -45,28 +47,41 @@ class WGHub:
         self.wgconfig.add_peer(peer.public_key, f"# {peer.peer_name}")
         self.wgconfig.add_attr(peer.public_key, "PresharedKey", peer.preshared_key)
         self.wgconfig.add_attr(peer.public_key, "AllowedIPs", peer.shared_ips + "/32")
+        with core_logger.contextualize(peer=peer):
+            core_logger.info("A new peer has appeared.")
 
     @apply_and_sync
     def enable_peer(self, peer: ConnectionPeer):
         self.wgconfig.enable_peer(peer.public_key)
+        with core_logger.contextualize(peer=peer):
+            core_logger.info("Peer enabled.")
 
     @apply_and_sync
+    @core_logger.catch()
     def enable_peers(self, peers: list[ConnectionPeer]):
         for peer in peers:
             self.wgconfig.enable_peer(peer.public_key)
+        with core_logger.contextualize(peers=peers):
+            core_logger.info("Peers enabled.")
 
     @apply_and_sync
     def disable_peer(self, peer: ConnectionPeer):
         self.wgconfig.disable_peer(peer.public_key)
+        with core_logger.contextualize(peer=peer):
+            core_logger.info("Peer disabled.")
 
     @apply_and_sync
     def disable_peers(self, peers: list[ConnectionPeer]):
         for peer in peers:
             self.wgconfig.disable_peer(peer.public_key)
+        with core_logger.contextualize(peers=peers):
+            core_logger.info("Peers disabled.")
 
     @apply_and_sync
     def delete_peer(self, peer: ConnectionPeer):
         self.wgconfig.del_peer(peer.public_key)
+        with core_logger.contextualize(peer=peer):
+            core_logger.info("A peer has been destroyed.")
 
     def change_command_mode(self, is_amnezia: bool):
         """Changes command from `wg` to `awg` to be able to work with amnezia-wg
