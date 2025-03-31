@@ -4,7 +4,7 @@ from aiogram import F, Router
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
-from aiogram.types import BufferedInputFile, CallbackQuery
+from aiogram.types import CallbackQuery
 from aiogram.utils.media_group import MediaGroupBuilder
 
 from bot.handlers.keyboards import (build_peer_configs_keyboard,
@@ -20,13 +20,14 @@ from bot.utils.callback_data import (GetUserCallbackData, PeerCallbackData,
 from bot.utils.states import (AddPeerStates, ContactAdminStates,
                               ExtendTimeStates, PreviewMessageStates,
                               RenamePeerStates, WhisperStates)
-from bot.utils.user_helper import extend_users_usage_time, get_user_data_string
-from config.loader import bot_instance, server_cfg, wghub
+from bot.utils.user_helper import (extend_users_usage_time,
+                                   get_peer_as_input_file,
+                                   get_user_data_string)
+from config.loader import bot_instance, wghub, xray_worker
 from core.db.db_works import ClientFactory
-from core.db.enums import ClientStatusChoices, PeerStatusChoices
+from core.db.enums import ClientStatusChoices, PeerStatusChoices, ProtocolType
 from core.logs import bot_logger
 from core.utils.date_utils import parse_time
-from core.wg.wgconfig_helper import get_peer_config_str
 
 router = Router(name="callbacks")
 
@@ -42,39 +43,34 @@ async def cancel_action_callback(callback: CallbackQuery, state: FSMContext):
 async def select_peer_callback(callback: CallbackQuery, callback_data: PeerCallbackData, state: FSMContext):
     client = ClientFactory(user_id=callback_data.user_id).get_client()
 
-    peers = client.get_wireguard_peers(is_amnezia=wghub.is_amnezia)
     media_group = MediaGroupBuilder()
-    additional_interface_data = None
+    xray_strings = ""
+
     await state.clear()
-
-    if wghub.is_amnezia:
-        additional_interface_data = {
-            "Jc": peers[0].Jc,
-            "Jmin": peers[0].Jmin,
-            "Jmax": peers[0].Jmax,
-            "Junk": server_cfg.junk
-        }
-
-    for peer in peers:
-        if callback_data.peer_id == -1:
-            media_group.add_document(
-                media=BufferedInputFile(
-                    file=bytes(get_peer_config_str(server_cfg, peer, additional_interface_data), encoding="utf-8"),
-                    filename=f"{peer.peer_name or peer.id}_wg.conf"
-                )
-            )
-        elif peer.id == callback_data.peer_id:
-            media_group.add_document(
-                BufferedInputFile(
-                    file=bytes(get_peer_config_str(server_cfg, peer, additional_interface_data), encoding="utf-8"),
-                    filename=f"{peer.peer_name or peer.id}_wg.conf"
-                )
-            )
-            break
-
-    await bot_instance.send_media_group(callback.from_user.id, media=media_group.build())
     await callback.message.delete()
     await callback.answer()
+
+    if callback_data.peer_id != -1:
+        peers = [ClientFactory.get_peer_by_id(callback_data.peer_id, serialized=True)]
+    else:
+        peers = client.get_all_peers(serialized=True)
+
+    for peer in peers:
+        match peer.peer_type:
+            case ProtocolType.WIREGUARD | ProtocolType.AMNEZIA_WIREGUARD:
+                media_group.add_document(
+                    media=get_peer_as_input_file(peer)
+                )
+            case ProtocolType.XRAY:
+                xray_strings += "<code>" + xray_worker.get_connection_string(peer) + "</code>\n\n"
+            case _:
+                bot_logger.warning(f"Unknown protocol type: {peer.peer_type}. Skipping.")
+                continue
+
+    if builded_media := media_group.build():
+        await bot_instance.send_media_group(callback.from_user.id, media=builded_media)
+    if xray_strings:
+        await callback.message.answer("🔗 Ссылки на конфиги XRay (можно скопировать, нажав):\n" + xray_strings)
 
 @router.callback_query(
     UserActionsCallbackData.filter(F.action == UserActionsEnum.BAN_USER)
@@ -288,6 +284,7 @@ async def protocol_choice_callback(
     callback_data: ProtocolChoiceCallbackData,
     state: FSMContext):
 
+    await callback.message.delete()
     data = await state.get_data()
 
     if data.get("user_id", None) is None:

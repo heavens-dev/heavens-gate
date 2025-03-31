@@ -15,7 +15,7 @@ from bot.utils.inline_paginator import UsersInlineKeyboardPaginator
 from bot.utils.message_utils import preview_message
 from bot.utils.states import AddPeerStates, WhisperStates
 from bot.utils.user_helper import get_user_data_string
-from config.loader import bot_cfg, ip_queue, wghub
+from config.loader import bot_cfg, ip_queue, wghub, xray_worker
 from core.db.db_works import Client, ClientFactory
 from core.db.enums import ClientStatusChoices, PeerStatusChoices, ProtocolType
 from core.logs import bot_logger
@@ -125,7 +125,10 @@ async def manage_peer(message: Message):
     client = ClientFactory(user_id=peer.user_id).get_client()
     if is_disable:
         client.set_peer_status(peer.id, PeerStatusChoices.STATUS_BLOCKED)
-        wghub.disable_peer(peer)
+        if peer.peer_type in (ProtocolType.WIREGUARD, ProtocolType.AMNEZIA_WIREGUARD):
+            wghub.disable_peer(peer)
+        elif peer.peer_type == ProtocolType.XRAY:
+            xray_worker.enable_peer(peer)
         await message.answer("✅ Пир отключён.")
         await message.bot.send_message(
             client.userdata.user_id,
@@ -134,7 +137,10 @@ async def manage_peer(message: Message):
         bot_logger.info(f"Peer (IP: {peer.shared_ips}) was blocked by {message.from_user.username}")
     else:
         client.set_peer_status(peer.id, PeerStatusChoices.STATUS_DISCONNECTED)
-        wghub.enable_peer(peer)
+        if peer.peer_type in (ProtocolType.WIREGUARD, ProtocolType.AMNEZIA_WIREGUARD):
+            wghub.enable_peer(peer)
+        elif peer.peer_type == ProtocolType.XRAY:
+            xray_worker.enable_peer(peer)
         await message.answer("✅ Пир включён.")
         await message.bot.send_message(
             client.userdata.user_id,
@@ -150,10 +156,8 @@ async def delete_peer(message: Message):
         return
     id_or_ip = splitted_message[1]
 
-    if check_ip_address(id_or_ip):
-        peer = ClientFactory.get_peer_by_ip(id_or_ip)
-    else:
-        peer = ClientFactory.get_peer_by_id(int(id_or_ip))
+
+    peer = ClientFactory.delete_peer_by_id(int(id_or_ip))
 
     if not peer:
         await message.answer("❌ Пир не найден.")
@@ -162,8 +166,9 @@ async def delete_peer(message: Message):
     if peer.peer_type in (ProtocolType.WIREGUARD, ProtocolType.AMNEZIA_WIREGUARD):
         wghub.delete_peer(peer)
         ip_queue.release_ip(peer.shared_ips)
+    elif peer.peer_type == ProtocolType.XRAY:
+        xray_worker.delete_peer(peer)
 
-    ClientFactory.delete_peer(peer)
     await message.answer("✅ Пир был успешно удалён.")
     with bot_logger.contextualize(peer=peer):
         bot_logger.info(f"Peer was deleted by {message.from_user.username}")

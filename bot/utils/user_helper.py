@@ -1,14 +1,16 @@
 import datetime
 from typing import Optional, Union
 
+from aiogram.types import BufferedInputFile
 from pydantic import ValidationError
 
-from config.loader import core_cfg, wghub, xray_worker
+from config.loader import core_cfg, wghub, wireguard_server_config, xray_worker
 from core.db.db_works import Client, ClientFactory
 from core.db.enums import ClientStatusChoices, PeerStatusChoices, ProtocolType
 from core.db.model_serializer import WireguardPeer, XrayPeer
 from core.logs import bot_logger
 from core.utils.ip_utils import check_ip_address
+from core.wg.wgconfig_helper import get_peer_config_str
 
 
 # TODO: remove deprecated "ip_address" argument, since it was never used
@@ -92,3 +94,19 @@ def unblock_timeout_connections(client: Client) -> bool:
                 client.set_peer_timer(peer.id, time=new_time)
 
     return True
+
+
+def get_peer_as_input_file(peer: WireguardPeer) -> BufferedInputFile:
+    interface_args = {}
+    if peer.is_amnezia:
+        interface_args = {
+            "Jc": peer.Jc,
+            "Jmin": peer.Jmin,
+            "Jmax": peer.Jmax,
+            "Junk": wireguard_server_config.junk
+        }
+
+    return BufferedInputFile(
+        file=bytes(get_peer_config_str(wireguard_server_config, peer, interface_args), encoding="utf-8"),
+        filename=f"{peer.peer_name or peer.id}.conf"
+    )

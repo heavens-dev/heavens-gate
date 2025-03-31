@@ -5,7 +5,7 @@ from aiogram import Router
 
 from config.loader import bot_instance, connections_observer, interval_observer
 from core.db.db_works import Client
-from core.db.model_serializer import BasePeer, WireguardPeer
+from core.db.model_serializer import BasePeer
 from core.logs import bot_logger
 
 router = Router(name="observers")

@@ -31,6 +31,7 @@ class ConnectionEvents:
         """Decorated methods must have a `Client` and `ConnectionPeer` argument"""
         self.disconnected = EventObserver(required_types=[Client, BasePeer])
         """Decorated methods must have a `Client` and `ConnectionPeer` argument"""
+        # TODO: separate timer_observer into two different observers for warning and disconnect
         self.timer_observer = EventObserver(required_types=[Client, BasePeer, bool])
         """Decorated methods must have a `Client`, `ConnectionPeer` and `disconnect` boolean argument.
         `disconnect` describes whether the trigger is a warning (**False**) or a disconnect (**True**)"""

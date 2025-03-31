@@ -198,7 +198,7 @@ class Client(BaseModel):
         wireguard_args["preshared_key"] = preshared_key or generate_preshared_key(is_amnezia=is_amnezia)
 
         if not peer_name:
-            peer_name = f"{self.userdata.name}_{ClientFactory.get_latest_peer_id()}"
+            peer_name = f"{self.userdata.name}_{ClientFactory.get_latest_peer_id() + 1}"
 
         Jc, Jmin, Jmax = None, None, None
         if is_amnezia:
@@ -220,7 +220,7 @@ class Client(BaseModel):
 
     def add_xray_peer(self, flow: str, inbound_id: int, peer_name: Optional[str] = None) -> XrayPeer:
         if not peer_name:
-            peer_name = f"{self.userdata.name}_{ClientFactory.get_latest_peer_id()}"
+            peer_name = f"{self.userdata.name}_{ClientFactory.get_latest_peer_id() + 1}"
 
         return self.__add_peer(
             peer_name=peer_name,
@@ -405,9 +405,18 @@ class ClientFactory(BaseModel):
         return [Client(model=i, userdata=User.model_validate(i)) for i in UserModel.select()]
 
     @staticmethod
-    def get_peer_by_id(peer_id: int) -> Optional[BasePeer]:
+    def get_peer_by_id(peer_id: int, serialized: bool = False) -> Optional[BasePeer]:
         try:
             model = PeersTableModel.get(PeersTableModel.id == peer_id)
+            # FIXME: AI generated, redo it to match-case. 2 lazy...
+            if serialized:
+                if model.peer_type in [ProtocolType.WIREGUARD.value, ProtocolType.AMNEZIA_WIREGUARD.value]:
+                    return WireguardPeer.model_validate(WireguardPeerModel.get(WireguardPeerModel.peer == peer_id))
+                elif model.peer_type == ProtocolType.XRAY.value:
+                    return XrayPeer.model_validate(XrayPeerModel.get(XrayPeerModel.peer == peer_id))
+                else:
+                    core_logger.warning(f"Unknown protocol type: {model.peer_type}")
+                    return None
             return BasePeer.model_validate(model)
         except DoesNotExist:
             return None
@@ -444,6 +453,14 @@ class ClientFactory(BaseModel):
         except DoesNotExist:
             return None
 
+    @staticmethod
+    def get_xray_peer(peer_id: str) -> Optional[XrayPeer]:
+        try:
+            model = XrayPeerModel.get(XrayPeerModel.peer == peer_id)
+            return XrayPeer.model_validate(model)
+        except DoesNotExist:
+            return None
+
     def delete_client(self) -> bool:
         return UserModel.delete_by_id(self.user_id)
 
@@ -459,10 +476,9 @@ class ClientFactory(BaseModel):
     @staticmethod
     def get_latest_peer_id() -> int:
         try:
-            return (PeersTableModel.select(PeersTableModel.id)
-                   .order_by(SQL("id").desc())
-                   .limit(1)[0].id)
-        except IndexError: #? assuming that there're no peers in DB
+            result = db.execute_sql("SELECT seq FROM sqlite_sequence WHERE name = 'PeersTable'")
+            return result.fetchone()[0]
+        except (IndexError, TypeError): #? assuming that there're no peers in DB
             return 0
 
     @staticmethod
@@ -470,5 +486,29 @@ class ClientFactory(BaseModel):
         return [i.shared_ips for i in WireguardPeerModel.select(WireguardPeerModel.shared_ips)]
 
     @staticmethod
-    def delete_peer(peer: BasePeer) -> bool:
-        return PeersTableModel.delete().where(PeersTableModel.id == peer.id).execute() == 1
+    def delete_peer(peer: BasePeer) -> Union[BasePeer, bool]:
+        try:
+            p = PeersTableModel.get(PeersTableModel.id == peer.id)
+            p.delete_instance()
+            return p
+        except DoesNotExist:
+            core_logger.info(f"Peer with ID {peer.id} not found.")
+            return False
+
+    @staticmethod
+    def delete_peer_by_id(peer_id: int) -> Union[BasePeer, bool]:
+        """
+        Deletes a peer by their ID.
+        Args:
+            peer_id (int): The unique identifier of the peer to be deleted.
+        Returns:
+            Union[BasePeer, bool]: Returns the deleted peer object if successful,
+                                   False if the peer was not found.
+        """
+        try:
+            p = PeersTableModel.get(PeersTableModel.id == peer_id)
+            p.delete_instance()
+            return p
+        except DoesNotExist:
+            core_logger.info(f"Peer with ID {peer_id} not found.")
+            return False

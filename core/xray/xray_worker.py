@@ -1,4 +1,6 @@
+import re
 from typing import Optional
+from urllib.parse import quote
 
 from py3xui import Api
 from py3xui.client import Client
@@ -18,6 +20,8 @@ class XrayWorker:
                  token: Optional[str] = None,
                  tls: bool = True
                  ):
+        self.host = host
+        self.port = port
         host = host + ':' + port + (f"/{web_path}/" if web_path else '')
         self.api = Api(host, username, password, token, use_tls_verify=tls)
 
@@ -32,9 +36,25 @@ class XrayWorker:
             enable=PeerStatusChoices.xray_enabled(peer.peer_status),
             flow=peer.flow,
             inbound_id=peer.inbound_id,
-            # tg_id="",
-            # sub_id=""
         )
+
+    def get_connection_string(self, peer: XrayPeer):
+        inbound = self.api.inbound.get_by_id(peer.inbound_id)
+
+        inbound_settings = inbound.stream_settings.reality_settings.get("settings")
+
+        host = re.sub(r"https?://|www\.", "", self.host)
+        public_key = inbound_settings.get("publicKey")
+        website_name = inbound.stream_settings.reality_settings.get("serverNames")[0]
+        short_id = inbound.stream_settings.reality_settings.get("shortIds")[0]
+        fingerprint = inbound_settings.get("fingerprint")
+        remark = quote(inbound.remark)
+        peer_name = quote(peer.peer_name)
+
+        return (f"vless://{peer.id}@{host}:{inbound.port}"
+                f"?type=tcp&security=reality&pbk={public_key}&fp={fingerprint}"
+                f"&sni={website_name}&sid={short_id}&spx=%2F&flow={peer.flow}#{remark}-{peer_name}"
+                )
 
     @core_logger.catch()
     def add_peers(self, inbound_id: int, peers: list[XrayPeer]) -> None:
@@ -93,10 +113,10 @@ class XrayWorker:
         self.api.client.update(peer.id, self.peer_to_client(peer))
 
     # TODO list:
-    # [] edit peers
-    # [] delete peers
-    # [] get peers
-    # [] ensure login
+    # [ ] edit peers
+    # [ ] delete peers
+    # [ ] get peers
+    # [ ] ensure login
     # [x] enable peer
     # [x] disable peer
     # [x] is connected

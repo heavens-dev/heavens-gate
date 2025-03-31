@@ -7,7 +7,7 @@ from bot.utils.states import (AddPeerStates, ContactAdminStates,
                               ExtendTimeStates, RenamePeerStates,
                               WhisperStates)
 from bot.utils.user_helper import extend_users_usage_time
-from config.loader import bot_cfg, bot_instance, ip_queue
+from config.loader import bot_cfg, bot_instance, ip_queue, wghub, xray_worker
 from core.db.db_works import ClientFactory
 from core.db.enums import ProtocolType
 from core.logs import bot_logger
@@ -84,6 +84,7 @@ async def whisper_state(message: Message, state: FSMContext):
 
 @router.message(AddPeerStates.select_amount)
 async def add_peers(message: Message, state: FSMContext):
+    await message.delete()
     data = await state.get_data()
     client = ClientFactory(user_id=data["user_id"]).get_client()
 
@@ -92,16 +93,18 @@ async def add_peers(message: Message, state: FSMContext):
             match data["protocol"]:
                 case ProtocolType.WIREGUARD | ProtocolType.AMNEZIA_WIREGUARD:
                     ip_addr = ip_queue.get_ip()
-                    client.add_wireguard_peer(
+                    peer = client.add_wireguard_peer(
                         ip_addr,
                         is_amnezia=data["protocol"] == ProtocolType.AMNEZIA_WIREGUARD
                     )
+                    wghub.add_peer(peer)
                 case ProtocolType.XRAY:
                     # FIXME: hardcoded flow and inbound_id
-                    client.add_xray_peer(
+                    peer = client.add_xray_peer(
                         flow="xtls-rprx-vision",
                         inbound_id=3,
                     )
+                    xray_worker.add_peers(peer.inbound_id, [peer])
                 case _:
                     raise TypeError("Unknown protocol type")
         await message.answer("✅ Пиры были успешно добавлены.")
@@ -109,10 +112,10 @@ async def add_peers(message: Message, state: FSMContext):
         await message.answer("❌ Неправильный формат количества пиров. Введи число.")
     except IndexError:
         await message.answer("❌ Недостаточно свободных IP-адресов.")
-        bot_logger.error("❌ Tried to add a peer, but no IP addresses are available.")
+        bot_logger.error("Tried to add a peer, but no IP addresses are available.")
     except Exception as e:
         await message.answer(f"❌ Произошла ошибка при добавлении пиров: {e}")
-        bot_logger.exception(f"❌ Error while adding peers: {e}")
+        bot_logger.exception(f"Error while adding peers: {e}")
     finally:
         await state.clear()
         return

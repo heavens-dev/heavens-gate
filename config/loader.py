@@ -17,16 +17,16 @@ PATH_TO_CONFIG = "config.conf"
 cfg = Config(PATH_TO_CONFIG)
 db_cfg = cfg.get_database_config()
 bot_cfg = cfg.get_bot_config()
-server_cfg = cfg.get_wireguard_server_config()
+wireguard_server_config = cfg.get_wireguard_server_config()
 core_cfg = cfg.get_core_config()
 xray_cfg = cfg.get_xray_server_config()
 
 init_file_loggers(core_cfg.logs_path)
 
 RESERVED_IP_ADDRESSES = [
-    server_cfg.user_ip + ".0",
-    server_cfg.user_ip + ".1",
-    server_cfg.user_ip + ".255"
+    wireguard_server_config.user_ip + ".0",
+    wireguard_server_config.user_ip + ".1",
+    wireguard_server_config.user_ip + ".255"
 ]
 
 bot_instance = Bot(
@@ -37,13 +37,13 @@ bot_dispatcher = Dispatcher(storage=MemoryStorage())
 
 db_instance = init_db(db_cfg.path)
 
-_all_ips = generate_ip_addresses(server_cfg.user_ip, mask="24")
+_all_ips = generate_ip_addresses(wireguard_server_config.user_ip, mask="24")
 ip_queue = IPQueue([ip for ip in _all_ips
                     if ip not in ClientFactory.get_used_ip_addresses()
                     and ip not in RESERVED_IP_ADDRESSES])
 core_logger.debug(f"Number of available ip addresses: {ip_queue.count_available_addresses()}")
 
-wghub = WGHub(server_cfg.path)
+wghub = WGHub(wireguard_server_config.path)
 xray_worker = XrayWorker(
     xray_cfg.host,
     xray_cfg.port,

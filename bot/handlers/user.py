@@ -1,9 +1,7 @@
-import datetime
-
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import BufferedInputFile, Message
+from aiogram.types import Message
 
 from bot.handlers.keyboards import (build_peer_configs_keyboard,
                                     build_user_actions_keyboard,
@@ -11,10 +9,7 @@ from bot.handlers.keyboards import (build_peer_configs_keyboard,
 from bot.utils.states import ContactAdminStates, RenamePeerStates
 from bot.utils.user_helper import (get_user_data_string,
                                    unblock_timeout_connections)
-from config.loader import core_cfg, server_cfg, wghub
 from core.db.db_works import ClientFactory
-from core.db.enums import ClientStatusChoices, PeerStatusChoices
-from core.wg.wgconfig_helper import get_peer_config_str
 
 router = Router(name="user")
 
