@@ -4,7 +4,7 @@ import subprocess
 def generate_preshared_key(is_amnezia: bool = False) -> str:
     command = "wg" if not is_amnezia else "awg"
     return subprocess.run(
-        f"{command} genpsk",
+        [command, "genpsk"],
         check=True,
         capture_output=True,
         text=True
@@ -13,7 +13,7 @@ def generate_preshared_key(is_amnezia: bool = False) -> str:
 def generate_private_key(is_amnezia: bool = False) -> str:
     command = "wg" if not is_amnezia else "awg"
     return subprocess.run(
-        f"{command} genkey",
+        [command, "genkey"],
         check=True,
         capture_output=True,
         text=True

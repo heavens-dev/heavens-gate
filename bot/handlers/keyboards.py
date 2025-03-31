@@ -38,8 +38,10 @@ def build_peer_configs_keyboard(user_id: int, peers: list[BasePeer], display_all
 
     for peer in peers:
         text = ""
-        if peer.peer_type in [ProtocolType.WIREGUARD, ProtocolType.AMNEZIA_WIREGUARD]:
+        if peer.peer_type == ProtocolType.WIREGUARD:
             text = f"[Wireguard] {peer.peer_name or peer.id}.conf"
+        elif peer.peer_type == ProtocolType.AMNEZIA_WIREGUARD:
+            text = f"[Amnezia WG] {peer.peer_name or peer.id}.conf"
         elif peer.peer_type == ProtocolType.XRAY:
             text = f"[XRay] {peer.peer_name or peer.id}"
         builder.button(

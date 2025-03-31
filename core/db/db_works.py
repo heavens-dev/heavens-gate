@@ -209,6 +209,7 @@ class Client(BaseModel):
             Jmin = random.randint(3, 700)
             Jmax = random.randint(Jmin + 1, 1270)
 
+        wireguard_args["is_amnezia"] = is_amnezia
         wireguard_args["Jc"] = Jc
         wireguard_args["Jmin"] = Jmin
         wireguard_args["Jmax"] = Jmax
