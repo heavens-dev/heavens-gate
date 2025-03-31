@@ -21,7 +21,11 @@ wireguard_server_config = cfg.get_wireguard_server_config()
 core_cfg = cfg.get_core_config()
 xray_cfg = cfg.get_xray_server_config()
 
-init_file_loggers(core_cfg.logs_path)
+if cfg.debug:
+    core_logger.warning("DEBUG MODE IS ENABLED! Disable it in production! Every message will be logged.")
+
+
+init_file_loggers(core_cfg.logs_path, is_debug=cfg.debug)
 
 RESERVED_IP_ADDRESSES = [
     wireguard_server_config.user_ip + ".0",

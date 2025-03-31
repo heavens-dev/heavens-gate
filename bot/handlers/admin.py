@@ -11,6 +11,7 @@ from bot.handlers.keyboards import (build_protocols_keyboard,
                                     build_user_actions_keyboard,
                                     cancel_keyboard)
 from bot.middlewares.client_getters_middleware import ClientGettersMiddleware
+from bot.middlewares.logging_middleware import LoggingMiddleware
 from bot.utils.inline_paginator import UsersInlineKeyboardPaginator
 from bot.utils.message_utils import preview_message
 from bot.utils.states import AddPeerStates, WhisperStates
@@ -25,7 +26,8 @@ router = Router(name="admin")
 router.message.filter(
     F.from_user.id.in_(bot_cfg.admins)
 )
-router.message.middleware(ClientGettersMiddleware())
+router.message.middleware.register(ClientGettersMiddleware())
+router.message.middleware.register(LoggingMiddleware())
 
 
 @router.message(Command("reboot"))

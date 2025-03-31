@@ -88,6 +88,9 @@ async def ban_user_callback(callback: CallbackQuery, callback_data: UserActionsC
     await callback.message.edit_text(get_user_data_string(client)[1])
     await callback.message.edit_reply_markup(reply_markup=build_user_actions_keyboard(client))
 
+    with bot_logger.contextualize(client=client):
+        bot_logger.info("User was manually banned.")
+
 @router.callback_query(
     UserActionsCallbackData.filter(F.action == UserActionsEnum.PARDON_USER)
 )
@@ -104,6 +107,9 @@ async def pardon_user_callback(callback: CallbackQuery, callback_data: UserActio
         text=get_user_data_string(client)[1],
         reply_markup=build_user_actions_keyboard(client)
     )
+
+    with bot_logger.contextualize(client=client):
+        bot_logger.info("User was manually pardoned.")
 
 @router.callback_query(
     UserActionsCallbackData.filter(F.action == UserActionsEnum.GET_CONFIGS)

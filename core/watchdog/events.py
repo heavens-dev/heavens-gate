@@ -227,7 +227,7 @@ class IntervalEvents:
                 continue
 
             if client.userdata.expire_time.date() <= now.date():
-                core_logger.debug(f"Blocking user {client.userdata.name} due to expired account.")
+                core_logger.info(f"Blocking user {client.userdata.name} due to expired account.")
                 client.set_status(ClientStatusChoices.STATUS_ACCOUNT_BLOCKED)
                 # if client has no peers, it will raise KeyError, so we suppress it
                 peers = client.get_wireguard_peers()
@@ -237,7 +237,7 @@ class IntervalEvents:
                     client.set_peer_status(peer.id, PeerStatusChoices.STATUS_BLOCKED)
                 await self.expire_date_block_observer.trigger(client)
             elif (client.userdata.expire_time - datetime.timedelta(days=1)).date() <= now.date():
-                core_logger.debug(f"Warning user {client.userdata.name} about the expiration date.")
+                core_logger.info(f"Warning user {client.userdata.name} about the expiration date.")
                 await self.expire_date_warning_observer.trigger(client)
 
     async def run_checkers(self):

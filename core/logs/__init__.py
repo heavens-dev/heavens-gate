@@ -19,7 +19,9 @@ logger.add(
     backtrace=False,
 )
 
-def init_file_loggers(path: str):
+def init_file_loggers(path: str, is_debug: bool = False):
+    path = os.path.abspath(path) + "/debug" if is_debug else os.path.abspath(path)
+
     core_logger.add(
         os.path.join(path, "core", "core.log"),
         format=FILE_LOGS_FORMAT,
@@ -27,7 +29,7 @@ def init_file_loggers(path: str):
         rotation="3 MB",
         compression="zip",
         filter=lambda record: record["extra"]["service"] == "core",
-        level="INFO"
+        level="INFO" if not is_debug else "DEBUG"
     )
 
     bot_logger.add(
@@ -37,7 +39,7 @@ def init_file_loggers(path: str):
         rotation="3 MB",
         compression="zip",
         filter=lambda record: record["extra"]["service"] == "bot",
-        level="INFO"
+        level="INFO" if not is_debug else "DEBUG"
     )
 
     core_logger.info("File loggers initialized")

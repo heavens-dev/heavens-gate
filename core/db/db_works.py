@@ -33,6 +33,7 @@ class Client(BaseModel):
             raise AttributeError("model attribute was not found in kwargs.")
         self.__model = kwargs["model"]
 
+    @core_logger.catch()
     def __update_client(self, **kwargs) -> bool:
         """
         Updates client data in the database using provided keyword arguments.
@@ -222,12 +223,15 @@ class Client(BaseModel):
         if not peer_name:
             peer_name = f"{self.userdata.name}_{ClientFactory.get_latest_peer_id() + 1}"
 
-        return self.__add_peer(
+        peer = self.__add_peer(
             peer_name=peer_name,
             peer_type=ProtocolType.XRAY,
             flow=flow,
             inbound_id=inbound_id,
         )
+        with core_logger.contextualize(peer=peer):
+            core_logger.info(f"New peer was created.")
+        return peer
 
     def __get_peers(self,
                     protocol_type: Optional[ProtocolType] = None,
@@ -257,6 +261,7 @@ class Client(BaseModel):
                             .where(PeersTableModel.user == self.__model, *criteria)
                             )
 
+    @core_logger.catch()
     def get_wireguard_peers(self, is_amnezia: bool) -> list[WireguardPeer]:
         # is_amnezia doesn't really matter here, but it's here for consistency
         peer_models = self.__get_peers(ProtocolType.WIREGUARD if not is_amnezia
@@ -292,24 +297,29 @@ class Client(BaseModel):
             for model in self.__get_peers()
         ]
 
-    def change_peer_name(self, peer_id: int, peer_name: str):
-        self.__update_peer(peer_id, peer_name=peer_name)
+    @core_logger.catch()
+    def change_peer_name(self, peer_id: int, peer_name: str) -> bool:
+        result = self.__update_peer(peer_id, peer_name=peer_name)
+        with core_logger.contextualize(peer_id=peer_id, result=result):
+            core_logger.info(f"Tried to change Peer name to {peer_name}")
+        return result
 
-    def set_status(self, status: ClientStatusChoices) -> bool:
-        self.userdata.status = status
-        return self.__update_client(status=status.value)
-
-    def set_expire_time(self, expire_time: datetime.datetime) -> bool:
-        self.userdata.expire_time = expire_time
-        return self.__update_client(expire_time=expire_time)
-
+    @core_logger.catch()
     def set_peer_status(self, peer_id: int, peer_status: PeerStatusChoices) -> bool:
-        return self.__update_peer(peer_id, peer_status=peer_status.value)
+        result = self.__update_peer(peer_id, peer_status=peer_status.value)
+        with core_logger.contextualize(peer_id=peer_id, result=result):
+            core_logger.debug(f"Tried to change peer status to {peer_status}")
+        return result
 
-    def set_peer_timer(self, peer_id: int, time: datetime.datetime) -> bool:
-        return self.__update_peer(peer_id, peer_timer=time)
+    @core_logger.catch()
+    def set_peer_timer(self, peer_id, time: datetime.datetime) -> bool:
+        result = self.__update_peer(peer_id, peer_timer=time)
+        with core_logger.contextualize(peer_id=peer_id, result=result):
+            core_logger.debug(f"Tried to change peer timer to {time}")
+        return result
 
-    def get_connected_peers(self) -> list[BasePeer]:
+    @core_logger.catch()
+    def get_connected_peers(self) -> list[ConnectionPeer]:
         return [
             PeersTableModel.model_validate(model)
             for model in self.__get_peers(PeersTableModel.peer_status == PeerStatusChoices.STATUS_CONNECTED.value)
@@ -354,7 +364,7 @@ class ClientFactory(BaseModel):
                 model.name = name
                 model.save()
                 with core_logger.contextualize(model=model):
-                    core_logger.debug(f"User has changed his username, updating it in DB")
+                    core_logger.info(f"User has changed his username, updating it in DB")
         except DoesNotExist:
             model: UserModel = UserModel.create(user_id=self.user_id, name=name, **kwargs)
             with core_logger.contextualize(model=model):

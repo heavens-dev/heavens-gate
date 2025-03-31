@@ -6,12 +6,14 @@ from aiogram.types import Message
 from bot.handlers.keyboards import (build_peer_configs_keyboard,
                                     build_user_actions_keyboard,
                                     cancel_keyboard)
+from bot.middlewares.logging_middleware import LoggingMiddleware
 from bot.utils.states import ContactAdminStates, RenamePeerStates
 from bot.utils.user_helper import (get_user_data_string,
                                    unblock_timeout_connections)
 from core.db.db_works import ClientFactory
 
 router = Router(name="user")
+router.message.middleware.register(LoggingMiddleware())
 
 
 @router.message(Command("me"))
