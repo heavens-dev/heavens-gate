@@ -305,6 +305,14 @@ class Client(BaseModel):
             core_logger.info(f"Tried to change Peer name to {peer_name}")
         return result
 
+    def set_status(self, status: ClientStatusChoices) -> bool:
+        self.userdata.status = status
+        return self.__update_client(status=status.value)
+
+    def set_expire_time(self, expire_time: datetime.datetime) -> bool:
+        self.userdata.expire_time = expire_time
+        return self.__update_client(expire_time=expire_time)
+
     @core_logger.catch()
     def set_peer_status(self, peer_id: int, peer_status: PeerStatusChoices) -> bool:
         result = self.__update_peer(peer_id, peer_status=peer_status.value)
