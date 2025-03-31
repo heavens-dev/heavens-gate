@@ -319,9 +319,9 @@ class Client(BaseModel):
         return result
 
     @core_logger.catch()
-    def get_connected_peers(self) -> list[ConnectionPeer]:
+    def get_connected_peers(self) -> list[BasePeer]:
         return [
-            PeersTableModel.model_validate(model)
+            BasePeer.model_validate(model)
             for model in self.__get_peers(PeersTableModel.peer_status == PeerStatusChoices.STATUS_CONNECTED.value)
         ]
 

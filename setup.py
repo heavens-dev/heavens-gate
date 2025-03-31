@@ -102,6 +102,9 @@ def make_config(path):
         server_config_data["IPMask"] = input_with_default(REQUIRE_INPUT_STR + " Enter the mask for IP address (default: 32): ", 32)
         server_config_data["EndpointPort"] = get_endpoint_port()
 
+    # [Xray]
+    # TODO: Add XRay config
+
     # Put all data into config
     config = ConfigParser()
     config.optionxform = str
