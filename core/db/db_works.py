@@ -242,7 +242,11 @@ class Client(BaseModel):
         match protocol_type:
             case ProtocolType.WIREGUARD | ProtocolType.AMNEZIA_WIREGUARD:
                 return list(
-                    WireguardPeerModel.select(PeersTableModel, WireguardPeerModel)
+                    WireguardPeerModel.select(
+                        PeersTableModel,
+                        WireguardPeerModel,
+                        PeersTableModel.id.alias("peer_id")
+                    )
                     .join(
                         PeersTableModel,
                         on=(PeersTableModel.id == WireguardPeerModel.peer)
@@ -250,7 +254,11 @@ class Client(BaseModel):
                     .where(PeersTableModel.user == self.__model, *criteria)
                 )
             case ProtocolType.XRAY:
-                return list(XrayPeerModel.select(PeersTableModel, XrayPeerModel)
+                return list(XrayPeerModel.select(
+                                PeersTableModel,
+                                XrayPeerModel,
+                                PeersTableModel.id.alias("peer_id")
+                            )
                             .join(
                                 PeersTableModel,
                                 on=(PeersTableModel.id == XrayPeerModel.peer)
@@ -523,6 +531,7 @@ class ClientFactory(BaseModel):
             core_logger.info(f"Peer with ID {peer.id} not found.")
             return False
 
+    # TODO: add serialization to this method
     @staticmethod
     def delete_peer_by_id(peer_id: int) -> Union[BasePeer, bool]:
         """

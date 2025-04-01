@@ -77,6 +77,7 @@ async def select_peer_callback(callback: CallbackQuery, callback_data: PeerCallb
 )
 async def ban_user_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
     client = ClientFactory(user_id=callback_data.user_id).get_client()
+    # TODO: get all peers
     peers = client.get_wireguard_peers()
     client.set_status(ClientStatusChoices.STATUS_ACCOUNT_BLOCKED)
     # if peer has no peers, it will raise KeyError, so we suppress it
@@ -96,11 +97,12 @@ async def ban_user_callback(callback: CallbackQuery, callback_data: UserActionsC
 )
 async def pardon_user_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
     client = ClientFactory(user_id=callback_data.user_id).get_client()
+    # TODO: get all peers
     peers = client.get_wireguard_peers()
     client.set_status(ClientStatusChoices.STATUS_CREATED)
     wghub.enable_peers(peers)
     for peer in peers:
-        client.set_peer_status(peer.id, PeerStatusChoices.STATUS_DISCONNECTED)
+        client.set_peer_status(peer.peer_id, PeerStatusChoices.STATUS_DISCONNECTED)
     await callback.answer(f"✅ Пользователь {client.userdata.name} разблокирован.")
     await callback.message.edit_text(
         # see docstring in get_user_data_string for more info

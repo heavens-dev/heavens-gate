@@ -31,7 +31,7 @@ class XrayWorker:
     @staticmethod
     def peer_to_client(peer: XrayPeer) -> Client:
         return Client(
-            id=str(peer.id), # explicitly converting to string, bug in py3xui
+            id=str(peer.peer_id), # explicitly converting to string, bug in py3xui
             email=peer.peer_name,
             enable=PeerStatusChoices.xray_enabled(peer.peer_status),
             flow=peer.flow,
@@ -51,7 +51,7 @@ class XrayWorker:
         remark = quote(inbound.remark)
         peer_name = quote(peer.peer_name)
 
-        return (f"vless://{peer.id}@{host}:{inbound.port}"
+        return (f"vless://{peer.peer_id}@{host}:{inbound.port}"
                 f"?type=tcp&security=reality&pbk={public_key}&fp={fingerprint}"
                 f"&sni={website_name}&sid={short_id}&spx=%2F&flow={peer.flow}#{remark}-{peer_name}"
                 )
@@ -63,7 +63,7 @@ class XrayWorker:
 
         for peer in peers:
             if peer.inbound_id != inbound_id:
-                with core_logger.contextualize(peer_id=peer.id):
+                with core_logger.contextualize(peer_id=peer.peer_id):
                     core_logger.warning(
                         f"Inbound ID does not match the peer's inbound ID: {peer.inbound_id} != {inbound_id}"
                     )
@@ -105,12 +105,12 @@ class XrayWorker:
     @core_logger.catch()
     def enable_peer(self, peer: XrayPeer) -> None:
         peer.enable = True
-        self.api.client.update(peer.id, self.peer_to_client(peer))
+        self.api.client.update(peer.peer_id, self.peer_to_client(peer))
 
     @core_logger.catch()
     def disable_peer(self, peer: XrayPeer):
         peer.enable = False
-        self.api.client.update(peer.id, self.peer_to_client(peer))
+        self.api.client.update(peer.peer_id, self.peer_to_client(peer))
 
     # TODO list:
     # [ ] edit peers

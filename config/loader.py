@@ -60,6 +60,7 @@ xray_worker = XrayWorker(
 
 connections_observer = ConnectionEvents(
     wghub,
+    xray_worker,
     listen_timer=core_cfg.connection_listen_timer,
     update_timer=core_cfg.connection_update_timer,
     connected_only_listen_timer=core_cfg.connection_connected_only_listen_timer,

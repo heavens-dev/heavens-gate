@@ -40,6 +40,7 @@ class BasePeer(BaseModel):
 
     id: int = Field(alias="peer.id")
     user_id: Union[int, str] = Field(alias="peer.user_id")
+    peer_id: Optional[int] = Field(default=None, alias="peer.peer_id")
 
     peer_name: str = Field(alias="peer.peer_name")
     peer_type: ProtocolType = Field(alias="peer.peer_type")
@@ -57,6 +58,10 @@ class BasePeer(BaseModel):
                 data.peer_status = data.peer.peer_status
                 data.peer_timer = data.peer.peer_timer
         return data
+
+    def __post_init__(self):
+        # Ensure that the peer_id is set to the id if not provided
+        self.peer_id = self.peer_id or self.id
 
 class WireguardPeer(BasePeer):
     """

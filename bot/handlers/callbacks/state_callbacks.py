@@ -102,7 +102,7 @@ async def add_peers(message: Message, state: FSMContext):
                     # FIXME: hardcoded flow and inbound_id
                     peer = client.add_xray_peer(
                         flow="xtls-rprx-vision",
-                        inbound_id=3,
+                        inbound_id=2,
                     )
                     xray_worker.add_peers(peer.inbound_id, [peer])
                 case _:

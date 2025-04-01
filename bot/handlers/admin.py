@@ -158,7 +158,7 @@ async def delete_peer(message: Message):
         return
     id_or_ip = splitted_message[1]
 
-
+    # TODO: check if it's an IP address or ID
     peer = ClientFactory.delete_peer_by_id(int(id_or_ip))
 
     if not peer:

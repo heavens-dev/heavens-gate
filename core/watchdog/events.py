@@ -12,11 +12,13 @@ from core.logs import core_logger
 from core.watchdog.object import CallableObject
 from core.watchdog.observer import EventObserver
 from core.wg.wg_work import WGHub
+from core.xray.xray_worker import XrayWorker
 
 
 class ConnectionEvents:
     def __init__(self,
                  wghub: WGHub,
+                 xray: XrayWorker,
                  listen_timer: int = 120,
                  connected_only_listen_timer: int = 60,
                  update_timer: int = 360,
@@ -26,6 +28,7 @@ class ConnectionEvents:
         self.connected_only_listen_timer = connected_only_listen_timer
         self.active_hours = active_hours
         self.wghub = wghub
+        self.xray = xray
 
         self.connected = EventObserver(required_types=[Client, BasePeer])
         """Decorated methods must have a `Client` and `ConnectionPeer` argument"""
@@ -69,8 +72,15 @@ class ConnectionEvents:
             if peer.peer_status == PeerStatusChoices.STATUS_CONNECTED:
                 await self.emit_disconnect(client, peer)
             return False
-        else:
-            ...
+        elif peer.peer_type == ProtocolType.XRAY:
+            if self.xray.is_connected(peer):
+                if peer.peer_status == PeerStatusChoices.STATUS_DISCONNECTED:
+                    await self.emit_connect(client, peer)
+                return True
+
+            if peer.peer_status == PeerStatusChoices.STATUS_CONNECTED:
+                await self.emit_disconnect(client, peer)
+            return False
 
     async def __listen_clients(self, listen_timer: int, connected_only: bool = False):
         while True:
@@ -103,6 +113,7 @@ class ConnectionEvents:
                 core_logger.debug(f"Done listening for connections. Sleeping for {listen_timer} sec")
             await asyncio.sleep(listen_timer)
 
+    # TODO: update typehint for peer
     async def emit_connect(self, client: Client, peer: WireguardPeer):
         """Propagates connection event to handlers.
         Sets the time until which the connection can be active.
@@ -110,28 +121,30 @@ class ConnectionEvents:
         Updates Client status to `ClientStatusChoices.STATUS_CONNECTED`
         and Peer status to `PeerStatusChoices.STATUS_DISCONNECTED`"""
         new_time = datetime.datetime.now() + datetime.timedelta(hours=self.active_hours)
-        client.set_peer_timer(peer.id, new_time)
-        client.set_peer_status(peer.id, PeerStatusChoices.STATUS_CONNECTED)
+        client.set_peer_timer(peer.peer_id, new_time)
+        client.set_peer_status(peer.peer_id, PeerStatusChoices.STATUS_CONNECTED)
         client.set_status(ClientStatusChoices.STATUS_CONNECTED)
         # avoid triggering connection event multiple times
         peer.peer_status = PeerStatusChoices.STATUS_CONNECTED
         peer.peer_timer = new_time
         await self.connected.trigger(client, peer)
 
+    # TODO: update typehint for peer
     async def emit_disconnect(self, client: Client, peer: WireguardPeer):
         """Propagates disconnect event to handlers.
 
         Updates Client status to `ClientStatusChoices.STATUS_DISCONNECTED`
         and Peer status to `PeerStatusChoices.STATUS_DISCONNECTED`"""
-        client.set_peer_status(peer.id, PeerStatusChoices.STATUS_DISCONNECTED)
+        client.set_peer_status(peer.peer_id, PeerStatusChoices.STATUS_DISCONNECTED)
         # avoid triggering disconnection event multiple times
         peer.peer_status = PeerStatusChoices.STATUS_DISCONNECTED
         if len(client.get_connected_peers()) == 0:
             client.set_status(ClientStatusChoices.STATUS_DISCONNECTED)
         await self.disconnected.trigger(client, peer)
 
+    # TODO: update typehint for peer
     async def emit_timeout_disconnect(self, client: Client, peer: WireguardPeer):
-        client.set_peer_status(peer.id, PeerStatusChoices.STATUS_TIME_EXPIRED)
+        client.set_peer_status(peer.peer_id, PeerStatusChoices.STATUS_TIME_EXPIRED)
         # avoid triggering the timer_observer multiple times
         peer.peer_status = PeerStatusChoices.STATUS_TIME_EXPIRED
         self.wghub.disable_peer(peer)
