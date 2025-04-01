@@ -13,7 +13,7 @@ from bot.commands import (get_admin_commands, get_default_commands,
 from bot.handlers import get_handlers_router
 from config.loader import (bot_cfg, bot_dispatcher, bot_instance, cfg,
                            connections_observer, db_instance,
-                           interval_observer, ip_queue, wghub)
+                           interval_observer, ip_queue, wghub, xray_worker)
 from core.db.db_works import ClientFactory
 from core.logs import bot_logger
 
@@ -36,13 +36,13 @@ async def cmd_start(message: Message) -> None:
         )
 
         if created:
-            # FIXME: DELETE THIS WHEN TESTING IS OVER
-            client.add_wireguard_peer(ip_queue.get_ip(), is_amnezia=wghub.is_amnezia)
-            client.add_wireguard_peer(ip_queue.get_ip(), is_amnezia=wghub.is_amnezia)
-            client.add_xray_peer(
-                flow="xtls-rprx-vision",
-                inbound_id=3,
-            )
+            if cfg.canary:
+                wghub.add_peer(client.add_wireguard_peer(ip_queue.get_ip(), is_amnezia=wghub.is_amnezia))
+                wghub.add_peer(client.add_wireguard_peer(ip_queue.get_ip(), is_amnezia=wghub.is_amnezia))
+                xray_worker.add_peers([client.add_xray_peer(
+                    flow="xtls-rprx-vision",
+                    inbound_id=3,
+                )])
 
     keyboard = None
     faq_str = ""
