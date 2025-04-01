@@ -363,9 +363,17 @@ class ClientFactory(BaseModel):
 
     user_id: Union[int, str]
 
-    def get_or_create_client(self, name: str, **kwargs) -> Client:
+    def get_or_create_client(self, name: str, **kwargs) -> tuple[Client, bool]:
         """Retrieves or creates a record of the user in the database.
-        Use this method when you're unsure whether the user already exists in the database or not."""
+        Use this method when you're unsure whether the user already exists in the database or not.
+
+        Returns:
+            tuple[Client, bool]: A tuple containing the created or retrieved `Client` object and a boolean indicating whether it was created.
+        """
+        created: bool = False
+        if not name:
+            raise ValueError("Name cannot be empty.")
+
         try:
             model: UserModel = UserModel.get(UserModel.user_id == self.user_id)
 
@@ -378,8 +386,9 @@ class ClientFactory(BaseModel):
             model: UserModel = UserModel.create(user_id=self.user_id, name=name, **kwargs)
             with core_logger.contextualize(model=model):
                 core_logger.info(f"New user was created.")
+            created = True
 
-        return Client(model=model, userdata=User.model_validate(model))
+        return (Client(model=model, userdata=User.model_validate(model)), created)
 
     def get_client(self) -> Optional[Client]:
         """
