@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -41,6 +41,7 @@ class BasePeer(BaseModel):
     id: int = Field(alias="peer.id")
     user_id: Union[int, str] = Field(alias="peer.user_id")
     peer_id: Optional[int] = Field(default=None, alias="peer.peer_id")
+    """`peer_id` is the real id of the peer from PeersTableModel, not local from it's table"""
 
     peer_name: str = Field(alias="peer.peer_name")
     peer_type: ProtocolType = Field(alias="peer.peer_type")
@@ -49,7 +50,7 @@ class BasePeer(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def test(cls, data):
+    def apply_peer_fields(cls, data):
         if not isinstance(data, (dict, PeersTableModel)):
             if hasattr(data, "peer") and issubclass(data.peer.__class__, PeersTableModel):
                 data.user_id = data.peer.user_id
@@ -59,7 +60,7 @@ class BasePeer(BaseModel):
                 data.peer_timer = data.peer.peer_timer
         return data
 
-    def __post_init__(self):
+    def model_post_init(self, __context: Any) -> None:
         # Ensure that the peer_id is set to the id if not provided
         self.peer_id = self.peer_id or self.id
 
