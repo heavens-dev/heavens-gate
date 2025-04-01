@@ -16,6 +16,7 @@ class Config:
         self.cfg.read(path_to_config)
 
         self.debug = self.cfg.getboolean("core", "debug", fallback=False)
+        self.is_canary = self.cfg.getboolean("core", "is_canary", fallback=False)
 
     def get_bot_config(self):
         return self.Bot(

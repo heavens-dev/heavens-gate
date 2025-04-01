@@ -23,7 +23,8 @@ xray_cfg = cfg.get_xray_server_config()
 
 if cfg.debug:
     core_logger.warning("DEBUG MODE IS ENABLED! Disable it in production! Every message will be logged.")
-
+if cfg.is_canary:
+    core_logger.warning("Canary version is enabled! Disable it on production.")
 
 init_file_loggers(core_cfg.logs_path, is_debug=cfg.debug)
 

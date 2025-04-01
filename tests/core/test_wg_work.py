@@ -22,7 +22,7 @@ def test_add_peer(wg_hub: WGHub, default_peers: dict[str, WireguardPeer]):
 def test_delete_peer(wg_hub: WGHub, default_peers: dict[str, WireguardPeer]):
     wg_hub.delete_peer(default_peers["iamuser_0"])
     with pytest.raises(KeyError) as excinfo:
-        wg_hub.wgconfig.get_peer(default_peers["otheruser_2"].public_key)
+        wg_hub.wgconfig.get_peer(default_peers["iamuser_0"].public_key)
 
     with pytest.raises(KeyError) as excinfo:
-        wg_hub.delete_peer(default_peers["otheruser_2"])
+        wg_hub.delete_peer(default_peers["iamuser_0"])

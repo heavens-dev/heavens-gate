@@ -13,8 +13,9 @@ def test_create_client(db):
     assert client.userdata.user_id == "123"
 
 def test_add_and_get_wireguard_peers(db, default_peers):
-    client = ClientFactory(user_id=123).get_or_create_client(name="iamuser")
+    client, is_created = ClientFactory(user_id=123).get_or_create_client(name="iamuser")
 
+    assert is_created is True
     assert isinstance(client, Client)
 
     peer1 = client.add_wireguard_peer(**default_peers["iamuser_0"].model_dump(include={
@@ -43,8 +44,9 @@ def test_add_and_get_wireguard_peers(db, default_peers):
     assert peers[1].preshared_key == default_peers["iamuser_1"].preshared_key
 
 def test_delete_wireguard_peer(db, default_peers):
-    client = ClientFactory(user_id=123).get_or_create_client(name="iamuser")
+    client, is_created = ClientFactory(user_id=123).get_or_create_client(name="iamuser")
 
+    assert is_created is True
     assert isinstance(client, Client)
 
     peer = client.add_wireguard_peer(**default_peers["iamuser_0"].model_dump(include={
@@ -60,8 +62,9 @@ def test_delete_wireguard_peer(db, default_peers):
     assert len(peers) == 0
 
 def test_add_xray_peer(db):
-    client = ClientFactory(user_id=1234).get_or_create_client(name="xrayuser")
+    client, is_created = ClientFactory(user_id=1234).get_or_create_client(name="xrayuser")
 
+    assert is_created is True
     assert isinstance(client, Client)
 
     peer = client.add_xray_peer(inbound_id=123, flow="flow")

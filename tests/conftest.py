@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 
 from config.settings import Config
@@ -5,6 +7,7 @@ from core.db.enums import PeerStatusChoices, ProtocolType
 from core.db.model_serializer import WireguardPeer
 from core.db.models import init_db
 from core.wg.wg_work import WGHub
+from core.xray.xray_worker import XrayWorker
 
 PRIVATE_KEY = "AMHCM2a1apUYPMnrpobc6Erjaz6r7z9rN9ieonhJK3U="
 
@@ -77,6 +80,20 @@ AllowedIPs = 10.0.0.3/32
 """)
         wg_file.flush()
         return WGHub(wg_file.name, auto_sync=False)
+
+@pytest.fixture(scope="function")
+def xray_worker():
+    with patch("py3xui.Api.login") as mock_login:
+        mock_login.return_value = None
+        return XrayWorker(
+            host="http://127.0.0.1",
+            port="12345",
+            web_path="random_string",
+            username="admin",
+            password="password",
+            token="token",
+            tls=True
+        )
 
 @pytest.fixture(scope="function")
 def db():
