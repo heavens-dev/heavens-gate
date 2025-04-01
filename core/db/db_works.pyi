@@ -77,4 +77,8 @@ class ClientFactory(BaseModel):
     @staticmethod
     def delete_peer(peer: BasePeer) -> Union[BasePeer, bool]: ...
     @staticmethod
-    def delete_peer_by_id(peer_id: int) -> Union[BasePeer, bool]: ...
+    @staticmethod
+    def delete_peer_by_id(
+        peer_id: int,
+        serialized: bool = False
+        ) -> Union[BasePeer, WireguardPeer, XrayPeer, bool]: ...

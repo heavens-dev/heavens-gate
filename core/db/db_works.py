@@ -533,19 +533,42 @@ class ClientFactory(BaseModel):
 
     # TODO: add serialization to this method
     @staticmethod
-    def delete_peer_by_id(peer_id: int) -> Union[BasePeer, bool]:
+    def delete_peer_by_id(
+        peer_id: int,
+        serialized: bool = False
+        ) -> Union[BasePeer, WireguardPeer, XrayPeer, bool]:
         """
         Deletes a peer by their ID.
         Args:
             peer_id (int): The unique identifier of the peer to be deleted.
+            serialized (bool): If True, the method will return a serialized peer object.
+                               If False, it will return a `BasePeer` object.
         Returns:
-            Union[BasePeer, bool]: Returns the deleted peer object if successful,
-                                   False if the peer was not found.
+            Union[BasePeer, WireguardPeer, XrayPeer, bool]: Returns the deleted peer object if successful, serialized if requested.
+            Returns `False` if the peer was not found or if an error occurred during deletion.
         """
         try:
-            p = PeersTableModel.get(PeersTableModel.id == peer_id)
-            p.delete_instance()
-            return p
+            peer: PeersTableModel = PeersTableModel.get(PeersTableModel.id == peer_id)
+
+            if serialized:
+                match peer.peer_type:
+                    case ProtocolType.WIREGUARD | ProtocolType.AMNEZIA_WIREGUARD:
+                        serialized_model = WireguardPeer.model_validate(
+                            WireguardPeerModel.get(WireguardPeerModel.peer == peer_id)
+                        )
+                    case ProtocolType.XRAY:
+                        serialized_model = XrayPeer.model_validate(
+                            XrayPeerModel.get(XrayPeerModel.peer == peer_id)
+                        )
+                    case _:
+                        core_logger.warning(f"Unknown protocol type: {peer.peer_type}")
+                        serialized_model = BasePeer.model_validate(peer)
+            else:
+                serialized_model = BasePeer.model_validate(peer)
+
+            # actually deleting the row from every table because of cascading
+            peer.delete_instance()
+            return serialized_model
         except DoesNotExist:
             core_logger.info(f"Peer with ID {peer_id} not found.")
             return False
