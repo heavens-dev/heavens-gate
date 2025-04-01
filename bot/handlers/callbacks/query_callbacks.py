@@ -81,12 +81,13 @@ async def ban_user_callback(callback: CallbackQuery, callback_data: UserActionsC
     peers = client.get_wireguard_peers()
     client.set_status(ClientStatusChoices.STATUS_ACCOUNT_BLOCKED)
     # if peer has no peers, it will raise KeyError, so we suppress it
-    wghub.disable_peers(peers)
+    with suppress(KeyError):
+        wghub.disable_peers(peers)
     for peer in peers:
         client.set_peer_status(peer.id, PeerStatusChoices.STATUS_BLOCKED)
     await callback.answer(f"✅ Пользователь {client.userdata.name} заблокирован.")
     # see docstring in get_user_data_string for more info
-    await callback.message.edit_text(get_user_data_string(client)[1])
+    await callback.message.edit_text(get_user_data_string(client, show_peer_ids=True)[1])
     await callback.message.edit_reply_markup(reply_markup=build_user_actions_keyboard(client))
 
     with bot_logger.contextualize(client=client):
@@ -106,7 +107,8 @@ async def pardon_user_callback(callback: CallbackQuery, callback_data: UserActio
     await callback.answer(f"✅ Пользователь {client.userdata.name} разблокирован.")
     await callback.message.edit_text(
         # see docstring in get_user_data_string for more info
-        text=get_user_data_string(client)[1],
+        # callback_data.is_admin is probably always True here, but just in case
+        text=get_user_data_string(client, show_peer_ids=callback_data.is_admin)[1],
         reply_markup=build_user_actions_keyboard(client)
     )
 
@@ -140,7 +142,7 @@ async def update_user_message_data(callback: CallbackQuery, callback_data: UserA
     with suppress(TelegramBadRequest):
         await callback.message.edit_text(
             # see docstring in get_user_data_string for more info
-            text=get_user_data_string(client)[1],
+            text=get_user_data_string(client, show_peer_ids=callback_data.is_admin)[1],
             reply_markup=build_user_actions_keyboard(client, is_admin=callback_data.is_admin)
         )
 
@@ -279,7 +281,7 @@ async def whisper_user_callback(callback: CallbackQuery, callback_data: UserActi
 async def get_user_callback(callback: CallbackQuery, callback_data: GetUserCallbackData):
     client = ClientFactory(user_id=callback_data.user_id).get_client()
     await callback.answer()
-    user_data = get_user_data_string(client)
+    user_data = get_user_data_string(client, show_peer_ids=True)
     await callback.message.answer(f"Пользователь: {client.userdata.name}\n" + user_data[0])
     await callback.message.answer(
         user_data[1],

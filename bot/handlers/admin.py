@@ -93,7 +93,7 @@ async def unban(message: Message, client: Client):
 @router.message(Command("get_user"))
 async def get_user(message: Message, client: Client):
     await message.answer(f"Пользователь: {client.userdata.name}")
-    user_string = get_user_data_string(client)
+    user_string = get_user_data_string(client, show_peer_ids=True)
     await message.answer(user_string[0])
     await message.answer(user_string[1], reply_markup=build_user_actions_keyboard(client))
 
@@ -150,16 +150,16 @@ async def manage_peer(message: Message):
         )
         bot_logger.info(f"Peer (IP: {peer.shared_ips}) was unblocked by {message.from_user.username}")
 
+# TODO minor: reimplement deleting by IP address for Wireguard peers
 @router.message(Command("delete_peer"))
 async def delete_peer(message: Message):
     splitted_message = message.text.split()
     if len(splitted_message) <= 1:
-        await message.answer("❌ Сообщение должно содержать ID или IP адрес пира (если это пир Wireguard).")
+        await message.answer("❌ Сообщение должно содержать ID пира.")
         return
-    id_or_ip = splitted_message[1]
+    peer_id = splitted_message[1]
 
-    # TODO: check if it's an IP address or ID
-    peer = ClientFactory.delete_peer_by_id(int(id_or_ip))
+    peer = ClientFactory.delete_peer_by_id(int(peer_id), serialized=True)
 
     if not peer:
         await message.answer("❌ Пир не найден.")

@@ -29,7 +29,7 @@ def get_client_by_id_or_ip(id_or_ip: Union[str, int]) -> tuple[Optional[Client],
         return None, f"❌ Пользователь <code>{id_or_ip}</code> не найден."
     return client, None
 
-def get_user_data_string(client: Client) -> list[str]:
+def get_user_data_string(client: Client, show_peer_ids: bool = False) -> list[str]:
     """Returns human-readable data about User. Recommended to use `parse_mode="HTML"`.
 
     Note:
@@ -41,6 +41,8 @@ def get_user_data_string(client: Client) -> list[str]:
     peers_str = ""
 
     for peer in peers:
+        if show_peer_ids:
+            peers_str += f"({peer.peer_id}) "
         match peer.peer_type:
             case ProtocolType.WIREGUARD | ProtocolType.AMNEZIA_WIREGUARD:
                 peers_str += "[Wireguard] " if peer.peer_type == ProtocolType.WIREGUARD else "[Amnezia WG] "
