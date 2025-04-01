@@ -36,7 +36,7 @@ async def cmd_start(message: Message) -> None:
         )
 
         if created:
-            if cfg.canary:
+            if cfg.is_canary:
                 wghub.add_peer(client.add_wireguard_peer(ip_queue.get_ip(), is_amnezia=wghub.is_amnezia))
                 wghub.add_peer(client.add_wireguard_peer(ip_queue.get_ip(), is_amnezia=wghub.is_amnezia))
                 xray_worker.add_peers([client.add_xray_peer(
