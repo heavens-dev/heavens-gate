@@ -21,6 +21,7 @@ from core.db.db_works import Client, ClientFactory
 from core.db.enums import ClientStatusChoices, PeerStatusChoices, ProtocolType
 from core.logs import bot_logger
 from core.utils.ip_utils import check_ip_address
+from core.utils.peers_utils import disable_peers, enable_peers
 
 router = Router(name="admin")
 router.message.filter(
@@ -77,18 +78,30 @@ async def whisper(message: Message, client: Client, state: FSMContext):
 @router.message(Command("ban", "anathem"))
 async def ban(message: Message, client: Client):
     client.set_status(ClientStatusChoices.STATUS_ACCOUNT_BLOCKED)
+    peers = client.get_all_peers(serialized=True)
+    disable_peers(wghub, xray_worker, peers, client)
+
     await message.answer(
         f"✅ Пользователь <code>{client.userdata.name}:{client.userdata.user_id}:{client.userdata.ip_address}</code> заблокирован."
     )
-    # TODO: notify user about blocking and reject any ongoing connections
+    await message.bot.send_message(
+        client.userdata.user_id,
+        f"🔒❗ Твой аккаунт был заблокирован. Если тебе необходима информация или ты считаешь, что это ошибка, "
+        "свяжись с нами для дальшейшего разбирательства."
+    )
 
 @router.message(Command("unban", "mercy", "pardon"))
 async def unban(message: Message, client: Client):
     client.set_status(ClientStatusChoices.STATUS_CREATED)
+    peers = client.get_all_peers(serialized=True)
+    enable_peers(wghub, xray_worker, peers, client)
     await message.answer(
         f"✅ Пользователь <code>{client.userdata.name}:{client.userdata.user_id}:{client.userdata.ip_address}</code> разблокирован."
     )
-    # TODO: notify user about pardon
+    await message.bot.send_message(
+        client.userdata.user_id,
+        f"🔓❗ Твой аккаунт был разблокирован. Если у тебя были доступные пиры, они станут доступны в ближайшее время."
+    )
 
 @router.message(Command("get_user"))
 async def get_user(message: Message, client: Client):
@@ -109,46 +122,80 @@ async def add_peer(message: Message, client: Client, state: FSMContext):
         "user_id": client.userdata.user_id,
     })
 
-# TODO: split this command into two separate commands
-@router.message(Command("disable_peer", "enable_peer"))
-async def manage_peer(message: Message):
+# ? writing "command" in the function name to avoid potential name conflicts
+@router.message(Command("disable_peer"))
+async def disable_peer_command(message: Message):
     if len(message.text.split()) <= 1:
-        await message.answer("❌ Сообщение должно содержать IP адрес пира.")
+        await message.answer("❌ Сообщение должно содержать ID или IP адрес пира (если это пир Wireguard).")
         return
 
-    ip = message.text.split()[1]
-    is_disable = message.text.startswith("/disable")
+    id_or_ip = message.text.split()[1]
 
-    peer = ClientFactory.get_peer_by_id(ip)
+    if check_ip_address(id_or_ip):
+        peer = ClientFactory.get_peer_by_ip(id_or_ip)
+    else:
+        peer = ClientFactory.get_peer_by_id(id_or_ip, serialized=True)
+
     if not peer:
-        await message.answer("❌ IP-адрес не найден.")
+        await message.answer("❌ Пир не найден.")
         return
 
     client = ClientFactory(user_id=peer.user_id).get_client()
-    if is_disable:
-        client.set_peer_status(peer.id, PeerStatusChoices.STATUS_BLOCKED)
-        if peer.peer_type in (ProtocolType.WIREGUARD, ProtocolType.AMNEZIA_WIREGUARD):
+    match peer.peer_type:
+        case ProtocolType.WIREGUARD | ProtocolType.AMNEZIA_WIREGUARD:
             wghub.disable_peer(peer)
-        elif peer.peer_type == ProtocolType.XRAY:
-            xray_worker.enable_peer(peer)
-        await message.answer("✅ Пир отключён.")
-        await message.bot.send_message(
-            client.userdata.user_id,
-            f"‼️ Пир {peer.peer_name} был принудительно заблокирован. Обратись к администрации, чтобы уточнить детали."
-        )
-        bot_logger.info(f"Peer (IP: {peer.shared_ips}) was blocked by {message.from_user.username}")
+        case ProtocolType.XRAY:
+            xray_worker.disable_peer(peer)
+        case _:
+            bot_logger.warning(f"Unknown peer type: {peer.peer_type}. Can't disable peer.")
+            await message.answer("❌ Неподдерживаемый тип пира. Странно...")
+            return
+    client.set_peer_status(peer.peer_id, PeerStatusChoices.STATUS_BLOCKED)
+    await message.answer("✅ Пир отключён.")
+    await message.bot.send_message(
+        client.userdata.user_id,
+        f"‼️ Пир {peer.peer_name} был принудительно заблокирован. Обратись к администрации, чтобы уточнить детали."
+    )
+
+    with bot_logger.contextualize(peer=peer):
+        bot_logger.info(f"Peer was blocked by {message.from_user.username}.")
+
+@router.message(Command("enable_peer"))
+async def enable_peer_command(message: Message):
+    if len(message.text.split()) <= 1:
+        await message.answer("❌ Сообщение должно содержать ID или IP адрес пира (если это пир Wireguard).")
+        return
+
+    id_or_ip = message.text.split()[1]
+
+    if check_ip_address(id_or_ip):
+        peer = ClientFactory.get_peer_by_ip(id_or_ip)
     else:
-        client.set_peer_status(peer.id, PeerStatusChoices.STATUS_DISCONNECTED)
-        if peer.peer_type in (ProtocolType.WIREGUARD, ProtocolType.AMNEZIA_WIREGUARD):
+        peer = ClientFactory.get_peer_by_id(id_or_ip, serialized=True)
+
+    if not peer:
+        await message.answer("❌ Пир не найден.")
+        return
+
+    client = ClientFactory(user_id=peer.user_id).get_client()
+    match peer.peer_type:
+        case ProtocolType.WIREGUARD | ProtocolType.AMNEZIA_WIREGUARD:
             wghub.enable_peer(peer)
-        elif peer.peer_type == ProtocolType.XRAY:
+        case ProtocolType.XRAY:
             xray_worker.enable_peer(peer)
-        await message.answer("✅ Пир включён.")
-        await message.bot.send_message(
-            client.userdata.user_id,
-            f"‼️ Пир {peer.peer_name} был разблокирован. Можешь начать пользоваться в течение короткого времени."
-        )
-        bot_logger.info(f"Peer (IP: {peer.shared_ips}) was unblocked by {message.from_user.username}")
+        case _:
+            bot_logger.warning(f"Unknown peer type: {peer.peer_type}. Can't enable peer.")
+            await message.answer("❌ Неподдерживаемый тип пира. Странно...")
+            return
+    client.set_peer_status(peer.peer_id, PeerStatusChoices.STATUS_DISCONNECTED)
+    await message.answer("✅ Пир включён.")
+    await message.bot.send_message(
+        client.userdata.user_id,
+        f"‼️ Пир {peer.peer_name} был разблокирован. Можешь начать пользоваться в течение короткого времени."
+    )
+
+    with bot_logger.contextualize(peer=peer):
+        bot_logger.info(f"Peer was unblocked by {message.from_user.username}.")
 
 # TODO minor: reimplement deleting by IP address for Wireguard peers
 @router.message(Command("delete_peer"))

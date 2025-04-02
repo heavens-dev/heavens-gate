@@ -531,7 +531,6 @@ class ClientFactory(BaseModel):
             core_logger.info(f"Peer with ID {peer.id} not found.")
             return False
 
-    # TODO: add serialization to this method
     @staticmethod
     def delete_peer_by_id(
         peer_id: int,

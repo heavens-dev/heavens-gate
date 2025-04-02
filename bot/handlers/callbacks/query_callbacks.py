@@ -28,6 +28,7 @@ from core.db.db_works import ClientFactory
 from core.db.enums import ClientStatusChoices, PeerStatusChoices, ProtocolType
 from core.logs import bot_logger
 from core.utils.date_utils import parse_time
+from core.utils.peers_utils import disable_peers, enable_peers
 
 router = Router(name="callbacks")
 
@@ -77,18 +78,17 @@ async def select_peer_callback(callback: CallbackQuery, callback_data: PeerCallb
 )
 async def ban_user_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
     client = ClientFactory(user_id=callback_data.user_id).get_client()
-    # TODO: get all peers
-    peers = client.get_wireguard_peers()
+    peers = client.get_all_peers(serialized=True)
     client.set_status(ClientStatusChoices.STATUS_ACCOUNT_BLOCKED)
-    # if peer has no peers, it will raise KeyError, so we suppress it
-    with suppress(KeyError):
-        wghub.disable_peers(peers)
-    for peer in peers:
-        client.set_peer_status(peer.id, PeerStatusChoices.STATUS_BLOCKED)
+    disable_peers(wghub, xray_worker, peers, client)
+
     await callback.answer(f"✅ Пользователь {client.userdata.name} заблокирован.")
     # see docstring in get_user_data_string for more info
-    await callback.message.edit_text(get_user_data_string(client, show_peer_ids=True)[1])
-    await callback.message.edit_reply_markup(reply_markup=build_user_actions_keyboard(client))
+    await callback.message.edit_text(
+        # callback_data.is_admin is probably always True here, but just in case
+        text=get_user_data_string(client, show_peer_ids=callback_data.is_admin)[1],
+        reply_markup=build_user_actions_keyboard(client, is_admin=callback_data.is_admin)
+    )
 
     with bot_logger.contextualize(client=client):
         bot_logger.info("User was manually banned.")
@@ -98,18 +98,16 @@ async def ban_user_callback(callback: CallbackQuery, callback_data: UserActionsC
 )
 async def pardon_user_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
     client = ClientFactory(user_id=callback_data.user_id).get_client()
-    # TODO: get all peers
-    peers = client.get_wireguard_peers()
+    peers = client.get_all_peers(serialized=True)
     client.set_status(ClientStatusChoices.STATUS_CREATED)
-    wghub.enable_peers(peers)
-    for peer in peers:
-        client.set_peer_status(peer.peer_id, PeerStatusChoices.STATUS_DISCONNECTED)
+    enable_peers(wghub, xray_worker, peers, client)
+
     await callback.answer(f"✅ Пользователь {client.userdata.name} разблокирован.")
+    # see docstring in get_user_data_string for more info
     await callback.message.edit_text(
-        # see docstring in get_user_data_string for more info
         # callback_data.is_admin is probably always True here, but just in case
         text=get_user_data_string(client, show_peer_ids=callback_data.is_admin)[1],
-        reply_markup=build_user_actions_keyboard(client)
+        reply_markup=build_user_actions_keyboard(client, is_admin=callback_data.is_admin)
     )
 
     with bot_logger.contextualize(client=client):

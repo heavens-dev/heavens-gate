@@ -9,6 +9,7 @@ from core.db.db_works import Client, ClientFactory
 from core.db.enums import ClientStatusChoices, PeerStatusChoices, ProtocolType
 from core.db.model_serializer import BasePeer, WireguardPeer, XrayPeer
 from core.logs import core_logger
+from core.utils.peers_utils import disable_peers
 from core.watchdog.object import CallableObject
 from core.watchdog.observer import EventObserver
 from core.wg.wg_work import WGHub
@@ -113,8 +114,7 @@ class ConnectionEvents:
                 core_logger.debug(f"Done listening for connections. Sleeping for {listen_timer} sec")
             await asyncio.sleep(listen_timer)
 
-    # TODO: update typehint for peer
-    async def emit_connect(self, client: Client, peer: WireguardPeer):
+    async def emit_connect(self, client: Client, peer: BasePeer):
         """Propagates connection event to handlers.
         Sets the time until which the connection can be active.
 
@@ -179,12 +179,13 @@ class ConnectionEvents:
 
 
 class IntervalEvents:
-    def __init__(self, wg_hub: WGHub):
+    def __init__(self, wg_hub: WGHub, xray: XrayWorker):
         self.expire_date_warning_observer = EventObserver(required_types=[Client])
         """Observer triggers if there's one day left before blocking user. Requires `Client` as an argument."""
         self.expire_date_block_observer = EventObserver(required_types=[Client])
         """Observer triggers if the expiration date has passed. Requires `Client` as an argument."""
         self.wg_hub = wg_hub
+        self.xray = xray
 
     async def interval_runner(self, func: Union[CallableObject, Callable, Coroutine], interval: datetime.timedelta, *args, **kwargs):
         """
@@ -242,12 +243,8 @@ class IntervalEvents:
             if client.userdata.expire_time.date() <= now.date():
                 core_logger.info(f"Blocking user {client.userdata.name} due to expired account.")
                 client.set_status(ClientStatusChoices.STATUS_ACCOUNT_BLOCKED)
-                # if client has no peers, it will raise KeyError, so we suppress it
-                peers = client.get_wireguard_peers()
-                with suppress(KeyError):
-                    self.wg_hub.disable_peers(peers)
-                for peer in peers:
-                    client.set_peer_status(peer.id, PeerStatusChoices.STATUS_BLOCKED)
+                peers = client.get_all_peers(serialized=True)
+                disable_peers(self.wg_hub, self.xray, peers, client=client)
                 await self.expire_date_block_observer.trigger(client)
             elif (client.userdata.expire_time - datetime.timedelta(days=1)).date() <= now.date():
                 core_logger.info(f"Warning user {client.userdata.name} about the expiration date.")

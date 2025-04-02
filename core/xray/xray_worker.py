@@ -114,7 +114,7 @@ class XrayWorker:
 
     # TODO list:
     # [ ] edit peers
-    # [ ] delete peers
+    # [x] delete peers
     # [ ] get peers
     # [ ] ensure login
     # [x] enable peer
