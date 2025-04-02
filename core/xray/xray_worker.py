@@ -25,7 +25,12 @@ class XrayWorker:
         host = host + ':' + port + (f"/{web_path}/" if web_path else '')
         self.api = Api(host, username, password, token, use_tls_verify=tls)
 
-        self.api.login()
+        try:
+            self.api.login()
+        except ValueError as e:
+            core_logger.error("Failed to login to 3x-ui API. Check your credentials.")
+            raise e
+
         core_logger.info("Successfully logged into 3x-ui.")
 
     @staticmethod

@@ -22,14 +22,18 @@ class BasePeer(BaseModel):
     Base class for peer-related models that inherits from BaseModel.
     This class represents the fundamental structure for peer entities in the system,
     containing common attributes for peer identification and status tracking.
+
     Attributes:
         id (int): The unique identifier for the peer.
-        user_id (int): The identifier of the user associated with this peer.
+        user_id (Union[int, str]): The identifier of the user associated with this peer.
+        peer_id (int, optional): The identifier for the peer.
+        Automatically sets to `id` if not provided.
         peer_name (str): The name or identifier for the peer.
         peer_type (ProtocolType): The protocol type of the peer.
         peer_status (PeerStatusChoices): The current status of the peer.
         peer_timer (datetime, optional): Timestamp for peer-related timing operations.
             Defaults to None.
+
     Note:
         This class uses Pydantic's ConfigDict with from_attributes=True to enable
         ORM mode for database model integration.
@@ -69,6 +73,7 @@ class WireguardPeer(BasePeer):
     A data model representing a Wireguard peer configuration.
     This class extends BasePeer and includes both standard Wireguard fields and
     Amnezia-specific customizations for peer configuration.
+
     Attributes:
         public_key (str): The public key used for peer identification and encryption
         private_key (str): The private key used for encryption/decryption
@@ -96,6 +101,7 @@ class XrayPeer(BasePeer):
     """A data model representing an XRay peer configuration.
     This class extends BasePeer and defines the structure for XRay peer data,
     including inbound connection identification and flow information.
+
     Attributes:
         inbound_id (int): The unique identifier for the inbound connection.
         flow (str): The flow configuration string for the XRay peer.
