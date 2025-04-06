@@ -130,7 +130,7 @@ def build_user_actions_keyboard(client: Client, is_admin=True):
     )
 
     builder.button(
-        text="🔄 Обновить данные",
+        text="🔄 Обновить",
         callback_data=UserActionsCallbackData(
             action=UserActionsEnum.UPDATE_DATA,
             user_id=client.userdata.user_id,
