@@ -82,7 +82,7 @@ async def ban(message: Message, client: Client):
     disable_peers(wghub, xray_worker, peers, client)
 
     await message.answer(
-        f"✅ Пользователь <code>{client.userdata.name}:{client.userdata.user_id}:{client.userdata.ip_address}</code> заблокирован."
+        f"✅ Пользователь <code>{client.userdata.name}:{client.userdata.user_id}</code> заблокирован."
     )
     await message.bot.send_message(
         client.userdata.user_id,
@@ -96,7 +96,7 @@ async def unban(message: Message, client: Client):
     peers = client.get_all_peers(serialized=True)
     enable_peers(wghub, xray_worker, peers, client)
     await message.answer(
-        f"✅ Пользователь <code>{client.userdata.name}:{client.userdata.user_id}:{client.userdata.ip_address}</code> разблокирован."
+        f"✅ Пользователь <code>{client.userdata.name}:{client.userdata.user_id}</code> разблокирован."
     )
     await message.bot.send_message(
         client.userdata.user_id,
