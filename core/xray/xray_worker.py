@@ -109,13 +109,15 @@ class XrayWorker:
 
     @core_logger.catch()
     def enable_peer(self, peer: XrayPeer) -> None:
-        peer.enable = True
-        self.api.client.update(peer.peer_id, self.peer_to_client(peer))
+        client = self.peer_to_client(peer)
+        client.enable = True
+        self.api.client.update(peer.peer_id, client)
 
     @core_logger.catch()
     def disable_peer(self, peer: XrayPeer):
-        peer.enable = False
-        self.api.client.update(peer.peer_id, self.peer_to_client(peer))
+        client = self.peer_to_client(peer)
+        client.enable = False
+        self.api.client.update(peer.peer_id, client)
 
     # TODO list:
     # [ ] edit peers
