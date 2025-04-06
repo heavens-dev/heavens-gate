@@ -68,4 +68,4 @@ connections_observer = ConnectionEvents(
     active_hours=core_cfg.peer_active_time
 )
 
-interval_observer = IntervalEvents(wghub)
+interval_observer = IntervalEvents(wghub, xray_worker)
