@@ -1,3 +1,4 @@
+import humanize.i18n
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
@@ -13,6 +14,8 @@ from core.wg.wg_work import WGHub
 from core.xray.xray_worker import XrayWorker
 
 PATH_TO_CONFIG = "config.conf"
+
+humanize.i18n.activate("ru_RU")
 
 cfg = Config(PATH_TO_CONFIG)
 db_cfg = cfg.get_database_config()

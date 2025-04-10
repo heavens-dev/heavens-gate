@@ -1,6 +1,7 @@
 import datetime
 from typing import Optional, Union
 
+import humanize
 from aiogram.types import BufferedInputFile
 from pydantic import ValidationError
 
@@ -54,16 +55,21 @@ def get_user_data_string(client: Client, show_peer_ids: bool = False) -> list[st
             peers_str += f"(активен до {timer})"
         peers_str += "\n"
 
-    expire_time = client.userdata.expire_time.strftime("%d %b %Y") if client.userdata.expire_time else "❌ Не оплачено"
+    if client.userdata.expire_time:
+        expire_time = f'До: {client.userdata.expire_time.strftime("%d.%m.%Y")}\n' + \
+                      f'Осталось времени: {humanize.naturaldelta(client.userdata.expire_time - datetime.datetime.now())}'
+    else:
+        expire_time = "❌ Не оплачено"
 
-    return [f"""ℹ️ Информация об аккаунте:
-ID: <code>{client.userdata.user_id}</code>
-📅 Дата регистрации: {client.userdata.registered_at.strftime("%d %b %Y в %H:%M")}
+    return [f"""ℹ️ <b>Информация об аккаунте</b>:
+<b>ID</b>: <code>{client.userdata.user_id}</code>
+📅 <b>Дата регистрации</b>: {client.userdata.registered_at.strftime("%d.%m.%Y в %H:%M")}
 """,
-f"""Текущий статус: {ClientStatusChoices.to_string(client.userdata.status)}
-Оплачен до: {expire_time}
+f"""<b>Текущий статус</b>: {ClientStatusChoices.to_string(client.userdata.status)}
+🕓 <b>Статус оплаты</b>:
+<blockquote>{expire_time}</blockquote>
 
-🛜 Пиры:
+🛜 <b>Пиры</b>:
 {peers_str or '❌ Нет пиров\n'}
 """]
 

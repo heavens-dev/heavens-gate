@@ -517,6 +517,20 @@ socks = ["socksio (==1.*)"]
 zstd = ["zstandard (>=0.18.0)"]
 
 [[package]]
+name = "humanize"
+version = "4.12.2"
+description = "Python humanize utilities"
+optional = false
+python-versions = ">=3.9"
+files = [
+    {file = "humanize-4.12.2-py3-none-any.whl", hash = "sha256:e4e44dced598b7e03487f3b1c6fd5b1146c30ea55a110e71d5d4bca3e094259e"},
+    {file = "humanize-4.12.2.tar.gz", hash = "sha256:ce0715740e9caacc982bb89098182cf8ded3552693a433311c6a4ce6f4e12a2c"},
+]
+
+[package.extras]
+tests = ["freezegun", "pytest", "pytest-cov"]
+
+[[package]]
 name = "icmplib"
 version = "3.0.4"
 description = "Easily forge ICMP packets and make your own ping and traceroute."
@@ -1240,4 +1254,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "c635a80fe3e467918ead0e3ae87b653b067955776aa589050dce5865957d9b0f"
+content-hash = "de0b9dc4c3f665388f58fb1ac5bbc5629a1047fbff760da77475227018fd9209"
