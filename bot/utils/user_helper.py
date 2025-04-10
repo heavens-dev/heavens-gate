@@ -81,7 +81,7 @@ def extend_users_usage_time(client: Client, time_to_add: datetime.timedelta) -> 
 def unblock_timeout_connections(client: Client) -> bool:
     peers = client.get_all_peers(serialized=True)
     for peer in peers:
-        match PeerStatusChoices:
+        match peer.peer_status:
             case PeerStatusChoices.STATUS_TIME_EXPIRED:
                 if peer.peer_type in [ProtocolType.WIREGUARD, ProtocolType.AMNEZIA_WIREGUARD]:
                     peer: WireguardPeer
