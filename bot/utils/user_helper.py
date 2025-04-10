@@ -79,7 +79,7 @@ def extend_users_usage_time(client: Client, time_to_add: datetime.timedelta) -> 
 
 @bot_logger.catch()
 def unblock_timeout_connections(client: Client) -> bool:
-    peers = client.get_all_peers()
+    peers = client.get_all_peers(serialized=True)
     for peer in peers:
         match PeerStatusChoices:
             case PeerStatusChoices.STATUS_TIME_EXPIRED:
