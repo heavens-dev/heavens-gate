@@ -1,51 +1,60 @@
+from unittest.mock import patch
+
 import pytest
 
 from config.settings import Config
-from core.db.enums import PeerStatusChoices
-from core.db.model_serializer import ConnectionPeer
+from core.db.enums import PeerStatusChoices, ProtocolType
+from core.db.model_serializer import WireguardPeer
 from core.db.models import init_db
 from core.wg.wg_work import WGHub
+from core.xray.xray_worker import XrayWorker
 
 PRIVATE_KEY = "AMHCM2a1apUYPMnrpobc6Erjaz6r7z9rN9ieonhJK3U="
 
 DEFAULT_PEERS = {
-    "iamuser_0": ConnectionPeer(
+    "iamuser_0": WireguardPeer(
+        peer_id=0,
         id=0,
         user_id=1,
-        peer_name="iamuser_0",
+        peer_name="iamuser_1",
         public_key="fDW0TEh64L1qlcuNF5dSSRIhxImrCBECje2r2vXBcXI=",
         preshared_key="OGsOqOc7uoHW2DkXoZzwVxpwaSTNxQeyXZ9ukc58rgE=",
         private_key=PRIVATE_KEY,
         peer_status=PeerStatusChoices.STATUS_DISCONNECTED,
         shared_ips="10.0.0.2/32",
         is_amnezia=False,
+        peer_type=ProtocolType.WIREGUARD
     ),
-    "iamuser_1": ConnectionPeer(
+    "iamuser_1": WireguardPeer(
+        peer_id=1,
         id=1,
         user_id=1,
-        peer_name="iamuser_1",
+        peer_name="iamuser_2",
         public_key="Nts96aOJMVfQEZXt54q3MF1S7WVAGC/SDvpzN/mFXhw=",
         preshared_key="n3Fx4vZBLA6ps/Tw/s1GrVgM4oKKto4TU1ZuJBg1vao=",
         private_key=PRIVATE_KEY,
         peer_status=PeerStatusChoices.STATUS_DISCONNECTED,
         shared_ips="10.0.0.3/32",
-        is_amnezia=False
+        is_amnezia=False,
+        peer_type=ProtocolType.WIREGUARD
     ),
-    "otheruser_2": ConnectionPeer(
+    "otheruser_2": WireguardPeer(
+        peer_id=2,
         id=2,
         user_id=2,
-        peer_name="otheruser_2",
+        peer_name="otheruser_3",
         public_key="0uJLDEnjhokgSt6GAl5VErvqsVBJAS37k85cSKLPNiI=",
         preshared_key="WdOuOBVtO0Th5ZPtWFcMrpJ8PVaB8KfIQfprFVuJADc=",
         private_key=PRIVATE_KEY,
         peer_status=PeerStatusChoices.STATUS_DISCONNECTED,
         shared_ips="10.0.0.4/32",
-        is_amnezia=False
+        is_amnezia=False,
+        peer_type=ProtocolType.WIREGUARD
     ),
 }
 
 @pytest.fixture(scope="function")
-def default_peers() -> dict[str, ConnectionPeer]:
+def default_peers() -> dict[str, WireguardPeer]:
     return DEFAULT_PEERS
 
 @pytest.fixture(scope="function")
@@ -72,7 +81,21 @@ AllowedIPs = 10.0.0.3/32
         wg_file.flush()
         return WGHub(wg_file.name, auto_sync=False)
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
+def xray_worker():
+    with patch("py3xui.Api.login") as mock_login:
+        mock_login.return_value = None
+        return XrayWorker(
+            host="http://127.0.0.1",
+            port="12345",
+            web_path="random_string",
+            username="admin",
+            password="password",
+            token="token",
+            tls=True
+        )
+
+@pytest.fixture(scope="function")
 def db():
 
     db_instance = init_db(":memory:")
@@ -82,8 +105,8 @@ def db():
     db_instance.close()
 
 @pytest.fixture(scope="function")
-def server_config():
-    return Config.Server(
+def wireguard_server_config():
+    return Config.WireguardServer(
         path="wg0.conf",
         user_ip="10.0.0",
         user_ip_mask="24",

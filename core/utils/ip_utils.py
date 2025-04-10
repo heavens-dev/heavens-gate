@@ -23,7 +23,7 @@ class IPQueue:
         """
         if self._ip_queue.empty():
             core_logger.critical("No IP addresses available!")
-            raise Exception("No IP addresses available")
+            raise IndexError("No IP addresses available")
         return self._ip_queue.get()
 
     def release_ip(self, ip: str) -> None:

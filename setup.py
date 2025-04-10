@@ -5,6 +5,7 @@ from typing import Any, Union
 
 import requests
 from colorama import Fore, Style, init
+from py3xui import Api
 from wgconfig import WGConfig
 
 from core.utils.ip_utils import check_ip_address, get_ip_prefix
@@ -49,7 +50,7 @@ def make_config(path):
     print(SUCCESS_STR + " Logs path created")
 
     # [Server]
-    print(Style.BRIGHT + "--------- Server Configuration ---------")
+    print(Style.BRIGHT + "--------- Wireguard Configuration ---------")
 
     server_config_data = {}
     path_to_wg_config = input_with_default(REQUIRE_INPUT_STR + " Enter path to WireGuard config (leave empty to enter values manually): ", None)
@@ -71,7 +72,7 @@ def make_config(path):
         if not os.path.exists(path_to_wg_config):
             print(FAIL_STR + f" WireGuard config was not found in {path_to_wg_config}")
             manual_torture = True
-        else:
+        try:
             server_config_data["Path"] = path_to_wg_config
             wg_config = WGConfig(path_to_wg_config)
             wg_config.read_file()
@@ -80,6 +81,8 @@ def make_config(path):
             server_config_data["PrivateKey"] = interface_data.get("PrivateKey")
             server_config_data["PublicKey"] = generate_public_key(server_config_data["PrivateKey"], is_amnezia)
             server_ip = interface_data.get("Address")
+            if isinstance(server_ip, list):
+                server_ip = server_ip[0]
             server_config_data["IP"] = get_ip_prefix(server_ip.split("/")[0])
             server_config_data["IPMask"] = server_ip.split("/")[1]
             server_config_data["EndpointPort"] = str(interface_data.get("ListenPort"))
@@ -92,6 +95,9 @@ def make_config(path):
                 str(interface_data.get("H3", "")),
                 str(interface_data.get("H4", "")),
             ])
+        except FileNotFoundError:
+            print(FAIL_STR + f" WireGuard config was not found in {path_to_wg_config}")
+            manual_torture = True
     else:
         manual_torture = True
 
@@ -101,6 +107,34 @@ def make_config(path):
         server_config_data["IP"] = get_ip_range()
         server_config_data["IPMask"] = input_with_default(REQUIRE_INPUT_STR + " Enter the mask for IP address (default: 32): ", 32)
         server_config_data["EndpointPort"] = get_endpoint_port()
+
+    xray_config_data = {}
+    # [Xray]
+    print(Style.BRIGHT + "--------- Xray Configuration ---------" + Style.RESET_ALL)
+    # TODO: Add XRay config
+    xray_config_data["host"] = input(REQUIRE_INPUT_STR + " Enter 3x-ui panel hostname (including 'http(s)://'): ")
+    xray_config_data["port"] = input(REQUIRE_INPUT_STR + " Enter 3x-ui panel port: ")
+    xray_config_data["web_path"] = input_with_default(REQUIRE_INPUT_STR + " Enter web path to panel, if present (default: None): ", None)
+    xray_config_data["username"] = input(REQUIRE_INPUT_STR + " Enter panel username: ")
+    xray_config_data["password"] = getpass(REQUIRE_INPUT_STR + " Enter panel password (hidden): ")
+    xray_config_data["token"] = input_with_default(REQUIRE_INPUT_STR + " Enter panel token (default: None): ", None)
+    xray_config_data["tls"] = yes_or_no_input(YES_OR_NO_STR + " Do you want to use TLS? (Y/n (default: Y)): ", True)
+
+    # Try to connect to 3x-ui panel
+    try:
+        xui_api = Api(
+            host=f"{xray_config_data['host']}:{xray_config_data['port']}/{xray_config_data['web_path']}/",
+            username=xray_config_data["username"],
+            password=xray_config_data["password"],
+            token=xray_config_data["token"],
+            use_tls_verify=xray_config_data["tls"],
+        )
+
+        print(Fore.BLUE + "Connecting to 3x-ui panel..." + Style.RESET_ALL)
+        xui_api.login()
+        print(SUCCESS_STR + " Successfully connected to 3x-ui panel")
+    except ValueError:
+        print(FAIL_STR + " Failed to connect to 3x-ui panel. Check your credentials and edit them manually in config file.")
 
     # Put all data into config
     config = ConfigParser()
@@ -116,6 +150,8 @@ def make_config(path):
     }
 
     config["core"] = {
+        "debug": "false",
+        "is_canary": "false",
         "peer_active_time": peer_active_time,
         "connection_listen_timer": connection_listen_timer,
         "connection_update_timer": connection_update_timer,
@@ -123,7 +159,10 @@ def make_config(path):
         "logs_path": logs_path
     }
 
-    config["Server"] = server_config_data
+    # making sure that all values are strings
+    config["Server"] = {key: str(value) for key, value in server_config_data.items()}
+
+    config["Xray"] = {key: str(value) for key, value in xray_config_data.items()}
 
     with open(path, 'w') as server_config:
         config.write(server_config)

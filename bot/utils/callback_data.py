@@ -2,6 +2,8 @@ from enum import StrEnum
 
 from aiogram.filters.callback_data import CallbackData
 
+from core.db.enums import ProtocolType
+
 
 class UserActionsEnum(StrEnum):
     BAN_USER = "ban"
@@ -20,7 +22,7 @@ class YesOrNoEnum(StrEnum):
     ANSWER_NO = "no"
 
 
-class ConnectionPeerCallbackData(CallbackData, prefix="peer"):
+class PeerCallbackData(CallbackData, prefix="peer"):
     """Peer callback data for keyboards.
 
     Args:
@@ -49,3 +51,6 @@ class PreviewMessageCallbackData(CallbackData, prefix="preview"):
 
 class GetUserCallbackData(CallbackData, prefix="get_user"):
     user_id: int
+
+class ProtocolChoiceCallbackData(CallbackData, prefix="protocol_choice"):
+    protocol: ProtocolType

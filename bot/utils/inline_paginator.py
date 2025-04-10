@@ -28,9 +28,9 @@ class UsersInlineKeyboardPaginator:
 
     def __client_to_keyboard_converter(self, client: Client) -> InlineKeyboardButton:
         return InlineKeyboardButton(
-            text=f"{client.userdata.name} ({client.userdata.telegram_id})",
+            text=f"{client.userdata.name} ({client.userdata.user_id})",
             callback_data=GetUserCallbackData(
-                user_id=client.userdata.telegram_id
+                user_id=client.userdata.user_id
             ).pack()
         )
 

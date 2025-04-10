@@ -1,17 +1,36 @@
 import subprocess
 
 
-def generate_preshared_key(is_amnezia: bool = False):
+def generate_preshared_key(is_amnezia: bool = False) -> str:
     command = "wg" if not is_amnezia else "awg"
-    return subprocess.getoutput(f"{command} genpsk")
+    return subprocess.run(
+        [command, "genpsk"],
+        check=True,
+        capture_output=True,
+        text=True
+    ).stdout.replace("\n", "")
 
-def generate_private_key(is_amnezia: bool = False):
+def generate_private_key(is_amnezia: bool = False) -> str:
     command = "wg" if not is_amnezia else "awg"
-    return subprocess.getoutput(f"{command} genkey")
+    return subprocess.run(
+        [command, "genkey"],
+        check=True,
+        capture_output=True,
+        text=True
+    ).stdout.replace("\n", "")
 
-def generate_public_key(private_key, is_amnezia: bool = False):
+def generate_public_key(private_key: str, is_amnezia: bool = False) -> str:
+    if not private_key:
+        raise ValueError("Private key is empty")
+
     command = "wg" if not is_amnezia else "awg"
-    return subprocess.getoutput(f"echo {private_key} | {command} pubkey ")
+    return subprocess.run(
+        [command, "pubkey"],
+        input=private_key,
+        check=True,
+        capture_output=True,
+        text=True
+    ).stdout.replace("\n", "")
 
 if __name__ == "__main__":
     priv_key = generate_private_key()

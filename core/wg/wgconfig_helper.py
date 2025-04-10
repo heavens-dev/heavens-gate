@@ -1,10 +1,10 @@
 from config.settings import Config
-from core.db.model_serializer import ConnectionPeer
+from core.db.model_serializer import WireguardPeer
 
 
-def get_peer_config_str(server_cfg: Config.Server, peer: ConnectionPeer, interface_args: dict = None) -> str:
+def get_peer_config_str(server_cfg: Config.WireguardServer, peer: WireguardPeer, interface_args: dict = None) -> str:
     """
-    Generates config string based on given ConnectionPeer.
+    Generates config string based on given WireguardPeer.
     """
     interface_str = ""
     if interface_args:
