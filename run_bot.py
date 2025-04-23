@@ -37,12 +37,13 @@ async def cmd_start(message: Message) -> None:
 
         if created:
             if cfg.is_canary:
-                wghub.add_peer(client.add_wireguard_peer(ip_queue.get_ip(), is_amnezia=wghub.is_amnezia))
-                wghub.add_peer(client.add_wireguard_peer(ip_queue.get_ip(), is_amnezia=wghub.is_amnezia))
-                xray_worker.add_peers(inbound_id=3 ,peers=[client.add_xray_peer(
-                    flow="xtls-rprx-vision",
-                    inbound_id=3,
-                )])
+                # wghub.add_peer(client.add_wireguard_peer(ip_queue.get_ip(), is_amnezia=wghub.is_amnezia))
+                # wghub.add_peer(client.add_wireguard_peer(ip_queue.get_ip(), is_amnezia=wghub.is_amnezia))
+                # xray_worker.add_peers(inbound_id=3 ,peers=[client.add_xray_peer(
+                #     flow="xtls-rprx-vision",
+                #     inbound_id=3,
+                # )])
+                ...
 
     keyboard = None
     faq_str = ""
