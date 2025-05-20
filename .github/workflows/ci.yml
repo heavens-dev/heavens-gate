@@ -81,38 +81,38 @@ jobs:
       - name: Generate coverage report
         run: python -m coverage report -m
 
-  deploy:
-    name: Deploy to server
-    if: >-
-        ${{
-          (always()) && (!github.event.inputs.no_deploy) && (
-          github.event_name == 'workflow_dispatch' ||
-          (
-            github.event_name == 'push' &&
-            (github.ref_name == 'master' || github.ref_name == 'canary')
-          ))
-        }}
-    needs: [tests, pre-commit]
-    runs-on: ubuntu-latest
-    # TODO: ADD MASTER SSH KEYS!
-    env:
-      SSH_USER: "${{ github.ref_name == 'canary' && secrets.CANARY_SSH_USER || 'MASTER_SSH_USER' }}"
-      SSH_HOST: "${{ github.ref_name == 'canary' && secrets.CANARY_SSH_HOST || 'MASTER_SSH_HOST' }}"
-      SSH_PRIVATE_KEY: "${{ github.ref_name == 'canary' && secrets.CANARY_SSH_PRIVATE_KEY || 'MASTER_SSH_PRIVATE_KEY' }}"
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+  # deploy:
+  #   name: Deploy to server
+  #   if: >-
+  #       ${{
+  #         (always()) && (!github.event.inputs.no_deploy) && (
+  #         github.event_name == 'workflow_dispatch' ||
+  #         (
+  #           github.event_name == 'push' &&
+  #           (github.ref_name == 'master' || github.ref_name == 'canary')
+  #         ))
+  #       }}
+  #   needs: [tests, pre-commit]
+  #   runs-on: ubuntu-latest
+  #   # TODO: ADD MASTER SSH KEYS!
+  #   env:
+  #     SSH_USER: "${{ github.ref_name == 'canary' && secrets.CANARY_SSH_USER || 'MASTER_SSH_USER' }}"
+  #     SSH_HOST: "${{ github.ref_name == 'canary' && secrets.CANARY_SSH_HOST || 'MASTER_SSH_HOST' }}"
+  #     SSH_PRIVATE_KEY: "${{ github.ref_name == 'canary' && secrets.CANARY_SSH_PRIVATE_KEY || 'MASTER_SSH_PRIVATE_KEY' }}"
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
 
-      - name: 'Install SSH keys for ${{ github.ref_name }} deployment'
-        run: |
-          install -m 600 -D /dev/null ~/.ssh/id_rsa
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-          ssh-keyscan -H $SSH_HOST > ~/.ssh/known_hosts
+  #     - name: 'Install SSH keys for ${{ github.ref_name }} deployment'
+  #       run: |
+  #         install -m 600 -D /dev/null ~/.ssh/id_rsa
+  #         echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+  #         ssh-keyscan -H $SSH_HOST > ~/.ssh/known_hosts
 
-      - name: 'Deploy to ${{ github.ref_name }}'
-        run: |
-          ssh $SSH_USER@$SSH_HOST 'set -e
-          cd /opt/heavens-gate
-          git checkout ${{ github.ref_name }}
-          git pull
-          systemctl restart heavens-gate'
+  #     - name: 'Deploy to ${{ github.ref_name }}'
+  #       run: |
+  #         ssh $SSH_USER@$SSH_HOST 'set -e
+  #         cd /opt/heavens-gate
+  #         git checkout ${{ github.ref_name }}
+  #         git pull
+  #         systemctl restart heavens-gate'
