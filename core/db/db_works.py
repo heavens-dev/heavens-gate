@@ -72,7 +72,7 @@ class Client(BaseModel):
                     peer_type=peer_type.value,
                     peer_name=peer_name
                 ))
-                core_logger.debug(f"Created a new base peer with ID: {peer.id}")
+                core_logger.debug(f"Created a new base peer with ID: {peer.peer_id}")
                 match peer_type:
                     case ProtocolType.WIREGUARD | ProtocolType.AMNEZIA_WIREGUARD:
                         wg_peer_model = WireguardPeerModel.create(
@@ -524,11 +524,11 @@ class ClientFactory(BaseModel):
     @staticmethod
     def delete_peer(peer: BasePeer) -> Union[BasePeer, bool]:
         try:
-            p = PeersTableModel.get(PeersTableModel.id == peer.id)
+            p = PeersTableModel.get(PeersTableModel.id == peer.peer_id)
             p.delete_instance()
             return p
         except DoesNotExist:
-            core_logger.info(f"Peer with ID {peer.id} not found.")
+            core_logger.info(f"Peer with ID {peer.peer_id} not found.")
             return False
 
     @staticmethod

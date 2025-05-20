@@ -39,14 +39,14 @@ def build_peer_configs_keyboard(user_id: int, peers: list[BasePeer], display_all
     for peer in peers:
         text = ""
         if peer.peer_type == ProtocolType.WIREGUARD:
-            text = f"[Wireguard] {peer.peer_name or peer.id}.conf"
+            text = f"[Wireguard] {peer.peer_name or peer.peer_id}.conf"
         elif peer.peer_type == ProtocolType.AMNEZIA_WIREGUARD:
-            text = f"[Amnezia WG] {peer.peer_name or peer.id}.conf"
+            text = f"[Amnezia WG] {peer.peer_name or peer.peer_id}.conf"
         elif peer.peer_type == ProtocolType.XRAY:
-            text = f"[XRay] {peer.peer_name or peer.id}"
+            text = f"[XRay] {peer.peer_name or peer.peer_id}"
         builder.button(
             text=text,
-            callback_data=PeerCallbackData(user_id=user_id, peer_id=peer.id)
+            callback_data=PeerCallbackData(user_id=user_id, peer_id=peer.peer_id)
         )
         builder.adjust(1)
 

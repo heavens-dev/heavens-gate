@@ -95,11 +95,11 @@ def unblock_timeout_connections(client: Client) -> bool:
                 elif peer.peer_type == ProtocolType.XRAY:
                     peer: XrayPeer
                     xray_worker.enable_peer(peer)
-                client.set_peer_status(peer.id, PeerStatusChoices.STATUS_DISCONNECTED)
+                client.set_peer_status(peer.peer_id, PeerStatusChoices.STATUS_DISCONNECTED)
                 client.set_status(ClientStatusChoices.STATUS_DISCONNECTED)
             case PeerStatusChoices.STATUS_CONNECTED:
                 new_time = datetime.datetime.now() + datetime.timedelta(hours=core_cfg.peer_active_time)
-                client.set_peer_timer(peer.id, time=new_time)
+                client.set_peer_timer(peer.peer_id, time=new_time)
 
     return True
 
@@ -116,5 +116,5 @@ def get_peer_as_input_file(peer: WireguardPeer) -> BufferedInputFile:
 
     return BufferedInputFile(
         file=bytes(get_peer_config_str(wireguard_server_config, peer, interface_args), encoding="utf-8"),
-        filename=f"{peer.peer_name or peer.id}.conf"
+        filename=f"{peer.peer_name or peer.peer_id}.conf"
     )
