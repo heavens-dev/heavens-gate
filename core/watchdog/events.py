@@ -51,6 +51,30 @@ class ConnectionEvents:
         during client connection checks"""
 
     async def __check_connection(self, client: Client, peer: BasePeer, warn: bool = False) -> bool:
+        """
+        Check the connection status of a peer and handle any necessary state changes.
+        This method verifies the peer's connection status by checking timer expiration
+        and testing connectivity based on the peer's protocol type. It will emit
+        appropriate connection events when state changes are detected.
+
+        Args:
+            client (Client):
+                The client instance associated with this connection check
+            peer (BasePeer):
+                The peer whose connection status needs to be verified
+            warn (bool, default=False):
+                If True, will trigger a warning when the peer's connection timer
+                is within 15 minutes of expiration
+
+        Returns:
+            bool: True if the peer is connected, False otherwise
+
+        Notes:
+            For WireGuard peers, a ping test is used to determine connectivity.
+            For Xray peers, the internal xray service is queried for connection status.
+            The method will automatically emit connect/disconnect events when the
+            peer's status changes.
+        """
         with core_logger.contextualize(peer_id=peer.peer_id):
             core_logger.debug("Checking peer...")
         if isinstance(peer.peer_timer, datetime.datetime) and peer.peer_status == PeerStatusChoices.STATUS_CONNECTED:
@@ -217,10 +241,12 @@ class IntervalEvents:
             core_logger.info(f"Interval check for job {func.callback.__name__} done. Sleeping for {interval}.")
             await asyncio.sleep(interval.total_seconds())
 
-    async def scheduled_runner(self,
-                              func: Union[CallableObject, Callable, Coroutine],
-                              run_at: datetime.time,
-                              *args, **kwargs):
+    async def scheduled_runner(
+            self,
+            func: Union[CallableObject, Callable, Coroutine],
+            run_at: datetime.time,
+            *args, **kwargs
+        ):
         """
         Asynchronously runs a scheduled function at a specified time every day.
         Args:
