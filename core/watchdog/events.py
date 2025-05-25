@@ -51,6 +51,8 @@ class ConnectionEvents:
         during client connection checks"""
 
     async def __check_connection(self, client: Client, peer: BasePeer, warn: bool = False) -> bool:
+        with core_logger.contextualize(peer_id=peer.peer_id):
+            core_logger.debug("Checking peer...")
         if isinstance(peer.peer_timer, datetime.datetime) and peer.peer_status == PeerStatusChoices.STATUS_CONNECTED:
             timedelta = peer.peer_timer - datetime.datetime.now()
 
@@ -85,33 +87,10 @@ class ConnectionEvents:
 
     async def __listen_clients(self, listen_timer: int, connected_only: bool = False):
         while True:
-            # looks cringy, but idk how to make it prettier
-            async with self.__clients_lock:
-                async with asyncio.TaskGroup() as group:
-                    for client, peers in self.clients:
-                        if client.userdata.status in [
-                            ClientStatusChoices.STATUS_ACCOUNT_BLOCKED,
-                            ClientStatusChoices.STATUS_TIME_EXPIRED]:
-                            continue
-
-                        for peer in peers:
-                            if peer.peer_status in [
-                                PeerStatusChoices.STATUS_TIME_EXPIRED,
-                                PeerStatusChoices.STATUS_BLOCKED]:
-                                continue
-
-                            if connected_only:
-                                if peer.peer_status == PeerStatusChoices.STATUS_CONNECTED:
-                                    group.create_task(
-                                        self.__check_connection(client, peer)
-                                    )
-                                continue
-                            group.create_task(
-                                self.__check_connection(client, peer, True)
-                            )
+            await self.run_check_connections(connected_only)
 
             with core_logger.contextualize(connected_only=connected_only):
-                core_logger.debug(f"Done listening for connections. Sleeping for {listen_timer} sec")
+                core_logger.debug(f"Event has finished it's job. Sleeping for {listen_timer} seconds...")
             await asyncio.sleep(listen_timer)
 
     async def emit_connect(self, client: Client, peer: BasePeer):
@@ -129,8 +108,7 @@ class ConnectionEvents:
         peer.peer_timer = new_time
         await self.connected.trigger(client, peer)
 
-    # TODO: update typehint for peer
-    async def emit_disconnect(self, client: Client, peer: WireguardPeer):
+    async def emit_disconnect(self, client: Client, peer: BasePeer):
         """Propagates disconnect event to handlers.
 
         Updates Client status to `ClientStatusChoices.STATUS_DISCONNECTED`
@@ -142,8 +120,7 @@ class ConnectionEvents:
             client.set_status(ClientStatusChoices.STATUS_DISCONNECTED)
         await self.disconnected.trigger(client, peer)
 
-    # TODO: update typehint for peer
-    async def emit_timeout_disconnect(self, client: Client, peer: WireguardPeer):
+    async def emit_timeout_disconnect(self, client: Client, peer: BasePeer):
         client.set_peer_status(peer.peer_id, PeerStatusChoices.STATUS_TIME_EXPIRED)
         # avoid triggering the timer_observer multiple times
         peer.peer_status = PeerStatusChoices.STATUS_TIME_EXPIRED
@@ -173,6 +150,40 @@ class ConnectionEvents:
                     connected_only=True
                 )
             )
+
+    async def run_check_connections(self, connected_only: bool = False):
+        """
+        Run the client connection checking process independently.
+
+        Args:
+            connected_only (bool, optional): Whether to only check connected clients. Defaults to False.
+        """
+        async with self.__clients_lock:
+            # looks cringy, but idk how to make it prettier
+            async with asyncio.TaskGroup() as group:
+                for client, peers in self.clients:
+                    if client.userdata.status in [
+                        ClientStatusChoices.STATUS_ACCOUNT_BLOCKED,
+                        ClientStatusChoices.STATUS_TIME_EXPIRED]:
+                        continue
+
+                    for peer in peers:
+                        if peer.peer_status in [
+                            PeerStatusChoices.STATUS_TIME_EXPIRED,
+                            PeerStatusChoices.STATUS_BLOCKED]:
+                            continue
+
+                        if connected_only:
+                            if peer.peer_status == PeerStatusChoices.STATUS_CONNECTED:
+                                group.create_task(
+                                    self.__check_connection(client, peer)
+                                )
+                            continue
+                        group.create_task(
+                            self.__check_connection(client, peer, True)
+                        )
+        with core_logger.contextualize(connected_only=connected_only):
+            core_logger.debug("Created tasks for checking connections.")
 
     def listen_events_runner(self):
         return asyncio.run(self.listen_events())

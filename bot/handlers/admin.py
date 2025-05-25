@@ -16,7 +16,8 @@ from bot.utils.inline_paginator import UsersInlineKeyboardPaginator
 from bot.utils.message_utils import preview_message
 from bot.utils.states import AddPeerStates, WhisperStates
 from bot.utils.user_helper import get_user_data_string
-from config.loader import bot_cfg, ip_queue, wghub, xray_worker
+from config.loader import (bot_cfg, connections_observer, ip_queue, wghub,
+                           xray_worker)
 from core.db.db_works import Client, ClientFactory
 from core.db.enums import ClientStatusChoices, PeerStatusChoices, ProtocolType
 from core.logs import bot_logger
@@ -235,3 +236,15 @@ async def users(message: Message):
     msg = await message.answer("Список всех пользователей:", reply_markup=paginator.markup)
     await asyncio.sleep(60)
     await msg.delete()
+
+@router.message(Command("listen_clients"))
+async def listen_clients(message: Message):
+    connected_only = True
+    if len(message.text.split()) > 1:
+        if "false" in message.text.lower():
+            connected_only = False
+    msg = await message.answer(
+        "🔂 Запущена прослушка" + (" всех" if connected_only is False else "") + " соединений..."
+    )
+    await connections_observer.run_check_connections(connected_only)
+    await msg.edit_text("✅ Задание завершено!")

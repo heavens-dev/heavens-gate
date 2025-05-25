@@ -22,6 +22,19 @@ BASE_PEER_FIELDS = ("id",
                     "peer_timer")
 
 class Client(BaseModel):
+    """
+    Client class for managing user data and associated peers in the database.
+    This class provides an interface for handling CRUD operations related to users (and their
+    associated connection peers) and high-level methods for peer management.
+
+    Attributes:
+        userdata (User): User information associated with this client.
+        __model (UserModel): Private attribute referencing the user's database model.
+
+    Notes:
+        - The class uses a private model instance to interact with the database.
+        - Peer operations are type-specific with protocol-dependent behavior.
+    """
     model_config = ConfigDict()
 
     userdata: User
@@ -123,8 +136,7 @@ class Client(BaseModel):
             - Unknown protocol type
             - Database errors during update
             - Transaction failures
-        Raises:
-            No exceptions are raised as they are caught and logged internally.
+
         Example:
             >>> Client(...).__update_peer(1, name="new_name", public_key="new_key")
             True
@@ -169,14 +181,15 @@ class Client(BaseModel):
                 core_logger.error(f"Error while updating peer: {e}")
                 return False
 
-    def add_wireguard_peer(self,
-                 shared_ips: str,
-                 public_key: Optional[str] = None,
-                 private_key: Optional[str] = None,
-                 preshared_key: Optional[str] = None,
-                 is_amnezia: Optional[bool] = False,
-                 peer_name: Optional[str] = None
-                 ) -> Optional[WireguardPeer]:
+    def add_wireguard_peer(
+            self,
+            shared_ips: str,
+            public_key: Optional[str] = None,
+            private_key: Optional[str] = None,
+            preshared_key: Optional[str] = None,
+            is_amnezia: Optional[bool] = False,
+            peer_name: Optional[str] = None
+        ) -> Optional[WireguardPeer]:
         """
         Adds wireguard peer to database. Automatically generates peer keys if they're not present in arguments.
 
@@ -234,11 +247,29 @@ class Client(BaseModel):
             core_logger.info(f"New peer was created.")
         return peer
 
-    def __get_peers(self,
-                    protocol_type: Optional[ProtocolType] = None,
-                    *criteria
-                    ) -> Optional[list[Union[PeersTableModel, WireguardPeerModel, XrayPeerModel]]]:
-        """Private method for working with peers"""
+    def __get_peers(
+            self,
+            protocol_type: Optional[ProtocolType] = None,
+            *criteria
+        ) -> Optional[list[Union[PeersTableModel, WireguardPeerModel, XrayPeerModel]]]:
+        """
+        Retrieve peers from the database based on protocol type and additional criteria.
+
+        This private method fetches peer information from the database. The query structure and
+        returned model types depend on the specified protocol type.
+
+        Args:
+            protocol_type (Optional[ProtocolType]): The protocol type to filter peers by.
+                If specified as WIREGUARD or AMNEZIA_WIREGUARD, returns WireguardPeerModel data.
+                If specified as XRAY, returns XrayPeerModel data.
+                If None or any other value, returns basic PeersTableModel data.
+            *criteria: Additional criteria to filter the query results.
+
+        Returns:
+            Optional[list[Union[PeersTableModel, WireguardPeerModel, XrayPeerModel]]]:
+                A list of peer models matching the specified criteria. The model type depends on
+                the protocol_type parameter. Returns None if no peers are found.
+        """
         match protocol_type:
             case ProtocolType.WIREGUARD | ProtocolType.AMNEZIA_WIREGUARD:
                 return list(
@@ -285,7 +316,7 @@ class Client(BaseModel):
     def get_all_peers(
             self,
             serialized: bool = False
-            ) -> Union[list[BasePeer], list[Union[WireguardPeer, XrayPeer]]]:
+        ) -> Union[list[BasePeer], list[Union[WireguardPeer, XrayPeer]]]:
         """
         Retrieve all peers from the database.
         This method fetches both Wireguard and Xray peers from the database. The peers can be
@@ -329,7 +360,7 @@ class Client(BaseModel):
         return result
 
     @core_logger.catch()
-    def set_peer_timer(self, peer_id, time: datetime.datetime) -> bool:
+    def set_peer_timer(self, peer_id: int, time: datetime.datetime) -> bool:
         result = self.__update_peer(peer_id, peer_timer=time)
         with core_logger.contextualize(peer_id=peer_id, result=result):
             core_logger.debug(f"Tried to change peer timer to {time}")
@@ -339,14 +370,15 @@ class Client(BaseModel):
     def get_connected_peers(self) -> list[BasePeer]:
         return [
             BasePeer.model_validate(model)
-            for model in self.__get_peers(PeersTableModel.peer_status == PeerStatusChoices.STATUS_CONNECTED.value)
+            for model in self.__get_peers(None, PeersTableModel.peer_status == PeerStatusChoices.STATUS_CONNECTED.value)
         ]
 
     def delete_peers(self) -> bool:
-        """Delete peers by `user_id`
+        """
+        Deletes all peer records associated with the current user from the database.
 
         Returns:
-            bool: True if successfull. False otherwise
+            bool: True if operation was successfully executed, False otherwise.
         """
         return (PeersTableModel.delete()
                 .where(PeersTableModel.user == self.userdata.user_id)

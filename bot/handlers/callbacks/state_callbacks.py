@@ -1,13 +1,15 @@
 from aiogram import Router
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 
+from bot.handlers.keyboards import build_reply_to_message_keyboard
 from bot.utils.message_utils import preview_message
 from bot.utils.states import (AddPeerStates, ContactAdminStates,
                               ExtendTimeStates, RenamePeerStates,
                               WhisperStates)
 from bot.utils.user_helper import extend_users_usage_time
-from config.loader import bot_cfg, bot_instance, ip_queue, wghub, xray_worker
+from config.loader import (bot_cfg, bot_instance, ip_queue, wghub, xray_cfg,
+                           xray_worker)
 from core.db.db_works import ClientFactory
 from core.db.enums import ProtocolType
 from core.logs import bot_logger
@@ -48,7 +50,8 @@ async def contact_admin(message: Message, state: FSMContext):
         await bot_instance.send_message(
             chat_id=admin_id,
             text=f"📩 Сообщение от пользователя {message.from_user.username} ({message.from_user.id}):\n\n{message.text}"
-            f"\n\n🔗 Ответить на сообщение: <code>/whisper {message.from_user.id}</code>"
+            f"\n\n🔗 Ответить на сообщение: <code>/whisper {message.from_user.id}</code> или по кнопке ниже.",
+            reply_markup=build_reply_to_message_keyboard()
         )
     await message.answer("✅ Сообщение отправлено администраторам. Ожидай обратной связи.")
 
@@ -99,12 +102,12 @@ async def add_peers(message: Message, state: FSMContext):
                     )
                     wghub.add_peer(peer)
                 case ProtocolType.XRAY:
-                    # FIXME: hardcoded flow and inbound_id
                     peer = client.add_xray_peer(
+                        # hardcoded flow, but it's okay
                         flow="xtls-rprx-vision",
-                        inbound_id=3,
+                        inbound_id=xray_cfg.inbound_id,
                     )
-                    xray_worker.add_peers(peer.inbound_id, [peer])
+                    xray_worker.add_peers(peer.inbound_id, [peer], client.userdata.expire_time)
                 case _:
                     raise TypeError("Unknown protocol type")
         await message.answer("✅ Пиры были успешно добавлены.")

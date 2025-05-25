@@ -33,15 +33,15 @@ class Config:
 
     def get_wireguard_server_config(self, *args, **kwargs):
         return self.WireguardServer(
-            path=self.cfg.get("Server", "Path", fallback=os.getcwd() + "/wg0.conf"),
-            user_ip=self.cfg.get("Server", "IP", fallback="127.0.0"),
-            user_ip_mask=self.cfg.get("Server", "IPMask", fallback=32),
-            private_key=self.cfg.get("Server", "PrivateKey", fallback="@!ChAngEME!@"),
-            public_key=self.cfg.get("Server", "PublicKey", fallback="@!ChAngEME!@"),
-            endpoint_ip=self.cfg.get("Server", "EndpointIP", fallback="192.168.27.27"),
-            endpoint_port=self.cfg.get("Server", "EndpointPort", fallback="10000"),
-            dns_server=self.cfg.get("Server", "DNS", fallback="8.8.8.8"),
-            junk=self.cfg.get("Server", "Junk", fallback=""),
+            path=self.cfg.get("WireguardServer", "Path", fallback=os.getcwd() + "/wg0.conf"),
+            user_ip=self.cfg.get("WireguardServer", "IP", fallback="127.0.0"),
+            user_ip_mask=self.cfg.get("WireguardServer", "IPMask", fallback=32),
+            private_key=self.cfg.get("WireguardServer", "PrivateKey", fallback="@!ChAngEME!@"),
+            public_key=self.cfg.get("WireguardServer", "PublicKey", fallback="@!ChAngEME!@"),
+            endpoint_ip=self.cfg.get("WireguardServer", "EndpointIP", fallback="192.168.27.27"),
+            endpoint_port=self.cfg.get("WireguardServer", "EndpointPort", fallback="10000"),
+            dns_server=self.cfg.get("WireguardServer", "DNS", fallback="8.8.8.8"),
+            junk=self.cfg.get("WireguardServer", "Junk", fallback=""),
             *args, **kwargs
         )
 
@@ -62,7 +62,8 @@ class Config:
             username=self.cfg.get("Xray", "username"),
             password=self.cfg.get("Xray", "password"),
             token=self.cfg.get("Xray", "token", fallback=None),
-            tls=self.cfg.getboolean("Xray", "tls", fallback=True)
+            tls=self.cfg.getboolean("Xray", "tls", fallback=True),
+            inbound_id=self.cfg.getint("Xray", "inbound_id", fallback=1)
         )
 
     def write_changes(self) -> bool:
@@ -107,17 +108,19 @@ class Config:
             self.path = path
 
     class WireguardServer:
-        def __init__(self,
-                     path: str,
-                     user_ip: str,
-                     user_ip_mask: str,
-                     private_key: str,
-                     public_key: str,
-                     endpoint_ip: str,
-                     endpoint_port: str,
-                     dns_server: str,
-                     junk: str,
-                     *args, **kwargs):
+        def __init__(
+                self,
+                path: str,
+                user_ip: str,
+                user_ip_mask: str,
+                private_key: str,
+                public_key: str,
+                endpoint_ip: str,
+                endpoint_port: str,
+                dns_server: str,
+                junk: str,
+                *args, **kwargs
+            ):
             self.path = path
             self.user_ip = user_ip
             self.user_ip_mask = user_ip_mask
@@ -131,21 +134,25 @@ class Config:
             self.args, self.kwargs = args, kwargs
 
     class XrayServer:
-        def __init__(self,
-                     host: str,
-                     port: str,
-                     web_path: str,
-                     username: str,
-                     password: str,
-                     token: Optional[str] = None,
-                     tls: bool = True):
-                self.host = host
-                self.port = port
-                self.web_path = web_path
-                self.username = username
-                self.password = password
-                self.token = token
-                self.tls = tls
+        def __init__(
+                self,
+                host: str,
+                port: str,
+                web_path: str,
+                username: str,
+                password: str,
+                inbound_id: int,
+                token: Optional[str] = None,
+                tls: bool = True,
+            ):
+            self.host = host
+            self.port = port
+            self.web_path = web_path
+            self.username = username
+            self.password = password
+            self.inbound_id = inbound_id
+            self.token = token
+            self.tls = tls
 
     class Core:
         def __init__(self,

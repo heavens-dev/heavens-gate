@@ -19,6 +19,11 @@ def get_admin_commands() -> list[BotCommand]:
         BotCommand(command="/delete_peer", description="Deletes peer."),
         BotCommand(command="/users", description="Get all users in paginated message."),
         BotCommand(command="/syncconfig", description="Syncs config file with WG."),
+        BotCommand(
+            command="/listen_clients",
+            description="Run listen_clients event independently. "
+            "If an argument is False, runs event for every single peer. True by default"
+        )
     ])
 
     return commands

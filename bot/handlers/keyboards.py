@@ -1,3 +1,4 @@
+from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot.utils.callback_data import (PeerCallbackData,
@@ -11,7 +12,9 @@ from core.db.enums import ClientStatusChoices, ProtocolType
 from core.db.model_serializer import BasePeer
 
 
-def build_peer_configs_keyboard(user_id: int, peers: list[BasePeer], display_all=True):
+def build_peer_configs_keyboard(
+        user_id: int, peers: list[BasePeer], display_all=True
+    ) -> InlineKeyboardMarkup:
     """
     Build an inline keyboard markup for peer configurations.
     This function creates a telegram inline keyboard with buttons for WireGuard peer configurations.
@@ -52,7 +55,7 @@ def build_peer_configs_keyboard(user_id: int, peers: list[BasePeer], display_all
 
     return builder.as_markup()
 
-def build_user_actions_keyboard(client: Client, is_admin=True):
+def build_user_actions_keyboard(client: Client, is_admin=True) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
 
     if is_admin:
@@ -142,7 +145,7 @@ def build_user_actions_keyboard(client: Client, is_admin=True):
 
     return builder.as_markup()
 
-def preview_keyboard():
+def preview_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
 
     builder.button(
@@ -163,7 +166,7 @@ def preview_keyboard():
 
     return builder.as_markup()
 
-def cancel_keyboard():
+def cancel_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
 
     builder.button(
@@ -173,7 +176,7 @@ def cancel_keyboard():
 
     return builder.as_markup()
 
-def extend_time_keyboard(user_id: int):
+def extend_time_keyboard(user_id: int) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
 
     builder.button(
@@ -205,7 +208,7 @@ def extend_time_keyboard(user_id: int):
 
     return builder.as_markup()
 
-def build_protocols_keyboard():
+def build_protocols_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
 
     for protocol in ProtocolType:
@@ -215,5 +218,19 @@ def build_protocols_keyboard():
         )
 
     builder.adjust(2, repeat=True)
+
+    return builder.as_markup()
+
+def build_reply_to_message_keyboard(user_id: int) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+
+    builder.button(
+        text="📨 Ответить",
+        callback_data=UserActionsCallbackData(
+            user_id=user_id,
+            action=UserActionsEnum.WHISPER_USER,
+            is_admin=True
+        )
+    )
 
     return builder.as_markup()

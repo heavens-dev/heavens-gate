@@ -62,6 +62,17 @@ xray_worker = XrayWorker(
     xray_cfg.tls
 )
 
+try:
+    inbound = xray_worker.api.inbound.get_by_id(xray_cfg.inbound_id)
+    with core_logger.contextualize(
+        remark=inbound.remark,
+        is_enabled=inbound.enable,
+        protocol=inbound.protocol,
+    ):
+        core_logger.info(f"Successfully fetched inbound with ID {xray_cfg.inbound_id}.")
+except ValueError:
+    core_logger.exception(f"Couldn't fetch XRay inbound with ID {xray_cfg.inbound_id}!")
+
 connections_observer = ConnectionEvents(
     wghub,
     xray_worker,

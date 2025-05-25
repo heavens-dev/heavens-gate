@@ -81,6 +81,10 @@ def extend_users_usage_time(client: Client, time_to_add: datetime.timedelta) -> 
 
     client.set_expire_time(client.userdata.expire_time + time_to_add)
 
+    if xray_peers := client.get_xray_peers():
+        for peer in xray_peers:
+            xray_worker.update_peer(peer, expiry_time=client.userdata.expire_time)
+
     return True
 
 @bot_logger.catch()

@@ -1,3 +1,4 @@
+import datetime
 import re
 from typing import Optional
 from urllib.parse import quote
@@ -11,15 +12,16 @@ from core.logs import core_logger
 
 
 class XrayWorker:
-    def __init__(self,
-                 host: str,
-                 port: str,
-                 web_path: str,
-                 username: str,
-                 password: str,
-                 token: Optional[str] = None,
-                 tls: bool = True
-                 ):
+    def __init__(
+            self,
+            host: str,
+            port: str,
+            web_path: str,
+            username: str,
+            password: str,
+            token: Optional[str] = None,
+            tls: bool = True
+        ):
         self.host = host
         self.port = port
         host = host + ':' + port + (f"/{web_path}/" if web_path else '')
@@ -35,6 +37,18 @@ class XrayWorker:
 
     @staticmethod
     def peer_to_client(peer: XrayPeer) -> Client:
+        """
+        Convert an XrayPeer object to a Client object.
+
+        This static method transforms an XrayPeer instance into a XRay Client instance,
+        mapping the appropriate fields between the two models.
+
+        Args:
+            peer (XrayPeer): The XrayPeer object to convert.
+
+        Returns:
+            Client: A newly created Client object with properties derived from the XrayPeer.
+        """
         return Client(
             id=str(peer.peer_id), # explicitly converting to string, bug in py3xui
             email=peer.peer_name,
@@ -62,8 +76,21 @@ class XrayWorker:
                 )
 
     @core_logger.catch()
-    def add_peers(self, inbound_id: int, peers: list[XrayPeer]) -> None:
-        """Adds a peer to the 3x-ui API"""
+    def add_peers(
+        self, inbound_id: int, peers: list[XrayPeer], expiry_time: Optional[datetime.datetime] = None
+    ) -> None:
+        """
+        Add XRay peers to a specified inbound.
+        This method converts a list of XrayPeer objects to clients and adds them to the
+        specified inbound using the XRay API. It validates that each peer's inbound_id
+        matches the specified inbound_id and logs any discrepancies.
+
+        Args:
+            inbound_id (int): The ID of the inbound to add peers to.
+            peers (list[XrayPeer]): List of peer objects to be added.
+            expiry_time (datetime.datetime, optional): Expiration time for the peers. Defaults to None.
+
+        """
         clients = []
 
         for peer in peers:
@@ -72,7 +99,10 @@ class XrayWorker:
                     core_logger.warning(
                         f"Inbound ID does not match the peer's inbound ID: {peer.inbound_id} != {inbound_id}"
                     )
-            clients.append(self.peer_to_client(peer))
+            client = self.peer_to_client(peer)
+            if expiry_time is not None:
+                client.expiry_time = int(expiry_time.timestamp() * 1000)
+            clients.append(client)
 
         self.api.client.add(inbound_id, clients)
 
@@ -80,8 +110,14 @@ class XrayWorker:
             core_logger.info(f"Added new Xray peers.")
 
     @core_logger.catch()
-    def update_peer(self, peer: XrayPeer) -> None:
+    def update_peer(self, peer: XrayPeer, expiry_time: datetime.datetime = None) -> None:
+        """
+        Update an Xray peer in the API and optionally set its expiry time.
+        """
         client = self.peer_to_client(peer)
+
+        if expiry_time is not None:
+            client.expiry_time = int(expiry_time.timestamp() * 1000)
         self.api.client.update(client.id, client)
 
         with core_logger.contextualize(xray_peer=peer):
@@ -118,12 +154,3 @@ class XrayWorker:
         client = self.peer_to_client(peer)
         client.enable = False
         self.api.client.update(peer.peer_id, client)
-
-    # TODO list:
-    # [ ] edit peers
-    # [x] delete peers
-    # [ ] get peers
-    # [ ] ensure login
-    # [x] enable peer
-    # [x] disable peer
-    # [x] is connected

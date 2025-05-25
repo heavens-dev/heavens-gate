@@ -162,18 +162,6 @@ async def add_peer_callback(callback: CallbackQuery, callback_data: UserActionsC
 
     await callback.answer()
 
-    # try:
-    #     ip_addr = ip_queue.get_ip()
-    # except Exception:
-    #     await callback.message.answer("❌ Нет доступных IP-адресов!")
-    #     bot_logger.error("❌ Tried to add a peer, but no IP addresses are available.")
-    #     return
-    # new_peer = client.add_wireguard_peer(shared_ips=ip_addr, peer_name=f"{client.userdata.name}_{last_id}", is_amnezia=wghub.is_amnezia)
-    # wghub.add_peer(new_peer)
-    # with bot_logger.contextualize(peer=new_peer):
-    #     bot_logger.info(f"New peer was created manually by {callback.message.from_user.username}")
-    # await callback.answer("✅ Пир добавлен.")
-
 @router.callback_query(PreviewMessageCallbackData.filter(), PreviewMessageStates.preview)
 async def preview_message_callback(callback: CallbackQuery, callback_data: PreviewMessageCallbackData, state: FSMContext):
     await callback.answer()
@@ -212,9 +200,8 @@ async def change_peer_name_callback(callback: CallbackQuery, callback_data: User
 @router.callback_query(PeerCallbackData.filter(), RenamePeerStates.peer_selection)
 async def change_peer_name_entering_callback(callback: CallbackQuery, callback_data: PeerCallbackData, state: FSMContext):
     await callback.answer()
-    await callback.message.delete()
-    await callback.message.answer("🔤 Введи новое имя для конфига (или <code>отмена</code>, если передумал):",
-                                  reply_markup=cancel_keyboard())
+    await callback.message.edit_text("🔤 Введи новое имя для конфига (или <code>отмена</code>, если передумал):")
+    await callback.message.edit_reply_markup(reply_markup=cancel_keyboard())
     await state.set_state(RenamePeerStates.name_entering)
     await state.set_data({"tg_id": callback_data.user_id, "peer_id": callback_data.peer_id})
 
@@ -250,10 +237,11 @@ async def extend_usage_time_callback(callback: CallbackQuery, callback_data: Tim
 )
 async def extend_usage_time_custom(callback: CallbackQuery, callback_data: TimeExtenderCallbackData, state: FSMContext):
     await callback.answer()
-    await callback.message.delete()
-    await callback.message.answer(f"📅 Введи время, на которое ты хочешь продлить доступ в формате "
-                                  "<code>число</code> + <code>(d -- дни, w -- недели, M -- месяцы, Y -- годы)</code>: ",
-                                  reply_markup=cancel_keyboard())
+    await callback.message.edit_text(
+        f"📅 Введи время, на которое ты хочешь продлить доступ в формате "
+        "<code>число</code> + <code>(d -- дни, w -- недели, M -- месяцы, Y -- годы)</code>: "
+    )
+    await callback.message.edit_reply_markup(reply_markup=cancel_keyboard())
     await state.set_data({"user_id": callback_data.user_id, "extend_for": callback_data.extend_for})
     await state.set_state(ExtendTimeStates.time_entering)
 
@@ -292,18 +280,18 @@ async def protocol_choice_callback(
     callback_data: ProtocolChoiceCallbackData,
     state: FSMContext):
 
-    await callback.message.delete()
     data = await state.get_data()
 
     if data.get("user_id", None) is None:
-        await callback.answer("❌ Ты начал процедуру добавления пира не с команды /add_peer или кнопки.")
+        await callback.message.edit_text("❌ Ты начал процедуру добавления пира не с команды /add_peer или кнопки.")
+        await callback.message.delete_reply_markup()
         await state.clear()
         return
 
-    await callback.message.answer(
-        "Введи количество пиров, которое ты хочешь добавить (или <code>отмена</code>, если передумал):",
-        reply_markup=cancel_keyboard()
+    await callback.message.edit_text(
+        "Введи количество пиров, которое ты хочешь добавить (или <code>отмена</code>, если передумал):"
     )
+    await callback.message.edit_reply_markup(reply_markup=cancel_keyboard())
 
     await state.set_state(AddPeerStates.select_amount)
     await state.update_data(protocol=callback_data.protocol)
