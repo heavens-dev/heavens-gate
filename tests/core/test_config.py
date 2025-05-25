@@ -22,7 +22,7 @@ connection_update_timer=5
 connection_connected_only_listen_timer=1
 logs_path=./logs
 
-[Server]
+[WireguardServer]
 Path=./wg0.conf
 IP=10.0.0
 IPMask=32
