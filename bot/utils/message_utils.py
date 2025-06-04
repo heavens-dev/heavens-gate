@@ -22,9 +22,19 @@ async def preview_message(msg: str, chat_id: int, state: FSMContext, clients_lis
     )
 
 async def send_error_message(chat_id: int, action: str):
-    await bot_instance.send_message(chat_id=chat_id, text="❌ Произошла ошибка во время выполнения команды. Пожалуйста, напиши об этом инцеденте нам.")
+    await bot_instance.send_message(
+        chat_id=chat_id,
+        text="❌ Произошла ошибка во время выполнения команды. Пожалуйста, напиши об этом инциденте нам."
+    )
     for admin in bot_cfg.admins:
         # in case admin has blocked the bot or something else
         # bruh.
         with suppress(TelegramBadRequest):
-            await bot_instance.send_message(chat_id=admin, text=f"❗️ Произошла ошибка во время выполнения команды. Пользователь {chat_id} столкнулся с проблемой. Действие: {action}. Проверь логи.")
+            await bot_instance.send_message(
+                chat_id=admin,
+                text=(
+                    "❗️ Произошла ошибка во время выполнения команды. "
+                    f"Пользователь {chat_id} столкнулся с проблемой. "
+                    f"Действие: {action}. Проверь логи."
+                )
+            )

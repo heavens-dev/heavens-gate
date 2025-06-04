@@ -17,13 +17,15 @@ from core.xray.xray_worker import XrayWorker
 
 
 class ConnectionEvents:
-    def __init__(self,
-                 wghub: WGHub,
-                 xray: XrayWorker,
-                 listen_timer: int = 120,
-                 connected_only_listen_timer: int = 60,
-                 update_timer: int = 360,
-                 active_hours: int = 5):
+    def __init__(
+            self,
+            wghub: WGHub,
+            xray: XrayWorker,
+            listen_timer: int = 120,
+            connected_only_listen_timer: int = 60,
+            update_timer: int = 360,
+            active_hours: int = 5
+        ):
         self.listen_timer = listen_timer
         self.update_timer = update_timer
         self.connected_only_listen_timer = connected_only_listen_timer
@@ -42,7 +44,7 @@ class ConnectionEvents:
         self.startup = EventObserver()
 
         self.clients: list[tuple[Client, list[Union[WireguardPeer, XrayPeer]]]] = [
-            (client, client.get_all_peers(serialized=True)) for client in ClientFactory.select_clients()
+            (client, client.get_all_peers(protocol_specific=True)) for client in ClientFactory.select_clients()
         ]
         """List of all `Client`s and their `ConnectionPeer`s"""
 
@@ -50,7 +52,7 @@ class ConnectionEvents:
         """Internal lock that prevents updating `self.clients`
         during client connection checks"""
 
-    async def __check_connection(self, client: Client, peer: BasePeer, warn: bool = False) -> bool:
+    async def __check_connection(self, client: Client, peer: BasePeer) -> bool:
         """
         Check the connection status of a peer and handle any necessary state changes.
         This method verifies the peer's connection status by checking timer expiration
@@ -62,9 +64,6 @@ class ConnectionEvents:
                 The client instance associated with this connection check
             peer (BasePeer):
                 The peer whose connection status needs to be verified
-            warn (bool, default=False):
-                If True, will trigger a warning when the peer's connection timer
-                is within 15 minutes of expiration
 
         Returns:
             bool: True if the peer is connected, False otherwise
@@ -85,7 +84,7 @@ class ConnectionEvents:
                 await self.timer_observer.trigger(client, peer, disconnect=True)
                 await self.emit_timeout_disconnect(client, peer)
                 return False
-            elif timedelta <= datetime.timedelta(minutes=15) and warn:
+            elif timedelta <= datetime.timedelta(minutes=15):
                 # False is warning
                 await self.timer_observer.trigger(client, peer, disconnect=False)
 
@@ -114,7 +113,7 @@ class ConnectionEvents:
             await self.run_check_connections(connected_only)
 
             with core_logger.contextualize(connected_only=connected_only):
-                core_logger.debug(f"Event has finished it's job. Sleeping for {listen_timer} seconds...")
+                core_logger.debug(f"Event has finished its job. Sleeping for {listen_timer} seconds...")
             await asyncio.sleep(listen_timer)
 
     async def emit_connect(self, client: Client, peer: BasePeer):
@@ -157,7 +156,7 @@ class ConnectionEvents:
         while True:
             async with self.__clients_lock:
                 self.clients = [
-                    (client, client.get_all_peers(serialized=True)) for client in ClientFactory.select_clients()
+                    (client, client.get_all_peers(protocol_specific=True)) for client in ClientFactory.select_clients()
                 ]
                 core_logger.debug(f"Done updating clients list. Sleeping for {self.update_timer} sec")
 
@@ -184,6 +183,7 @@ class ConnectionEvents:
         """
         async with self.__clients_lock:
             # looks cringy, but idk how to make it prettier
+            # TODO: think about threading...
             async with asyncio.TaskGroup() as group:
                 for client, peers in self.clients:
                     if client.userdata.status in [
@@ -204,7 +204,7 @@ class ConnectionEvents:
                                 )
                             continue
                         group.create_task(
-                            self.__check_connection(client, peer, True)
+                            self.__check_connection(client, peer)
                         )
         with core_logger.contextualize(connected_only=connected_only):
             core_logger.debug("Created tasks for checking connections.")
@@ -222,7 +222,9 @@ class IntervalEvents:
         self.wg_hub = wg_hub
         self.xray = xray
 
-    async def interval_runner(self, func: Union[CallableObject, Callable, Coroutine], interval: datetime.timedelta, *args, **kwargs):
+    async def interval_runner(
+            self, func: Union[CallableObject, Callable, Coroutine], interval: datetime.timedelta, *args, **kwargs
+        ):
         """
         Periodically executes a given function at specified intervals.
         Args:
@@ -280,7 +282,7 @@ class IntervalEvents:
             if client.userdata.expire_time.date() <= now.date():
                 core_logger.info(f"Blocking user {client.userdata.name} due to expired account.")
                 client.set_status(ClientStatusChoices.STATUS_ACCOUNT_BLOCKED)
-                peers = client.get_all_peers(serialized=True)
+                peers = client.get_all_peers(protocol_specific=True)
                 disable_peers(self.wg_hub, self.xray, peers, client=client)
                 await self.expire_date_block_observer.trigger(client)
             elif (client.userdata.expire_time - datetime.timedelta(days=1)).date() <= now.date():

@@ -32,7 +32,7 @@ class BasePeer(BaseModel):
         peer_type (ProtocolType): The protocol type of the peer.
         peer_status (PeerStatusChoices): The current status of the peer.
         peer_timer (datetime, optional): Timestamp for peer-related timing operations.
-            Defaults to None.
+        Defaults to None.
 
     Note:
         This class uses Pydantic's ConfigDict with from_attributes=True to enable
@@ -42,15 +42,15 @@ class BasePeer(BaseModel):
     """
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
-    id: int = Field(alias="peer.id")
-    user_id: Union[int, str] = Field(alias="peer.user_id")
-    peer_id: Optional[int] = Field(default=None, alias="peer.peer_id")
+    id: int = Field()
+    user_id: Union[int, str] = Field()
+    peer_id: Optional[int] = Field(default=None)
     """`peer_id` is the real id of the peer from PeersTableModel, not local from it's table"""
 
-    peer_name: str = Field(alias="peer.peer_name")
-    peer_type: ProtocolType = Field(alias="peer.peer_type")
-    peer_status: PeerStatusChoices = Field(alias="peer.peer_status")
-    peer_timer: Optional[datetime] = Field(default=None, alias="peer.peer_timer")
+    peer_name: str = Field()
+    peer_type: ProtocolType = Field()
+    peer_status: PeerStatusChoices = Field()
+    peer_timer: Optional[datetime] = Field(default=None)
 
     @model_validator(mode="before")
     @classmethod

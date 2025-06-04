@@ -17,7 +17,7 @@ def build_peer_configs_keyboard(
     ) -> InlineKeyboardMarkup:
     """
     Build an inline keyboard markup for peer configurations.
-    This function creates a telegram inline keyboard with buttons for WireGuard peer configurations.
+    This function creates a telegram inline keyboard with buttons for (Amnezia) Wireguard and XRay peer configurations.
     Each peer is represented by a button that shows either the peer's name or ID.
     If display_all is True, an additional button to get all configurations is included at the top.
     Args:

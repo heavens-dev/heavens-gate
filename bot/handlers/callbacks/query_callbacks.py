@@ -52,9 +52,9 @@ async def select_peer_callback(callback: CallbackQuery, callback_data: PeerCallb
     await callback.answer()
 
     if callback_data.peer_id != -1:
-        peers = [ClientFactory.get_peer_by_id(callback_data.peer_id, serialized=True)]
+        peers = [ClientFactory.get_peer_by_id(callback_data.peer_id, protocol_specific=True)]
     else:
-        peers = client.get_all_peers(serialized=True)
+        peers = client.get_all_peers(protocol_specific=True)
 
     for peer in peers:
         match peer.peer_type:
@@ -68,8 +68,8 @@ async def select_peer_callback(callback: CallbackQuery, callback_data: PeerCallb
                 bot_logger.warning(f"Unknown protocol type: {peer.peer_type}. Skipping.")
                 continue
 
-    if builded_media := media_group.build():
-        await bot_instance.send_media_group(callback.from_user.id, media=builded_media)
+    if built_media := media_group.build():
+        await bot_instance.send_media_group(callback.from_user.id, media=built_media)
     if xray_strings:
         await callback.message.answer("🔗 Ссылки на конфиги XRay (можно скопировать, нажав):\n" + xray_strings)
 
@@ -78,7 +78,7 @@ async def select_peer_callback(callback: CallbackQuery, callback_data: PeerCallb
 )
 async def ban_user_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
     client = ClientFactory(user_id=callback_data.user_id).get_client()
-    peers = client.get_all_peers(serialized=True)
+    peers = client.get_all_peers(protocol_specific=True)
     client.set_status(ClientStatusChoices.STATUS_ACCOUNT_BLOCKED)
     disable_peers(wghub, xray_worker, peers, client)
 
@@ -98,7 +98,7 @@ async def ban_user_callback(callback: CallbackQuery, callback_data: UserActionsC
 )
 async def pardon_user_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
     client = ClientFactory(user_id=callback_data.user_id).get_client()
-    peers = client.get_all_peers(serialized=True)
+    peers = client.get_all_peers(protocol_specific=True)
     client.set_status(ClientStatusChoices.STATUS_CREATED)
     enable_peers(wghub, xray_worker, peers, client)
 

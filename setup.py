@@ -95,8 +95,8 @@ def make_config(path):
                 str(interface_data.get("H3", "")),
                 str(interface_data.get("H4", "")),
             ])
-        except FileNotFoundError:
-            print(FAIL_STR + f" WireGuard config was not found in {path_to_wg_config}")
+        except Exception as e:
+            print(FAIL_STR + e)
             manual_torture = True
     else:
         manual_torture = True
@@ -118,7 +118,7 @@ def make_config(path):
     xray_config_data["username"] = input(REQUIRE_INPUT_STR + " Enter panel username: ")
     xray_config_data["password"] = getpass(REQUIRE_INPUT_STR + " Enter panel password (hidden): ")
     xray_config_data["token"] = input_with_default(REQUIRE_INPUT_STR + " Enter panel token (default: None): ", None)
-    xray_config_data["tls"] = yes_or_no_input(YES_OR_NO_STR + " Do you want to use TLS? (Y/n (default: Y)): ", True)
+    xray_config_data["tls"] = yes_or_no_input(YES_OR_NO_STR + " Do you want to use TLS certificate verification? (Y/n (default: Y)): ", True)
 
     # Try to connect to 3x-ui panel
     try:

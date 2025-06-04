@@ -10,35 +10,33 @@ from core.db.db_works import Client, ClientFactory
 from core.db.enums import ClientStatusChoices, PeerStatusChoices, ProtocolType
 from core.db.model_serializer import WireguardPeer, XrayPeer
 from core.logs import bot_logger
-from core.utils.ip_utils import check_ip_address
 from core.wg.wgconfig_helper import get_peer_config_str
 
 
-# TODO: remove deprecated "ip_address" argument, since it was never used
-def get_client_by_id_or_ip(id_or_ip: Union[str, int]) -> tuple[Optional[Client], Optional[str]]:
-    """Tries to get client by it's id or ip.
-    Returns `(Client, None)` if the user was found, `(None, "error_message")` otherwise"""
-    if check_ip_address(id_or_ip):
-        client = ClientFactory.get_client(id_or_ip)
-    else:
-        try:
-            client = ClientFactory(user_id=id_or_ip).get_client()
-        except ValidationError:
-            client = None
+# TODO: make this function accept ip addresses again
+def get_client_by_id_or_ip(user_id: Union[str, int]) -> tuple[Optional[Client], Optional[str]]:
+    """Tries to get client by it's id.
+
+    Returns:
+        tuple: `(Client, None)` if the user was found, `(None, "error_message")` otherwise"""
+    try:
+        client = ClientFactory(user_id=user_id).get_client()
+    except ValidationError:
+        client = None
 
     if client is None:
-        return None, f"❌ Пользователь <code>{id_or_ip}</code> не найден."
+        return None, f"❌ Пользователь <code>{user_id}</code> не найден."
     return client, None
 
 def get_user_data_string(client: Client, show_peer_ids: bool = False) -> list[str]:
     """Returns human-readable data about User. Recommended to use `parse_mode="HTML"`.
 
     Note:
-        Telegram has a limit of 512 bytes for a single message, so text is separeted into two parts:
+        Telegram has a limit of 512 bytes for a single message, so text is separated into two parts:
         - Static user info (ID, registration date, etc.)
         - Peers info, client status and expiration date
     """
-    peers = client.get_all_peers(serialized=True)
+    peers = client.get_all_peers(protocol_specific=True)
     peers_str = ""
 
     for peer in peers:
@@ -89,7 +87,7 @@ def extend_users_usage_time(client: Client, time_to_add: datetime.timedelta) -> 
 
 @bot_logger.catch()
 def unblock_timeout_connections(client: Client) -> bool:
-    peers = client.get_all_peers(serialized=True)
+    peers = client.get_all_peers(protocol_specific=True)
     for peer in peers:
         match peer.peer_status:
             case PeerStatusChoices.STATUS_TIME_EXPIRED:

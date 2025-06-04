@@ -49,6 +49,7 @@ class XrayWorker:
         Returns:
             Client: A newly created Client object with properties derived from the XrayPeer.
         """
+        # TODO: pass an expiryTime argument to Client object somehow
         return Client(
             id=str(peer.peer_id), # explicitly converting to string, bug in py3xui
             email=peer.peer_name,
@@ -70,10 +71,11 @@ class XrayWorker:
         remark = quote(inbound.remark)
         peer_name = quote(peer.peer_name)
 
-        return (f"vless://{peer.peer_id}@{host}:{inbound.port}"
-                f"?type=tcp&security=reality&pbk={public_key}&fp={fingerprint}"
-                f"&sni={website_name}&sid={short_id}&spx=%2F&flow={peer.flow}#{remark}-{peer_name}"
-                )
+        return (
+            f"vless://{peer.peer_id}@{host}:{inbound.port}"
+            f"?type=tcp&security=reality&pbk={public_key}&fp={fingerprint}"
+            f"&sni={website_name}&sid={short_id}&spx=%2F&flow={peer.flow}#{remark}-{peer_name}"
+        )
 
     @core_logger.catch()
     def add_peers(
@@ -89,7 +91,6 @@ class XrayWorker:
             inbound_id (int): The ID of the inbound to add peers to.
             peers (list[XrayPeer]): List of peer objects to be added.
             expiry_time (datetime.datetime, optional): Expiration time for the peers. Defaults to None.
-
         """
         clients = []
 
@@ -133,9 +134,6 @@ class XrayWorker:
 
     @core_logger.catch()
     def is_connected(self, peer: XrayPeer) -> bool:
-        # because `api.client.online()` returns a list of strings
-        # there is may be a problem when user has changed his name
-        # FIXME later
         online_clients = self.api.client.online()
         for client in online_clients:
             if client == peer.peer_name:

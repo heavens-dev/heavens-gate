@@ -34,12 +34,12 @@ async def get_config(message: Message):
     peers = client.get_all_peers()
 
     if not peers:
-        await message.answer("❌ У тебя нет каких-либо пиров.")
+        await message.answer("❌ У тебя нет пиров.")
         return
 
     keyboard = build_peer_configs_keyboard(message.from_user.id, peers)
     await message.answer(
-        text="Выбери конфиг, который ты хочешь получить из клавиатуры: ",
+        text="Выбери конфиг, который ты хочешь получить, из клавиатуры: ",
         reply_markup=keyboard
     )
 

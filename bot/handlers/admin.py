@@ -79,7 +79,7 @@ async def whisper(message: Message, client: Client, state: FSMContext):
 @router.message(Command("ban", "anathem"))
 async def ban(message: Message, client: Client):
     client.set_status(ClientStatusChoices.STATUS_ACCOUNT_BLOCKED)
-    peers = client.get_all_peers(serialized=True)
+    peers = client.get_all_peers(protocol_specific=True)
     disable_peers(wghub, xray_worker, peers, client)
 
     await message.answer(
@@ -94,7 +94,7 @@ async def ban(message: Message, client: Client):
 @router.message(Command("unban", "mercy", "pardon"))
 async def unban(message: Message, client: Client):
     client.set_status(ClientStatusChoices.STATUS_CREATED)
-    peers = client.get_all_peers(serialized=True)
+    peers = client.get_all_peers(protocol_specific=True)
     enable_peers(wghub, xray_worker, peers, client)
     await message.answer(
         f"✅ Пользователь <code>{client.userdata.name}:{client.userdata.user_id}</code> разблокирован."
@@ -127,7 +127,7 @@ async def add_peer(message: Message, client: Client, state: FSMContext):
 @router.message(Command("disable_peer"))
 async def disable_peer_command(message: Message):
     if len(message.text.split()) <= 1:
-        await message.answer("❌ Сообщение должно содержать ID или IP адрес пира (если это пир Wireguard).")
+        await message.answer("❌ Сообщение должно содержать ID или IP-адрес пира (если это пир Wireguard).")
         return
 
     id_or_ip = message.text.split()[1]
@@ -135,7 +135,7 @@ async def disable_peer_command(message: Message):
     if check_ip_address(id_or_ip):
         peer = ClientFactory.get_peer_by_ip(id_or_ip)
     else:
-        peer = ClientFactory.get_peer_by_id(id_or_ip, serialized=True)
+        peer = ClientFactory.get_peer_by_id(id_or_ip, protocol_specific=True)
 
     if not peer:
         await message.answer("❌ Пир не найден.")
@@ -172,7 +172,7 @@ async def enable_peer_command(message: Message):
     if check_ip_address(id_or_ip):
         peer = ClientFactory.get_peer_by_ip(id_or_ip)
     else:
-        peer = ClientFactory.get_peer_by_id(id_or_ip, serialized=True)
+        peer = ClientFactory.get_peer_by_id(id_or_ip, protocol_specific=True)
 
     if not peer:
         await message.answer("❌ Пир не найден.")
@@ -207,7 +207,7 @@ async def delete_peer(message: Message):
         return
     peer_id = splitted_message[1]
 
-    peer = ClientFactory.delete_peer_by_id(int(peer_id), serialized=True)
+    peer = ClientFactory.delete_peer_by_id(int(peer_id), protocol_specific=True)
 
     if not peer:
         await message.answer("❌ Пир не найден.")

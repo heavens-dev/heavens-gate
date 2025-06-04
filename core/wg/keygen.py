@@ -8,7 +8,7 @@ def generate_preshared_key(is_amnezia: bool = False) -> str:
         check=True,
         capture_output=True,
         text=True
-    ).stdout.replace("\n", "")
+    ).stdout.rstrip("\n")
 
 def generate_private_key(is_amnezia: bool = False) -> str:
     command = "wg" if not is_amnezia else "awg"
@@ -17,7 +17,7 @@ def generate_private_key(is_amnezia: bool = False) -> str:
         check=True,
         capture_output=True,
         text=True
-    ).stdout.replace("\n", "")
+    ).stdout.rstrip("\n")
 
 def generate_public_key(private_key: str, is_amnezia: bool = False) -> str:
     if not private_key:
@@ -30,7 +30,7 @@ def generate_public_key(private_key: str, is_amnezia: bool = False) -> str:
         check=True,
         capture_output=True,
         text=True
-    ).stdout.replace("\n", "")
+    ).stdout.rstrip("\n")
 
 if __name__ == "__main__":
     priv_key = generate_private_key()

@@ -14,6 +14,7 @@ from core.logs import core_logger
 from core.wg.keygen import (generate_preshared_key, generate_private_key,
                             generate_public_key)
 
+# TODO: read BasePeer field names instead of hardcoding
 BASE_PEER_FIELDS = ("id",
                     "user_id",
                     "peer_name",
@@ -315,21 +316,22 @@ class Client(BaseModel):
 
     def get_all_peers(
             self,
-            serialized: bool = False
+            protocol_specific: bool = False
         ) -> Union[list[BasePeer], list[Union[WireguardPeer, XrayPeer]]]:
         """
         Retrieve all peers from the database.
         This method fetches both Wireguard and Xray peers from the database. The peers can be
-        returned either as base peer models or as serialized specific peer types.
+        returned either as base peer models or as protocol specific peer types.
         Args:
-            serialized (bool): If True, returns serialized Wireguard and Xray peers.
-                                If False, returns base peer models. Defaults to False.
+            protocol_specific (bool):
+                If True, returns protocol specific Wireguard and Xray peer models.
+                If False, returns base peer models. Defaults to False.
         Returns:
             Union[list[BasePeer], list[Union[WireguardPeer, XrayPeer]]]: A list of peers.
-            When serialized is False, returns a list of BasePeer objects.
-            When serialized is True, returns a concatenated list of WireguardPeer and XrayPeer objects.
+            When `protocol_specific` is False, returns a list of `BasePeer` objects.
+            When `protocol_specific` is True, returns a concatenated list of `WireguardPeer` and `XrayPeer` objects.
         """
-        if serialized:
+        if protocol_specific:
             return self.get_wireguard_peers(is_amnezia=True) + self.get_xray_peers()
 
         return [
@@ -387,17 +389,31 @@ class Client(BaseModel):
     def delete_wireguard_peer_by_ip(self, ip_address: str) -> bool:
         """Delete wireguard peer by `ip_address`
 
-        Returns:
-            bool: True if successfull. False otherwise
-        """
-        # ? weird flex but okay.
-        formatted_ip = ip_address.replace(".", "\\.")
-        return (WireguardPeerModel.delete()
-                .where(WireguardPeerModel.shared_ips.regexp(
-                    rf"(?:[, ]|^){formatted_ip}(?:[, ]|$)"
-                ) & WireguardPeerModel.user == self.__model)
-                .execute()) == 1
+        Deletes the peer from PeersTableModel which will cascade to WireguardPeerModel.
 
+        Returns:
+            bool: True if successful. False otherwise
+        """
+        # format IP for regex pattern
+        formatted_ip = ip_address.replace(".", "\\.")
+
+        try:
+            peer = (PeersTableModel
+                   .select()
+                   .join(WireguardPeerModel)
+                   .where(WireguardPeerModel.shared_ips.regexp(
+                       rf"(?:[, ]|^){formatted_ip}(?:[, ]|$)"
+                   ) )
+                   .where(PeersTableModel.user == self.__model)
+                   .get())
+
+            peer.delete_instance()
+            return True
+        except DoesNotExist:
+            core_logger.info(f"Wireguard peer with IP {ip_address} not found.")
+            return False
+
+# TODO: split ClientFactory class into different files, depending on the type of object
 class ClientFactory(BaseModel):
     model_config = ConfigDict()
 
@@ -408,7 +424,9 @@ class ClientFactory(BaseModel):
         Use this method when you're unsure whether the user already exists in the database or not.
 
         Returns:
-            tuple[Client, bool]: A tuple containing the created or retrieved `Client` object and a boolean indicating whether it was created.
+            tuple[Client, bool]:
+                A tuple containing the created or retrieved `Client` object
+                and a boolean indicating whether it was created.
         """
         created: bool = False
         if not name:
@@ -473,18 +491,18 @@ class ClientFactory(BaseModel):
         return [Client(model=i, userdata=User.model_validate(i)) for i in UserModel.select()]
 
     @staticmethod
-    def get_peer_by_id(peer_id: int, serialized: bool = False) -> Optional[BasePeer]:
+    def get_peer_by_id(peer_id: int, protocol_specific: bool = False) -> Optional[BasePeer]:
         try:
-            model = PeersTableModel.get(PeersTableModel.id == peer_id)
-            # FIXME: AI generated, redo it to match-case. 2 lazy...
-            if serialized:
-                if model.peer_type in [ProtocolType.WIREGUARD.value, ProtocolType.AMNEZIA_WIREGUARD.value]:
-                    return WireguardPeer.model_validate(WireguardPeerModel.get(WireguardPeerModel.peer == peer_id))
-                elif model.peer_type == ProtocolType.XRAY.value:
-                    return XrayPeer.model_validate(XrayPeerModel.get(XrayPeerModel.peer == peer_id))
-                else:
-                    core_logger.warning(f"Unknown protocol type: {model.peer_type}")
-                    return None
+            model: PeersTableModel = PeersTableModel.get(PeersTableModel.id == peer_id)
+            if protocol_specific:
+                match model.peer_type:
+                    case ProtocolType.WIREGUARD.value | ProtocolType.AMNEZIA_WIREGUARD.value:
+                        return WireguardPeer.model_validate(WireguardPeerModel.get(WireguardPeerModel.peer == peer_id))
+                    case ProtocolType.XRAY.value:
+                        return XrayPeer.model_validate(XrayPeerModel.get(XrayPeerModel.peer == peer_id))
+                    case _:
+                        core_logger.warning(f"Unknown protocol type: {model.peer_type}")
+                        return None
             return BasePeer.model_validate(model)
         except DoesNotExist:
             return None
@@ -566,22 +584,23 @@ class ClientFactory(BaseModel):
     @staticmethod
     def delete_peer_by_id(
         peer_id: int,
-        serialized: bool = False
-        ) -> Union[BasePeer, WireguardPeer, XrayPeer, bool]:
+        protocol_specific: bool = False
+    ) -> Union[BasePeer, WireguardPeer, XrayPeer, bool]:
         """
         Deletes a peer by their ID.
         Args:
             peer_id (int): The unique identifier of the peer to be deleted.
-            serialized (bool): If True, the method will return a serialized peer object.
+            protocol_specific (bool): If True, the method will return a protocol specific peer object.
                                If False, it will return a `BasePeer` object.
         Returns:
-            Union[BasePeer, WireguardPeer, XrayPeer, bool]: Returns the deleted peer object if successful, serialized if requested.
-            Returns `False` if the peer was not found or if an error occurred during deletion.
+            Union[BasePeer, WireguardPeer, XrayPeer, bool]:
+                Returns the deleted peer object if successful, `protocol_specific` if requested.
+                Returns `False` if the peer was not found or if an error occurred during deletion.
         """
         try:
             peer: PeersTableModel = PeersTableModel.get(PeersTableModel.id == peer_id)
 
-            if serialized:
+            if protocol_specific:
                 match peer.peer_type:
                     case ProtocolType.WIREGUARD | ProtocolType.AMNEZIA_WIREGUARD:
                         serialized_model = WireguardPeer.model_validate(
