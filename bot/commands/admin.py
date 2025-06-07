@@ -5,6 +5,14 @@ from config.loader import bot_instance
 
 
 def get_admin_commands() -> list[BotCommand]:
+    """
+    Retrieves the complete list of administrative bot commands.
+    This function returns **both default commands and administrator-specific commands**.
+
+    Returns:
+        list[BotCommand]: A list of BotCommand objects representing all available
+        commands for the bot.
+    """
     commands = get_default_commands()
 
     commands.extend([
