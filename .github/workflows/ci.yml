@@ -1,0 +1,82 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches:
+      - master
+      - canary
+  pull_request:
+    branches:
+      - master
+      - canary
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Deploy to...'
+        required: true
+        default: 'master'
+        type: 'choice'
+        options:
+          - master
+          - canary
+      no_tests:
+        description: 'Skip tests'
+        required: false
+        default: false
+        type: 'boolean'
+      no_deploy:
+        description: 'Skip deployment'
+        required: false
+        default: false
+        type: 'boolean'
+      no_pre_commit:
+        description: 'Skip pre-commit checks'
+        required: false
+        default: false
+        type: 'boolean'
+
+jobs:
+  pre-commit:
+    name: Pre-commit checks
+    if: ${{ !github.event.inputs.no_pre_commit }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Cache pre-commit
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: ${{ runner.os }}-pre-commit-${{ hashFiles('**/.pre-commit-config.yaml') }}
+      - name: Run pre-commit
+        run: pre-commit run --all-files --show-diff-on-failure --color=always
+
+  tests:
+    name: Run tests
+    if: ${{ !github.event.inputs.no_tests }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip' # Caches installed dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          pip install coverage
+      - name: Test core modules
+        id: core_tests
+        run: python -m coverage run -m pytest tests/core/ -v --setup-show
+      - name: Generate coverage report
+        run: python -m coverage report -m

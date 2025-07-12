@@ -1,4 +1,4 @@
-from config.loader import server_cfg
+from config.loader import wireguard_server_config
 from core.db.db_works import ClientFactory
 from core.wg.wg_work import (enable_server, make_wg_server_base_str,
                              peer_to_str_wg_server)
@@ -19,9 +19,9 @@ def create_server_config(wg_server):
     create_wg_server_config(
         wg_server,
         make_wg_server_base_str(
-            server_cfg.user_ip,
-            server_cfg.endpoint_port,
-            server_cfg.private_key
+            wireguard_server_config.user_ip,
+            wireguard_server_config.endpoint_port,
+            wireguard_server_config.private_key
         )
     )
     peer_list = ClientFactory.select_peers()
@@ -32,5 +32,5 @@ def create_server_config(wg_server):
 # Func for use once at the beginning of installation
 # TODO: check if server was disabled before enabling it
 def create_wg_server():
-    create_server_config(server_cfg.path)
-    enable_server(server_cfg.path)
+    create_server_config(wireguard_server_config.path)
+    enable_server(wireguard_server_config.path)

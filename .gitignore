@@ -1,15 +1,25 @@
+# Files
 *.conf
 !config_example.conf
 *.sqlite
 .idea
 test.*
-__pycache__
 .reboot
 .venv
+.coverage
+.service
+
+# Folders
+.vscode
+htmlcov
+
+# Byte-compiled / optimized / DLL files
+__pycache__
+.pytest_cache
+
 .service
 # not ignoring logs folder in core service
 /logs
-.vscode
 
 # migrations folder
 migrations

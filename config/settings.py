@@ -16,6 +16,7 @@ class Config:
         self.cfg.read(path_to_config)
 
         self.debug = self.cfg.getboolean("core", "debug", fallback=False)
+        self.is_canary = self.cfg.getboolean("core", "is_canary", fallback=False)
 
     def get_bot_config(self):
         return self.Bot(
@@ -30,17 +31,17 @@ class Config:
             path=self.cfg.get("db", "path", fallback="db.sqlite")
         )
 
-    def get_server_config(self, *args, **kwargs):
-        return self.Server(
-            path=self.cfg.get("Server", "Path", fallback=os.getcwd() + "/wg0.conf"),
-            user_ip=self.cfg.get("Server", "IP", fallback="127.0.0"),
-            user_ip_mask=self.cfg.get("Server", "IPMask", fallback=32),
-            private_key=self.cfg.get("Server", "PrivateKey", fallback="@!ChAngEME!@"),
-            public_key=self.cfg.get("Server", "PublicKey", fallback="@!ChAngEME!@"),
-            endpoint_ip=self.cfg.get("Server", "EndpointIP", fallback="192.168.27.27"),
-            endpoint_port=self.cfg.get("Server", "EndpointPort", fallback="10000"),
-            dns_server=self.cfg.get("Server", "DNS", fallback="8.8.8.8"),
-            junk=self.cfg.get("Server", "Junk", fallback=""),
+    def get_wireguard_server_config(self, *args, **kwargs):
+        return self.WireguardServer(
+            path=self.cfg.get("WireguardServer", "Path", fallback=os.getcwd() + "/wg0.conf"),
+            user_ip=self.cfg.get("WireguardServer", "IP", fallback="127.0.0"),
+            user_ip_mask=self.cfg.get("WireguardServer", "IPMask", fallback=32),
+            private_key=self.cfg.get("WireguardServer", "PrivateKey", fallback="@!ChAngEME!@"),
+            public_key=self.cfg.get("WireguardServer", "PublicKey", fallback="@!ChAngEME!@"),
+            endpoint_ip=self.cfg.get("WireguardServer", "EndpointIP", fallback="192.168.27.27"),
+            endpoint_port=self.cfg.get("WireguardServer", "EndpointPort", fallback="10000"),
+            dns_server=self.cfg.get("WireguardServer", "DNS", fallback="8.8.8.8"),
+            junk=self.cfg.get("WireguardServer", "Junk", fallback=""),
             *args, **kwargs
         )
 
@@ -53,6 +54,18 @@ class Config:
             logs_path=self.cfg.get("core", "logs_path", fallback="./logs")
         )
 
+    def get_xray_server_config(self):
+        return self.XrayServer(
+            host=self.cfg.get("Xray", "host"),
+            port=self.cfg.get("Xray", "port"),
+            web_path=self.cfg.get("Xray", "web_path"),
+            username=self.cfg.get("Xray", "username"),
+            password=self.cfg.get("Xray", "password"),
+            token=self.cfg.get("Xray", "token", fallback=None),
+            tls=self.cfg.getboolean("Xray", "tls", fallback=True),
+            inbound_id=self.cfg.getint("Xray", "inbound_id", fallback=1)
+        )
+
     def write_changes(self) -> bool:
         with open(self.path, "w", encoding="utf-8") as f:
             self.cfg.write(f)
@@ -61,6 +74,9 @@ class Config:
 
     class Bot:
         def __init__(self, config_instance: Type["Config"], token: str, admins: str, faq_url: Optional[str]):
+            if not token or token.lower() == "none":
+                raise ValueError("Token MUST be specified in config file. For God's sake!")
+
             self.token = token
             self.faq_url = faq_url
 
@@ -69,9 +85,6 @@ class Config:
                 self.faq_url = None
             elif not self.faq_url or self.faq_url.lower() == "none":
                 self.faq_url = None
-
-            if not self.token:
-                raise ValueError("Token MUST be specified in config file. For God's sake!")
 
             self.__admins = [int(admin_id) for admin_id in admins.split(",")] if admins else []
             self.__config_instance = config_instance
@@ -94,18 +107,20 @@ class Config:
         def __init__(self, path: str):
             self.path = path
 
-    class Server:
-        def __init__(self,
-                     path: str,
-                     user_ip: str,
-                     user_ip_mask: str,
-                     private_key: str,
-                     public_key: str,
-                     endpoint_ip: str,
-                     endpoint_port: str,
-                     dns_server: str,
-                     junk: str,
-                     *args, **kwargs):
+    class WireguardServer:
+        def __init__(
+                self,
+                path: str,
+                user_ip: str,
+                user_ip_mask: str,
+                private_key: str,
+                public_key: str,
+                endpoint_ip: str,
+                endpoint_port: str,
+                dns_server: str,
+                junk: str,
+                *args, **kwargs
+            ):
             self.path = path
             self.user_ip = user_ip
             self.user_ip_mask = user_ip_mask
@@ -117,6 +132,27 @@ class Config:
             # TODO: split junk into sections (H1, H2 etc...)
             self.junk = junk
             self.args, self.kwargs = args, kwargs
+
+    class XrayServer:
+        def __init__(
+                self,
+                host: str,
+                port: str,
+                web_path: str,
+                username: str,
+                password: str,
+                inbound_id: int,
+                token: Optional[str] = None,
+                tls: bool = True,
+            ):
+            self.host = host
+            self.port = port
+            self.web_path = web_path
+            self.username = username
+            self.password = password
+            self.inbound_id = inbound_id
+            self.token = token
+            self.tls = tls
 
     class Core:
         def __init__(self,

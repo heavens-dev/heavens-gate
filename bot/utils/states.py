@@ -16,3 +16,7 @@ class ExtendTimeStates(StatesGroup):
 
 class WhisperStates(StatesGroup):
     message_entering = State()
+
+class AddPeerStates(StatesGroup):
+    select_protocol = State()
+    select_amount = State()

@@ -11,11 +11,10 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 from bot.commands import (get_admin_commands, get_default_commands,
                           set_admin_commands, set_user_commands)
 from bot.handlers import get_handlers_router
-from config.loader import (bot_cfg, bot_dispatcher, bot_instance,
+from config.loader import (bot_cfg, bot_dispatcher, bot_instance, cfg,
                            connections_observer, db_instance,
-                           interval_observer, wghub)
-from core.db.db_works import Client, ClientFactory
-from core.db.model_serializer import ConnectionPeer
+                           interval_observer, ip_queue, wghub, xray_worker)
+from core.db.db_works import ClientFactory
 from core.logs import bot_logger
 
 
@@ -32,9 +31,13 @@ async def cmd_start(message: Message) -> None:
 
     with db_instance.atomic():
         # just in case.
-        ClientFactory(tg_id=message.chat.id).get_or_create_client(
+        client, created = ClientFactory(user_id=message.chat.id).get_or_create_client(
             name=message.chat.username
         )
+
+        if created:
+            if cfg.is_canary:
+                ...
 
     keyboard = None
     faq_str = ""
@@ -43,7 +46,20 @@ async def cmd_start(message: Message) -> None:
         keyboard = InlineKeyboardMarkup(inline_keyboard=[[faq_button]])
         faq_str = "\nПрежде чем приступить к работе с ботом, ознакомься с FAQ, нажав на кнопку ниже." \
 
-    msg = f"""👋 Привет!
+    if cfg.is_canary:
+        msg = f"""Привет. Это Canary версия Heaven's Gate.
+Если тебе нужна стабильная версия, то, пожалуйста, используй <a href="https://t.me/heavens_gate_vpn_bot">основного бота</a>.
+Здесь обкатываются новые возможности как бота, так и ядра всего сервиса, которые ещё не были добавлены в основную ветку, однако имей в виду, что здесь <i>всё может сломаться</i>.
+Если бот не ответил на команду или выдал ошибку, то, пожалуйста, напиши нам об этом через команду /contact или создай issue на <a href="https://github.com/heavens-dev/heavens-gate/issues">GitHub</a>.
+
+Тестирование продлится в течение месяца (возможно, с продлениями, в зависимости от количества работы), после чего мы выпустим обновление для основного бота, после чего Canary версия будет недоступна. Во время тестирования все возможности доступны совершенно бесплатно, так что это можно считать пробным периодом для всех желающих. Конфиги из основного бота не будут экспортированы в Canary, и после тестирования они будут удалены, однако тебе уже доступно два конфига Amnezia WG и один Xray. Прости, если это доставит неудобства.
+
+Чтобы узнать, что было добавлено в Heaven's Gate, используй команду /whats_new.
+
+Мы не несём ответственности за стабильность сервиса Canary, и если от нашего VPN будет зависить, уволят ли тебя с работы/умрёшь ли ты завтра/отчислят ли тебя из универа, то мы настоятельно рекомендуем использовать основного бота.
+"""
+    else:
+        msg = f"""👋 Привет!
 {faq_str}
 Если у тебя будут вопросы к администрации, воспользуйся командой /contact или кнопкой в меню /me.
 
@@ -54,8 +70,7 @@ async def cmd_start(message: Message) -> None:
 /contact -- Связаться с администрацией
 /unblock -- Разблокировать/продлить доступ
 /change_peer_name -- Изменить имя конфига (пира)
-
-⚠️ На текущий момент бот находится в стадии разработки и тестирования, поэтому возможны недоработки, ошибки и прочее непонятное поведение. Если ты нашел какую-то ошибку, пожалуйста, сообщи об этом администрации бота."""
+"""
     await message.answer(text=msg, reply_markup=keyboard)
 
 @bot_dispatcher.message(Command("help"))
@@ -82,20 +97,6 @@ async def on_startup(*args):
             await bot_instance.send_message(chat_id, "Бот перезапущен.")
         os.remove(".reboot")
     bot_logger.info("Bot is running!")
-
-@connections_observer.startup()
-async def on_connections_observer_startup():
-    bot_logger.info("Observer is running!")
-
-@connections_observer.connected()
-async def on_connected(client: Client, peer: ConnectionPeer):
-    with bot_logger.contextualize(client=client, peer=peer):
-        bot_logger.info("Client connected")
-
-@connections_observer.disconnected()
-async def on_disconnected(client: Client, peer: ConnectionPeer):
-    with bot_logger.contextualize(client=client, peer=peer):
-        bot_logger.info("Client disconnected")
 
 async def main() -> None:
     bot_dispatcher.include_router(get_handlers_router())

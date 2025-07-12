@@ -5,15 +5,16 @@ from typing import Callable, Union
 
 import wgconfig
 
-from core.db.model_serializer import ConnectionPeer
+from core.db.model_serializer import WireguardPeer
 from core.logs import core_logger
 
 
 class WGHub:
-    def __init__(self, path: str, is_amnezia: bool = False):
+    def __init__(self, path: str, is_amnezia: bool = False, auto_sync: bool = True):
         self.path = path
         self.wgconfig = wgconfig.WGConfig(path)
         self.interface_name = os.path.basename(path).split(".")[0]
+        self.auto_sync = auto_sync
 
         core_logger.debug(f"Path to configuration file: {self.path} => Interface name: {self.interface_name}")
         self.wgconfig.read_file()
@@ -32,18 +33,21 @@ class WGHub:
         core_logger.info("Configuration synced with Wireguard server.")
 
     def apply_and_sync(func: Callable):
-        @core_logger.catch()
-        def inner(self, peer: ConnectionPeer):
+        @core_logger.catch(reraise=True)
+        def inner(self, peer: WireguardPeer):
             func(self, peer)
 
             self.wgconfig.write_file()
-            self.sync_config()
+            if self.auto_sync:
+                self.sync_config()
+                core_logger.info("Config applied and synced with Wireguard server.")
+            else:
+                core_logger.warning("Auto sync is disabled. Config was applied to file, consider syncing it manually.")
 
-            core_logger.info("Config applied and synced with Wireguard server.")
         return inner
 
     @apply_and_sync
-    def add_peer(self, peer: ConnectionPeer):
+    def add_peer(self, peer: WireguardPeer):
         self.wgconfig.add_peer(peer.public_key, f"# {peer.peer_name}")
         self.wgconfig.add_attr(peer.public_key, "PresharedKey", peer.preshared_key)
         self.wgconfig.add_attr(peer.public_key, "AllowedIPs", peer.shared_ips + "/32")
@@ -51,34 +55,34 @@ class WGHub:
             core_logger.info("A new peer has appeared.")
 
     @apply_and_sync
-    def enable_peer(self, peer: ConnectionPeer):
+    def enable_peer(self, peer: WireguardPeer):
         self.wgconfig.enable_peer(peer.public_key)
         with core_logger.contextualize(peer=peer):
             core_logger.info("Peer enabled.")
 
     @apply_and_sync
     @core_logger.catch()
-    def enable_peers(self, peers: list[ConnectionPeer]):
+    def enable_peers(self, peers: list[WireguardPeer]):
         for peer in peers:
             self.wgconfig.enable_peer(peer.public_key)
         with core_logger.contextualize(peers=peers):
             core_logger.info("Peers enabled.")
 
     @apply_and_sync
-    def disable_peer(self, peer: ConnectionPeer):
+    def disable_peer(self, peer: WireguardPeer):
         self.wgconfig.disable_peer(peer.public_key)
         with core_logger.contextualize(peer=peer):
             core_logger.info("Peer disabled.")
 
     @apply_and_sync
-    def disable_peers(self, peers: list[ConnectionPeer]):
+    def disable_peers(self, peers: list[WireguardPeer]):
         for peer in peers:
             self.wgconfig.disable_peer(peer.public_key)
         with core_logger.contextualize(peers=peers):
             core_logger.info("Peers disabled.")
 
     @apply_and_sync
-    def delete_peer(self, peer: ConnectionPeer):
+    def delete_peer(self, peer: WireguardPeer):
         self.wgconfig.del_peer(peer.public_key)
         with core_logger.contextualize(peer=peer):
             core_logger.info("A peer has been destroyed.")
@@ -120,7 +124,7 @@ PrivateKey = {private_key}
 
 """
 
-def peer_to_str_wg_server(peer: ConnectionPeer) -> str:
+def peer_to_str_wg_server(peer: WireguardPeer) -> str:
     return f"""
 # {peer.peer_name}
 [Peer]
