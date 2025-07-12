@@ -5,6 +5,7 @@ from urllib.parse import quote
 
 from py3xui import Api
 from py3xui.client import Client
+from requests.exceptions import JSONDecodeError
 
 from core.db.enums import PeerStatusChoices
 from core.db.model_serializer import XrayPeer
@@ -27,13 +28,26 @@ class XrayWorker:
         host = host + ':' + port + (f"/{web_path}/" if web_path else '')
         self.api = Api(host, username, password, token, use_tls_verify=tls)
 
-        try:
-            self.api.login()
-        except ValueError as e:
-            core_logger.error("Failed to login to 3x-ui API. Check your credentials.")
-            raise e
+        if not self.__login():
+            raise ValueError("Failed to login to 3x-ui API. Check your credentials.")
 
         core_logger.info("Successfully logged into 3x-ui.")
+
+    def __login(self) -> bool:
+        """
+        Attempt to login to the 3x-ui API.
+
+        Returns:
+            bool: True if login is successful, False otherwise.
+
+        Raises:
+            ValueError: If the login fails, typically due to invalid credentials.
+        """
+        try:
+            self.api.login()
+        except ValueError as e: # typically raised when login fails due to invalid credentials
+            return False
+        return True
 
     @staticmethod
     def peer_to_client(peer: XrayPeer) -> Client:
@@ -134,12 +148,23 @@ class XrayWorker:
 
     @core_logger.catch()
     def is_connected(self, peer: XrayPeer) -> bool:
-        online_clients = self.api.client.online()
-        for client in online_clients:
-            if client == peer.peer_name:
-                return True
-        core_logger.debug(f"Peer {peer.peer_name} is not connected, online clients: {online_clients}.")
-        return False
+        try:
+            online_clients = self.api.client.online()
+            for client in online_clients:
+                if client == peer.peer_name:
+                    return True
+            core_logger.debug(f"Peer {peer.peer_name} is not connected, online clients: {online_clients}.")
+            return False
+        except JSONDecodeError:
+            # so, here 3x-ui API probably returned an empty response ( {} )
+            # which means that our token should be expired
+            # py3xui does not handle this case, so we need to do it ourselves
+            core_logger.error("Failed to decode JSON response from the API. Probably token expired, trying to re-login.")
+
+            if not self.__login():
+                core_logger.error("Failed to re-login to the 3x-ui API after token expiration.")
+
+            return False
 
     @core_logger.catch()
     def enable_peer(self, peer: XrayPeer) -> None:
