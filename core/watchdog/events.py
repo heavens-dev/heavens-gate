@@ -147,7 +147,11 @@ class ConnectionEvents:
         client.set_peer_status(peer.peer_id, PeerStatusChoices.STATUS_TIME_EXPIRED)
         # avoid triggering the timer_observer multiple times
         peer.peer_status = PeerStatusChoices.STATUS_TIME_EXPIRED
-        self.wghub.disable_peer(peer)
+        match peer.peer_type:
+            case ProtocolType.WIREGUARD | ProtocolType.AMNEZIA_WIREGUARD:
+                self.wghub.disable_peer(peer)
+            case ProtocolType.XRAY:
+                self.xray.disable_peer(peer)
         if len(client.get_connected_peers()) == 0:
             client.set_status(ClientStatusChoices.STATUS_TIME_EXPIRED)
         await self.disconnected.trigger(client, peer)
