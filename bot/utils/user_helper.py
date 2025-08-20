@@ -5,7 +5,8 @@ import humanize
 from aiogram.types import BufferedInputFile
 from pydantic import ValidationError
 
-from config.loader import core_cfg, wghub, wireguard_server_config, xray_worker
+from config.loader import (connections_observer, core_cfg, wghub,
+                           wireguard_server_config, xray_worker)
 from core.db.db_works import Client, ClientFactory
 from core.db.enums import ClientStatusChoices, PeerStatusChoices, ProtocolType
 from core.db.model_serializer import WireguardPeer, XrayPeer
@@ -102,6 +103,8 @@ def unblock_timeout_connections(client: Client) -> bool:
             case PeerStatusChoices.STATUS_CONNECTED:
                 new_time = datetime.datetime.now() + datetime.timedelta(hours=core_cfg.peer_active_time)
                 client.set_peer_timer(peer.peer_id, time=new_time)
+    # updating peer timer for observer
+    connections_observer.update_client_peers(client)
 
     return True
 

@@ -34,12 +34,12 @@ class ConnectionEvents:
         self.xray = xray
 
         self.connected = EventObserver(required_types=[Client, BasePeer])
-        """Decorated methods must have a `Client` and `ConnectionPeer` argument"""
+        """Decorated methods must have a `Client` and `BasePeer` argument"""
         self.disconnected = EventObserver(required_types=[Client, BasePeer])
-        """Decorated methods must have a `Client` and `ConnectionPeer` argument"""
+        """Decorated methods must have a `Client` and `BasePeer` argument"""
         # TODO: separate timer_observer into two different observers for warning and disconnect
         self.timer_observer = EventObserver(required_types=[Client, BasePeer, bool])
-        """Decorated methods must have a `Client`, `ConnectionPeer` and `disconnect` boolean argument.
+        """Decorated methods must have a `Client`, `BasePeer` and `disconnect` boolean argument.
         `disconnect` describes whether the trigger is a warning (**False**) or a disconnect (**True**)"""
         self.startup = EventObserver()
 
@@ -108,7 +108,7 @@ class ConnectionEvents:
                 await self.emit_disconnect(client, peer)
             return False
 
-    async def __listen_clients(self, listen_timer: int, connected_only: bool = False):
+    async def __listen_clients_task(self, listen_timer: int, connected_only: bool = False):
         while True:
             await self.run_check_connections(connected_only)
 
@@ -156,12 +156,28 @@ class ConnectionEvents:
             client.set_status(ClientStatusChoices.STATUS_TIME_EXPIRED)
         await self.disconnected.trigger(client, peer)
 
-    async def __update_clients_list(self):
+    def update_client_peers(self, client: Client):
+        self.clients[
+            next((i for i, v in enumerate(self.clients) if v[0].userdata.user_id == client.userdata.user_id), None)
+        ] = (
+            client, client.get_all_peers(protocol_specific=True)
+        )
+
+        core_logger.debug(f"Updated client {client.userdata.user_id} peers.")
+
+    def update_clients_list(self):
+        """Updates the list of clients and their peers.
+        """
+        self.clients: list[tuple[Client, list[Union[WireguardPeer, XrayPeer]]]] = [
+            (client, client.get_all_peers(protocol_specific=True)) for client in ClientFactory.select_clients()
+        ]
+        core_logger.debug("Clients list updated.")
+
+    # dunno how to name this method better
+    async def __update_clients_list_task(self):
         while True:
             async with self.__clients_lock:
-                self.clients = [
-                    (client, client.get_all_peers(protocol_specific=True)) for client in ClientFactory.select_clients()
-                ]
+                self.update_clients_list()
                 core_logger.debug(f"Done updating clients list. Sleeping for {self.update_timer} sec")
 
             await asyncio.sleep(self.update_timer)
@@ -169,10 +185,10 @@ class ConnectionEvents:
     async def listen_events(self):
         await self.startup.trigger()
         async with asyncio.TaskGroup() as group:
-            group.create_task(self.__update_clients_list())
-            group.create_task(self.__listen_clients(self.listen_timer))
+            group.create_task(self.__update_clients_list_task())
+            group.create_task(self.__listen_clients_task(self.listen_timer))
             group.create_task(
-                self.__listen_clients(
+                self.__listen_clients_task(
                     self.connected_only_listen_timer,
                     connected_only=True
                 )
