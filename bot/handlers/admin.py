@@ -183,7 +183,7 @@ async def enable_peer_command(message: Message):
         case ProtocolType.WIREGUARD | ProtocolType.AMNEZIA_WIREGUARD:
             wghub.enable_peer(peer)
         case ProtocolType.XRAY:
-            xray_worker.enable_peer(peer)
+            xray_worker.enable_peer(peer, expire_time=client.userdata.expire_time)
         case _:
             bot_logger.warning(f"Unknown peer type: {peer.peer_type}. Can't enable peer.")
             await message.answer("❌ Неподдерживаемый тип пира. Странно...")
