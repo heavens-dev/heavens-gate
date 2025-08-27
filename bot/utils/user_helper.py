@@ -5,7 +5,8 @@ import humanize
 from aiogram.types import BufferedInputFile
 from pydantic import ValidationError
 
-from config.loader import core_cfg, wghub, wireguard_server_config, xray_worker
+from config.loader import (connections_observer, core_cfg, wghub,
+                           wireguard_server_config, xray_worker)
 from core.db.db_works import Client, ClientFactory
 from core.db.enums import ClientStatusChoices, PeerStatusChoices, ProtocolType
 from core.db.model_serializer import WireguardPeer, XrayPeer
@@ -54,8 +55,11 @@ def get_user_data_string(client: Client, show_peer_ids: bool = False) -> list[st
         peers_str += "\n"
 
     if client.userdata.expire_time:
-        expire_time = f'До: {client.userdata.expire_time.strftime("%d.%m.%Y")}\n' + \
-                      f'Осталось времени: {humanize.naturaldelta(client.userdata.expire_time - datetime.datetime.now())}'
+        expire_time = f'До: {client.userdata.expire_time.strftime("%d.%m.%Y")}\n'
+        if client.userdata.expire_time > datetime.datetime.now():
+            expire_time += f'Осталось времени: {humanize.naturaldelta(client.userdata.expire_time - datetime.datetime.now())}'
+        else:
+            expire_time += "❌ Время истекло"
     else:
         expire_time = "❌ Не оплачено"
 
@@ -96,12 +100,14 @@ def unblock_timeout_connections(client: Client) -> bool:
                     wghub.enable_peer(peer)
                 elif peer.peer_type == ProtocolType.XRAY:
                     peer: XrayPeer
-                    xray_worker.enable_peer(peer)
+                    xray_worker.enable_peer(peer, expire_time=client.userdata.expire_time)
                 client.set_peer_status(peer.peer_id, PeerStatusChoices.STATUS_DISCONNECTED)
                 client.set_status(ClientStatusChoices.STATUS_DISCONNECTED)
             case PeerStatusChoices.STATUS_CONNECTED:
                 new_time = datetime.datetime.now() + datetime.timedelta(hours=core_cfg.peer_active_time)
                 client.set_peer_timer(peer.peer_id, time=new_time)
+    # updating peer timer for observer
+    connections_observer.update_client_peers(client)
 
     return True
 

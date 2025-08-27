@@ -125,7 +125,7 @@ class XrayWorker:
             core_logger.info(f"Added new Xray peers.")
 
     @core_logger.catch()
-    def update_peer(self, peer: XrayPeer, expiry_time: datetime.datetime = None) -> None:
+    def update_peer(self, peer: XrayPeer, expiry_time: Optional[datetime.datetime] = None) -> None:
         """
         Update an Xray peer in the API and optionally set its expiry time.
         """
@@ -167,13 +167,17 @@ class XrayWorker:
             return False
 
     @core_logger.catch()
-    def enable_peer(self, peer: XrayPeer) -> None:
+    def enable_peer(self, peer: XrayPeer, expire_time: Optional[datetime.datetime] = None) -> None:
         client = self.peer_to_client(peer)
         client.enable = True
+        if expire_time is not None:
+            client.expiry_time = int(expire_time.timestamp() * 1000)
         self.api.client.update(peer.peer_id, client)
 
     @core_logger.catch()
-    def disable_peer(self, peer: XrayPeer):
+    def disable_peer(self, peer: XrayPeer, expire_time: Optional[datetime.datetime] = None) -> None:
         client = self.peer_to_client(peer)
         client.enable = False
+        if expire_time is not None:
+            client.expiry_time = int(expire_time.timestamp() * 1000)
         self.api.client.update(peer.peer_id, client)
