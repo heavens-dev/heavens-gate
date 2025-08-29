@@ -87,6 +87,7 @@ class PrometheusMonitor:
         while True:
             try:
                 CLIENTS_BY_STATUS.clear()
+                CONNECTED_PEERS_BY_PROTOCOL.clear()
                 # Обновление метрик клиентов и пиров
                 total_clients = len(connection_events.clients)
                 TOTAL_CLIENTS.set(total_clients)
