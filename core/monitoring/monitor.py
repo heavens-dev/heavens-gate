@@ -1,6 +1,9 @@
 import asyncio
+import base64
+import threading
+from wsgiref.simple_server import make_server
 
-from prometheus_client import start_http_server
+from prometheus_client import make_wsgi_app
 
 from core.db.enums import ClientStatusChoices, PeerStatusChoices, ProtocolType
 from core.logs import core_logger
@@ -13,16 +16,56 @@ from core.watchdog.events import ConnectionEvents
 
 
 class PrometheusMonitor:
-    def __init__(self, port: int = 9090):
+    def __init__(self, port: int = 9090, username: str = None, password: str = None):
         self.port = port
+        self.__username = username
+        self.__password = password
         self.__server_started = False
         self.__server_thread = None
         self.__server_wsgi = None
 
+    def _create_auth_middleware(self, app):
+        def auth_middleware(environ, start_response):
+            if not self.__username or not self.__password:
+                return app(environ, start_response)
+
+            auth_header = environ.get('HTTP_AUTHORIZATION')
+            if auth_header:
+                auth_type, auth_data = auth_header.split(' ', 1)
+                if auth_type.lower() == 'basic':
+                    try:
+                        auth_decoded = base64.b64decode(auth_data).decode('utf-8')
+                        provided_username, provided_password = auth_decoded.split(':', 1)
+                        if provided_username == self.__username and provided_password == self.__password:
+                            return app(environ, start_response)
+                    except Exception as e:
+                        core_logger.exception(f"Authentication error: {e}")
+
+            start_response('401 Unauthorized', [
+                ('WWW-Authenticate', 'Basic realm="Prometheus Metrics"'),
+                ('Content-Type', 'text/plain')
+            ])
+            return [b'Unauthorized']
+
+        return auth_middleware
+
     def start_server(self):
         """Запускает HTTP-сервер для Prometheus"""
         if not self.__server_started:
-            self.__server_wsgi, self.__server_thread = start_http_server(self.port)
+            metrics_app = make_wsgi_app()
+
+            if self.__username and self.__password:
+                auth_app = self._create_auth_middleware(metrics_app)
+                core_logger.info("Prometheus metrics server will use Basic Authentication.")
+            else:
+                auth_app = metrics_app
+                core_logger.info("Prometheus metrics server will NOT use authentication.")
+
+            self.__server_wsgi = make_server('0.0.0.0', self.port, auth_app)
+            self.__server_thread = threading.Thread(target=self.__server_wsgi.serve_forever)
+            self.__server_thread.daemon = True
+            self.__server_thread.start()
+
             self.__server_started = True
             core_logger.info(f"Prometheus metrics server started on port {self.port}")
         else:

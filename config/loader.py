@@ -87,7 +87,11 @@ interval_observer = IntervalEvents(wghub, xray_worker)
 
 prometheus_monitor: PrometheusMonitor = None
 if core_cfg.prometheus_enable:
-    prometheus_monitor = PrometheusMonitor(port=core_cfg.prometheus_port)
+    prometheus_monitor = PrometheusMonitor(
+        port=core_cfg.prometheus_port,
+        username=core_cfg.prometheus_auth_username,
+        password=core_cfg.prometheus_auth_password
+    )
     prometheus_monitor.start_server()
     core_logger.info("Prometheus monitoring is **enabled**.")
 else:
