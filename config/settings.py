@@ -51,7 +51,10 @@ class Config:
             connection_listen_timer=self.cfg.getint("core", "connection_listen_timer", fallback=120),
             connection_update_timer=self.cfg.getint("core", "connection_update_timer", fallback=360),
             connection_connected_only_listen_timer=self.cfg.getint("core", "connection_connected_only_listen_timer", fallback=60),
-            logs_path=self.cfg.get("core", "logs_path", fallback="./logs")
+            logs_path=self.cfg.get("core", "logs_path", fallback="./logs"),
+            prometheus_enable=self.cfg.getboolean("core", "prometheus_enable", fallback=False),
+            prometheus_port=self.cfg.getint("core", "prometheus_port", fallback=9090),
+            prometehus_update_interval=self.cfg.getint("core", "prometehus_update_interval", fallback=60)
         )
 
     def get_xray_server_config(self):
@@ -160,9 +163,15 @@ class Config:
                      connection_listen_timer: int,
                      connection_update_timer: int,
                      connection_connected_only_listen_timer: int,
-                     logs_path: str):
+                     logs_path: str,
+                     prometheus_enable: bool,
+                     prometheus_port: int,
+                     prometehus_update_interval: int):
             self.peer_active_time = peer_active_time
             self.connection_listen_timer = connection_listen_timer
             self.connection_update_timer = connection_update_timer
             self.connection_connected_only_listen_timer = connection_connected_only_listen_timer
             self.logs_path = logs_path
+            self.prometheus_enable = prometheus_enable
+            self.prometheus_port = prometheus_port
+            self.prometehus_update_interval = prometehus_update_interval

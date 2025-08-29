@@ -8,6 +8,7 @@ from config.settings import Config
 from core.db.db_works import ClientFactory
 from core.db.models import init_db
 from core.logs import core_logger, init_file_loggers
+from core.monitoring.monitor import PrometheusMonitor
 from core.utils.ip_utils import IPQueue, generate_ip_addresses
 from core.watchdog.events import ConnectionEvents, IntervalEvents
 from core.wg.wg_work import WGHub
@@ -83,3 +84,11 @@ connections_observer = ConnectionEvents(
 )
 
 interval_observer = IntervalEvents(wghub, xray_worker)
+
+prometheus_monitor: PrometheusMonitor = None
+if core_cfg.prometheus_enable:
+    prometheus_monitor = PrometheusMonitor(port=core_cfg.prometheus_port)
+    prometheus_monitor.start_server()
+    core_logger.info("Prometheus monitoring is **enabled**.")
+else:
+    core_logger.info("Prometheus monitoring is **disabled**.")

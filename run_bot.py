@@ -13,13 +13,17 @@ from bot.commands import (get_admin_commands, get_default_commands,
 from bot.handlers import get_handlers_router
 from config.loader import (bot_cfg, bot_dispatcher, bot_instance, cfg,
                            connections_observer, db_instance,
-                           interval_observer, ip_queue, wghub, xray_worker)
+                           interval_observer, prometheus_monitor, wghub)
 from core.db.db_works import ClientFactory
 from core.logs import bot_logger
+from core.monitoring.metrics import SERVER_UP
 
 
 def graceful_shutdown(sig, frame):
     bot_logger.critical("Recieved SIGINT signal, shutting down...")
+    if prometheus_monitor is not None:
+        prometheus_monitor.stop_server()
+    SERVER_UP.set(0)
     sys.exit(0)
 
 @bot_dispatcher.message(CommandStart())
@@ -108,6 +112,8 @@ async def main() -> None:
         group.create_task(connections_observer.listen_events())
         group.create_task(interval_observer.run_checkers())
         group.create_task(bot_dispatcher.start_polling(bot_instance, handle_signals=False))
+        if prometheus_monitor is not None:
+            group.create_task(prometheus_monitor.update_metrics_task(connections_observer, interval=20))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog="heavens-gate", description="Run bot with core service.")
