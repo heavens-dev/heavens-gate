@@ -7,6 +7,8 @@ from config.loader import bot_instance, connections_observer, interval_observer
 from core.db.db_works import Client
 from core.db.model_serializer import BasePeer
 from core.logs import bot_logger
+from core.monitoring.metrics import (CONNECT_EVENTS, DISCONNECT_EVENTS,
+                                     TIMEOUT_EVENTS)
 
 router = Router(name="observers")
 
@@ -19,11 +21,13 @@ async def on_connections_observer_startup():
 async def on_connected(client: Client, peer: BasePeer):
     with bot_logger.contextualize(client=client, peer=peer):
         bot_logger.info("Client connected")
+    CONNECT_EVENTS.inc(1)
 
 @connections_observer.disconnected()
 async def on_disconnected(client: Client, peer: BasePeer):
     with bot_logger.contextualize(client=client, peer=peer):
         bot_logger.info("Client disconnected")
+    DISCONNECT_EVENTS.inc(1)
 
 @connections_observer.timer_observer()
 async def warn_user_timeout(client: Client, peer: BasePeer, disconnect: bool):
@@ -35,6 +39,8 @@ async def warn_user_timeout(client: Client, peer: BasePeer, disconnect: bool):
         if not disconnect else
         f"❗ Подключение {peer.peer_name} было разорвано из-за неактивности. ") +
         "Введи /unblock, чтобы обновить время действия подключения.")
+    if disconnect:
+        TIMEOUT_EVENTS.inc(1)
 
 @interval_observer.expire_date_warning_observer()
 async def warn_user_expire_date(client: Client):
