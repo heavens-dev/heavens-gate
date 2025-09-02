@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import threading
+import time
 from wsgiref.simple_server import make_server
 
 from prometheus_client import make_wsgi_app
@@ -11,13 +12,15 @@ from core.monitoring.metrics import (AMNEZIA_PEERS, CLIENTS_BY_STATUS,
                                      CONNECTED_CLIENTS, CONNECTED_PEERS,
                                      CONNECTED_PEERS_BY_PROTOCOL,
                                      PEERS_BY_STATUS, SERVER_UP, TOTAL_CLIENTS,
-                                     TOTAL_PEERS, WIREGUARD_PEERS, XRAY_PEERS)
+                                     TOTAL_PEERS, UPTIME_SECONDS,
+                                     WIREGUARD_PEERS, XRAY_PEERS)
 from core.watchdog.events import ConnectionEvents
 
 
 class PrometheusMonitor:
     def __init__(self, port: int = 9090, username: str = None, password: str = None):
         self.port = port
+        self.uptime_start = time.time()
         self.__username = username
         self.__password = password
         self.__server_started = False
@@ -81,8 +84,7 @@ class PrometheusMonitor:
         else:
             core_logger.warning("Tried to stop Prometheus server, but it wasn't running.")
 
-    @staticmethod
-    async def update_metrics_task(connection_events: ConnectionEvents, interval: int = 60):
+    async def update_metrics_task(self, connection_events: ConnectionEvents, interval: int = 60):
         """Задача для периодического обновления метрик"""
         while True:
             try:
@@ -130,8 +132,7 @@ class PrometheusMonitor:
                 for status, count in status_counts.items():
                     PEERS_BY_STATUS.labels(status=status).set(count)
 
-                # Проверка доступности серверов
-                SERVER_UP.set(1)  # 1 - доступен, 0 - недоступен
+                UPTIME_SECONDS.set(time.time() - self.uptime_start)
 
                 core_logger.debug("Prometheus metrics updated")
             except Exception as e:

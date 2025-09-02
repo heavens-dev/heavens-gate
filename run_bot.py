@@ -20,10 +20,9 @@ from core.monitoring.metrics import SERVER_UP
 
 
 def graceful_shutdown(sig, frame):
-    bot_logger.critical("Recieved SIGINT signal, shutting down...")
+    bot_logger.critical("Recieved SIGINT signal, shutting down gracefully...")
     if prometheus_monitor is not None:
         prometheus_monitor.stop_server()
-    SERVER_UP.set(0)
     sys.exit(0)
 
 @bot_dispatcher.message(CommandStart())

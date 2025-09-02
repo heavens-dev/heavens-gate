@@ -21,5 +21,4 @@ PEERS_BY_STATUS = Gauge('hg_peers_by_status', 'Number of peers by status', ['sta
 CLIENTS_BY_STATUS = Gauge('hg_clients_by_status', 'Number of clients by status', ['status'])
 CONNECTED_PEERS_BY_PROTOCOL = Gauge('hg_connected_peers_by_protocol', 'Number of connected peers by protocol', ['protocol'])
 
-# Метрики доступности серверов
-SERVER_UP = Gauge('hg_server_up', 'Server availability status')
+UPTIME_SECONDS = Gauge('hg_uptime_seconds', 'Uptime of the monitoring and main service in seconds')
