@@ -11,7 +11,7 @@ from core.logs import core_logger
 from core.monitoring.metrics import (AMNEZIA_PEERS, CLIENTS_BY_STATUS,
                                      CONNECTED_CLIENTS, CONNECTED_PEERS,
                                      CONNECTED_PEERS_BY_PROTOCOL,
-                                     PEERS_BY_STATUS, SERVER_UP, TOTAL_CLIENTS,
+                                     PEERS_BY_STATUS, TOTAL_CLIENTS,
                                      TOTAL_PEERS, UPTIME_SECONDS,
                                      WIREGUARD_PEERS, XRAY_PEERS)
 from core.watchdog.events import ConnectionEvents
