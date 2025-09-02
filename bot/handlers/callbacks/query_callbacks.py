@@ -1,7 +1,7 @@
 from contextlib import suppress
 
 from aiogram import F, Router
-from aiogram.exceptions import TelegramBadRequest
+from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
 from aiogram.types import CallbackQuery
@@ -25,7 +25,7 @@ from bot.utils.user_helper import (extend_users_usage_time,
                                    get_user_data_string)
 from config.loader import bot_instance, wghub, xray_worker
 from core.db.db_works import ClientFactory
-from core.db.enums import ClientStatusChoices, PeerStatusChoices, ProtocolType
+from core.db.enums import ClientStatusChoices, ProtocolType
 from core.logs import bot_logger
 from core.utils.date_utils import parse_time
 from core.utils.peers_utils import disable_peers, enable_peers
@@ -179,7 +179,8 @@ async def preview_message_callback(callback: CallbackQuery, callback_data: Previ
           else "✉️ <b>Рассылка от администрации</b>:\n\n"
 
     for tg_id in message_data["user_ids"]:
-        await callback.bot.send_message(tg_id, msg + message_data["message"])
+        with suppress(TelegramForbiddenError):
+            await callback.bot.send_message(tg_id, msg + message_data["message"])
 
     await callback.message.answer("✅ Сообщение отправлено!")
 
