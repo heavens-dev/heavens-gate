@@ -16,7 +16,6 @@ from config.loader import (bot_cfg, bot_dispatcher, bot_instance, cfg,
                            interval_observer, prometheus_monitor, wghub)
 from core.db.db_works import ClientFactory
 from core.logs import bot_logger
-from core.monitoring.metrics import SERVER_UP
 
 
 def graceful_shutdown(sig, frame):
