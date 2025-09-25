@@ -74,8 +74,6 @@ class ConnectionEvents:
             The method will automatically emit connect/disconnect events when the
             peer's status changes.
         """
-        with core_logger.contextualize(peer_id=peer.peer_id):
-            core_logger.debug("Checking peer...")
         if isinstance(peer.peer_timer, datetime.datetime) and peer.peer_status == PeerStatusChoices.STATUS_CONNECTED:
             timedelta = peer.peer_timer - datetime.datetime.now()
 

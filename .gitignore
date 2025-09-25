@@ -8,6 +8,8 @@ test.*
 .venv
 .coverage
 .service
+get-pip.py
+*.back
 
 # Folders
 .vscode

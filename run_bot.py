@@ -13,13 +13,15 @@ from bot.commands import (get_admin_commands, get_default_commands,
 from bot.handlers import get_handlers_router
 from config.loader import (bot_cfg, bot_dispatcher, bot_instance, cfg,
                            connections_observer, db_instance,
-                           interval_observer, ip_queue, wghub, xray_worker)
+                           interval_observer, prometheus_monitor, wghub)
 from core.db.db_works import ClientFactory
 from core.logs import bot_logger
 
 
 def graceful_shutdown(sig, frame):
-    bot_logger.critical("Recieved SIGINT signal, shutting down...")
+    bot_logger.critical("Recieved SIGINT signal, shutting down gracefully...")
+    if prometheus_monitor is not None:
+        prometheus_monitor.stop_server()
     sys.exit(0)
 
 @bot_dispatcher.message(CommandStart())
@@ -52,7 +54,8 @@ async def cmd_start(message: Message) -> None:
 Здесь обкатываются новые возможности как бота, так и ядра всего сервиса, которые ещё не были добавлены в основную ветку, однако имей в виду, что здесь <i>всё может сломаться</i>.
 Если бот не ответил на команду или выдал ошибку, то, пожалуйста, напиши нам об этом через команду /contact или создай issue на <a href="https://github.com/heavens-dev/heavens-gate/issues">GitHub</a>.
 
-Тестирование продлится в течение месяца (возможно, с продлениями, в зависимости от количества работы), после чего мы выпустим обновление для основного бота, после чего Canary версия будет недоступна. Во время тестирования все возможности доступны совершенно бесплатно, так что это можно считать пробным периодом для всех желающих. Конфиги из основного бота не будут экспортированы в Canary, и после тестирования они будут удалены, однако тебе уже доступно два конфига Amnezia WG и один Xray. Прости, если это доставит неудобства.
+На текущий момент стабильная версия Heaven's Gate и Canary одинаковы, и никакого тестового функционала нет. Однако в любой момент всё может измениться, о чём мы тебя предупредим.
+Конфиги из основного бота не будут экспортированы в Canary, как и наоборот.
 
 Чтобы узнать, что было добавлено в Heaven's Gate, используй команду /whats_new.
 
@@ -66,7 +69,7 @@ async def cmd_start(message: Message) -> None:
 Основные команды (также доступны в меню):
 /help -- Получить помощь по командам
 /me -- Отобразить информацию о себе
-/config -- Получить конфиги для WireGuard
+/config -- Получить конфиги для подключения
 /contact -- Связаться с администрацией
 /unblock -- Разблокировать/продлить доступ
 /change_peer_name -- Изменить имя конфига (пира)
@@ -107,6 +110,8 @@ async def main() -> None:
         group.create_task(connections_observer.listen_events())
         group.create_task(interval_observer.run_checkers())
         group.create_task(bot_dispatcher.start_polling(bot_instance, handle_signals=False))
+        if prometheus_monitor is not None:
+            group.create_task(prometheus_monitor.update_metrics_task(connections_observer, interval=20))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog="heavens-gate", description="Run bot with core service.")

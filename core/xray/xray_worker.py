@@ -153,7 +153,6 @@ class XrayWorker:
             for client in online_clients:
                 if client == peer.peer_name:
                     return True
-            core_logger.debug(f"Peer {peer.peer_name} is not connected, online clients: {online_clients}.")
             return False
         except JSONDecodeError:
             # so, here 3x-ui API probably returned an empty response ( {} )
