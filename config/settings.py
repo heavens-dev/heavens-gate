@@ -54,7 +54,7 @@ class Config:
             logs_path=self.cfg.get("core", "logs_path", fallback="./logs"),
             prometheus_enable=self.cfg.getboolean("core", "prometheus_enable", fallback=False),
             prometheus_port=self.cfg.getint("core", "prometheus_port", fallback=9090),
-            prometehus_update_interval=self.cfg.getint("core", "prometehus_update_interval", fallback=60),
+            prometheus_update_interval=self.cfg.getint("core", "prometheus_update_interval", fallback=60),
             prometheus_auth_username=self.cfg.get("core", "prometheus_auth_username", fallback=None),
             prometheus_auth_password=self.cfg.get("core", "prometheus_auth_password", fallback=None)
         )
@@ -168,7 +168,7 @@ class Config:
                      logs_path: str,
                      prometheus_enable: bool,
                      prometheus_port: int,
-                     prometehus_update_interval: int,
+                     prometheus_update_interval: int,
                      prometheus_auth_username: Optional[str],
                      prometheus_auth_password: Optional[str]
                     ):
@@ -179,6 +179,6 @@ class Config:
             self.logs_path = logs_path
             self.prometheus_enable = prometheus_enable
             self.prometheus_port = prometheus_port
-            self.prometehus_update_interval = prometehus_update_interval
+            self.prometheus_update_interval = prometheus_update_interval
             self.prometheus_auth_username = prometheus_auth_username
             self.prometheus_auth_password = prometheus_auth_password
