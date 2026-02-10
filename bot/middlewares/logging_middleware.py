@@ -1,6 +1,8 @@
+from contextlib import suppress
 from typing import Any, Awaitable, Callable
 
 from aiogram import BaseMiddleware
+from aiogram.exceptions import TelegramForbiddenError
 from aiogram.types import Message
 
 from bot.utils.message_utils import send_error_message
@@ -17,6 +19,9 @@ class LoggingMiddleware(BaseMiddleware):
         try:
             bot_logger.info(f"User {event.from_user.id} sent message: {event.text}")
             return await handler(event, data)
+        except TelegramForbiddenError:
+            bot_logger.warning(f"Cannot send message to user {event.from_user.id}: Bot was blocked.")
+            return
         except Exception as e:
             await send_error_message(event.chat.id, event.text)
             bot_logger.exception(e)
