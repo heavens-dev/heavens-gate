@@ -39,6 +39,7 @@ def get_user_data_string(client: Client, show_peer_ids: bool = False) -> list[st
     """
     peers = client.get_all_peers(protocol_specific=True)
     peers_str = ""
+    time_limitation = core_cfg.is_time_limit_disabled()
 
     for peer in peers:
         if show_peer_ids:
@@ -49,7 +50,8 @@ def get_user_data_string(client: Client, show_peer_ids: bool = False) -> list[st
                 peers_str += f"{peer.peer_name or peer.shared_ips}: {PeerStatusChoices.to_string(peer.peer_status)} ({peer.shared_ips}) "
             case ProtocolType.XRAY:
                 peers_str += f"[XRay] {peer.peer_name or peer.flow}: {PeerStatusChoices.to_string(peer.peer_status)} "
-        if peer.peer_status == PeerStatusChoices.STATUS_CONNECTED:
+        if peer.peer_status == PeerStatusChoices.STATUS_CONNECTED \
+           and not time_limitation:
             timer = datetime.datetime.strftime(peer.peer_timer, "%H:%M")
             peers_str += f"(активен до {timer})"
         peers_str += "\n"

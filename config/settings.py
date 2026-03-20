@@ -166,3 +166,11 @@ class Config:
             self.connection_update_timer = connection_update_timer
             self.connection_connected_only_listen_timer = connection_connected_only_listen_timer
             self.logs_path = logs_path
+
+        def is_time_limit_disabled(self) -> bool:
+            """Checks if time limitation for all peers is disabled (peer_active_time equals to 0)
+
+            Returns:
+                bool: True if peer_active_time == 0, False otherwise
+            """
+            return self.peer_active_time == 0

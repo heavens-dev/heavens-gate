@@ -32,6 +32,7 @@ class ConnectionEvents:
         self.active_hours = active_hours
         self.wghub = wghub
         self.xray = xray
+        self.is_time_limitation_disabled: bool = active_hours == 0
 
         self.connected = EventObserver(required_types=[Client, BasePeer])
         """Decorated methods must have a `Client` and `BasePeer` argument"""
@@ -76,7 +77,10 @@ class ConnectionEvents:
         """
         with core_logger.contextualize(peer_id=peer.peer_id):
             core_logger.debug("Checking peer...")
-        if isinstance(peer.peer_timer, datetime.datetime) and peer.peer_status == PeerStatusChoices.STATUS_CONNECTED:
+
+        if isinstance(peer.peer_timer, datetime.datetime) \
+           and peer.peer_status == PeerStatusChoices.STATUS_CONNECTED \
+           and not self.is_time_limitation_disabled:
             timedelta = peer.peer_timer - datetime.datetime.now()
 
             if timedelta <= datetime.timedelta(0):
