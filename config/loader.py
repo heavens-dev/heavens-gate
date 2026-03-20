@@ -28,6 +28,8 @@ if cfg.debug:
     core_logger.warning("DEBUG MODE IS ENABLED! Disable it in production! Every message will be logged.")
 if cfg.is_canary:
     core_logger.warning("Canary version is enabled! Disable it on production.")
+if core_cfg.is_time_limit_disabled():
+    core_logger.info("Time limitation for peers is disabled.")
 
 init_file_loggers(core_cfg.logs_path, is_debug=cfg.debug)
 
