@@ -33,6 +33,7 @@ class ConnectionEvents:
         self.wghub = wghub
         self.xray = xray
         self.is_time_limitation_disabled: bool = active_hours == 0
+        """If True, time limitation for all peers is disabled. It means that peers won't be automatically disconnected after a certain period of time."""
 
         self.connected = EventObserver(required_types=[Client, BasePeer])
         """Decorated methods must have a `Client` and `BasePeer` argument"""
