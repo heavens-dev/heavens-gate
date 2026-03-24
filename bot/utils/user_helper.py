@@ -83,7 +83,11 @@ def extend_users_usage_time(client: Client, time_to_add: datetime.timedelta) -> 
     if not isinstance(client.userdata.expire_time, datetime.datetime) or client.userdata.expire_time < now:
         client.userdata.expire_time = now
 
-    client.set_expire_time(client.userdata.expire_time + time_to_add)
+    is_updated = client.set_expire_time(client.userdata.expire_time + time_to_add)
+
+    if not is_updated:
+        bot_logger.error(f"Couldn't update expire time for user {client.userdata.user_id}!")
+        return False
 
     if xray_peers := client.get_xray_peers():
         for peer in xray_peers:

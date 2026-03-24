@@ -352,6 +352,7 @@ class Client(BaseModel):
 
     def set_expire_time(self, expire_time: datetime.datetime) -> bool:
         self.userdata.expire_time = expire_time
+        core_logger.info(f"Setting expire time to {expire_time} for user {self.userdata.user_id}")
         return self.__update_client(expire_time=expire_time)
 
     @core_logger.catch()
