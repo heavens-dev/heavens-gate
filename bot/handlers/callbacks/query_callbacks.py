@@ -57,7 +57,7 @@ async def select_peer_callback(callback: CallbackQuery, callback_data: PeerCallb
         peers = client.get_all_peers(protocol_specific=True)
 
     for peer in peers:
-        match peer.peer_type:
+        match peer.type:
             case ProtocolType.WIREGUARD | ProtocolType.AMNEZIA_WIREGUARD:
                 media_group.add_document(
                     media=get_peer_as_input_file(peer)

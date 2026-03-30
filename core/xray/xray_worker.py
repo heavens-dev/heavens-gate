@@ -65,9 +65,9 @@ class XrayWorker:
         """
         # TODO: pass an expiryTime argument to Client object somehow
         return Client(
-            id=str(peer.peer_id), # explicitly converting to string, bug in py3xui
-            email=peer.peer_name,
-            enable=PeerStatusChoices.xray_enabled(peer.peer_status),
+            id=str(peer.hash_id), # explicitly converting to string, bug in py3xui
+            email=peer.name,
+            enable=PeerStatusChoices.xray_enabled(peer.status),
             flow=peer.flow,
             inbound_id=peer.inbound_id,
         )
@@ -83,7 +83,7 @@ class XrayWorker:
         short_id = inbound.stream_settings.reality_settings.get("shortIds")[0]
         fingerprint = inbound_settings.get("fingerprint")
         remark = quote(inbound.remark)
-        peer_name = quote(peer.peer_name)
+        peer_name = quote(peer.name)
 
         return (
             f"vless://{peer.peer_id}@{host}:{inbound.port}"
@@ -112,7 +112,7 @@ class XrayWorker:
             if peer.inbound_id != inbound_id:
                 with core_logger.contextualize(peer_id=peer.peer_id):
                     core_logger.warning(
-                        f"Inbound ID does not match the peer's inbound ID: {peer.inbound_id} != {inbound_id}"
+                        f"Given inbound ID does not match the peer's inbound ID: {peer.inbound_id} != {inbound_id}"
                     )
             client = self.peer_to_client(peer)
             if expiry_time is not None:
@@ -151,9 +151,9 @@ class XrayWorker:
         try:
             online_clients = self.api.client.online()
             for client in online_clients:
-                if client == peer.peer_name:
+                if client == peer.name:
                     return True
-            core_logger.debug(f"Peer {peer.peer_name} is not connected, online clients: {online_clients}.")
+            core_logger.debug(f"Peer {peer.name} is not connected, online clients: {online_clients}.")
             return False
         except JSONDecodeError:
             # so, here 3x-ui API probably returned an empty response ( {} )

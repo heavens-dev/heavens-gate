@@ -44,22 +44,22 @@ def get_user_data_string(client: Client, show_peer_ids: bool = False) -> list[st
     for peer in peers:
         if show_peer_ids:
             peers_str += f"({peer.peer_id}) "
-        match peer.peer_type:
+        match peer.type:
             case ProtocolType.WIREGUARD | ProtocolType.AMNEZIA_WIREGUARD:
-                peers_str += "[Wireguard] " if peer.peer_type == ProtocolType.WIREGUARD else "[Amnezia WG] "
-                peers_str += f"{peer.peer_name or peer.shared_ips}: {PeerStatusChoices.to_string(peer.peer_status)} ({peer.shared_ips}) "
+                peers_str += "[Wireguard] " if peer.type == ProtocolType.WIREGUARD else "[Amnezia WG] "
+                peers_str += f"{peer.name or peer.shared_ips}: {PeerStatusChoices.to_string(peer.status)} ({peer.shared_ips}) "
             case ProtocolType.XRAY:
-                peers_str += f"[XRay] {peer.peer_name or peer.flow}: {PeerStatusChoices.to_string(peer.peer_status)} "
-        if peer.peer_status == PeerStatusChoices.STATUS_CONNECTED \
+                peers_str += f"[XRay] {peer.name or peer.flow}: {PeerStatusChoices.to_string(peer.status)} "
+        if peer.status == PeerStatusChoices.STATUS_CONNECTED \
            and not time_limitation:
-            timer = datetime.datetime.strftime(peer.peer_timer, "%H:%M")
+            timer = datetime.datetime.strftime(peer.active_until, "%H:%M")
             peers_str += f"(активен до {timer})"
         peers_str += "\n"
 
-    if client.userdata.expire_time:
-        expire_time = f'До: {client.userdata.expire_time.strftime("%d.%m.%Y")}\n'
-        if client.userdata.expire_time > datetime.datetime.now():
-            expire_time += f'Осталось времени: {humanize.naturaldelta(client.userdata.expire_time - datetime.datetime.now())}'
+    if client.userdata.subscription_expiry:
+        expire_time = f'До: {client.userdata.subscription_expiry.strftime("%d.%m.%Y")}\n'
+        if client.userdata.subscription_expiry > datetime.datetime.now():
+            expire_time += f'Осталось времени: {humanize.naturaldelta(client.userdata.subscription_expiry - datetime.datetime.now())}'
         else:
             expire_time += "❌ Время истекло"
     else:
@@ -80,10 +80,10 @@ f"""<b>Текущий статус</b>: {ClientStatusChoices.to_string(client.us
 def extend_users_usage_time(client: Client, time_to_add: datetime.timedelta) -> bool:
     now = datetime.datetime.now()
 
-    if not isinstance(client.userdata.expire_time, datetime.datetime) or client.userdata.expire_time < now:
-        client.userdata.expire_time = now
+    if not isinstance(client.userdata.subscription_expiry, datetime.datetime) or client.userdata.subscription_expiry < now:
+        client.userdata.subscription_expiry = now
 
-    is_updated = client.set_expire_time(client.userdata.expire_time + time_to_add)
+    is_updated = client.set_expire_time(client.userdata.subscription_expiry + time_to_add)
 
     if not is_updated:
         bot_logger.error(f"Couldn't update expire time for user {client.userdata.user_id}!")
@@ -91,7 +91,7 @@ def extend_users_usage_time(client: Client, time_to_add: datetime.timedelta) -> 
 
     if xray_peers := client.get_xray_peers():
         for peer in xray_peers:
-            xray_worker.update_peer(peer, expiry_time=client.userdata.expire_time)
+            xray_worker.update_peer(peer, expiry_time=client.userdata.subscription_expiry)
 
     return True
 
@@ -99,14 +99,14 @@ def extend_users_usage_time(client: Client, time_to_add: datetime.timedelta) -> 
 def unblock_timeout_connections(client: Client) -> bool:
     peers = client.get_all_peers(protocol_specific=True)
     for peer in peers:
-        match peer.peer_status:
+        match peer.status:
             case PeerStatusChoices.STATUS_TIME_EXPIRED:
-                if peer.peer_type in [ProtocolType.WIREGUARD, ProtocolType.AMNEZIA_WIREGUARD]:
+                if peer.type in [ProtocolType.WIREGUARD, ProtocolType.AMNEZIA_WIREGUARD]:
                     peer: WireguardPeer
                     wghub.enable_peer(peer)
-                elif peer.peer_type == ProtocolType.XRAY:
+                elif peer.type == ProtocolType.XRAY:
                     peer: XrayPeer
-                    xray_worker.enable_peer(peer, expire_time=client.userdata.expire_time)
+                    xray_worker.enable_peer(peer, expire_time=client.userdata.subscription_expiry)
                 client.set_peer_status(peer.peer_id, PeerStatusChoices.STATUS_DISCONNECTED)
                 client.set_status(ClientStatusChoices.STATUS_DISCONNECTED)
             case PeerStatusChoices.STATUS_CONNECTED:
@@ -130,5 +130,5 @@ def get_peer_as_input_file(peer: WireguardPeer) -> BufferedInputFile:
 
     return BufferedInputFile(
         file=bytes(get_peer_config_str(wireguard_server_config, peer, interface_args), encoding="utf-8"),
-        filename=f"{peer.peer_name or peer.peer_id}.conf"
+        filename=f"{peer.name or peer.peer_id}.conf"
     )

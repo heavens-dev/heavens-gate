@@ -39,7 +39,7 @@ async def finally_change_peer_name(message: Message, state: FSMContext):
     xray_worker.update_peer(
         ClientFactory.get_xray_peer(peer_id),
         # ! we need to pass this until xray_worker is fixed
-        expiry_time=client.userdata.expire_time
+        expiry_time=client.userdata.subscription_expiry
     )
     await state.clear()
     await message.answer("✅ Конфиг был успешно переименован!")
@@ -112,7 +112,7 @@ async def add_peers(message: Message, state: FSMContext):
                         flow="xtls-rprx-vision",
                         inbound_id=xray_cfg.inbound_id,
                     )
-                    xray_worker.add_peers(peer.inbound_id, [peer], client.userdata.expire_time)
+                    xray_worker.add_peers(peer.inbound_id, [peer], client.userdata.subscription_expiry)
                 case _:
                     raise TypeError("Unknown protocol type")
         await message.answer("✅ Пиры были успешно добавлены.")

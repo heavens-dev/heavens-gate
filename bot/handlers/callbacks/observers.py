@@ -27,13 +27,13 @@ async def on_disconnected(client: Client, peer: BasePeer):
 
 @connections_observer.timer_observer()
 async def warn_user_timeout(client: Client, peer: BasePeer, disconnect: bool):
-    time_left = peer.peer_timer - datetime.datetime.now()
+    time_left = peer.active_until - datetime.datetime.now()
     delta_as_time = time.gmtime(time_left.total_seconds())
     # TODO: write an ip address with a peer name
     await bot_instance.send_message(client.userdata.user_id,
-        (f"⚠️ Подключение {peer.peer_name} будет разорвано через {delta_as_time.tm_min} минут. "
+        (f"⚠️ Подключение {peer.name} будет разорвано через {delta_as_time.tm_min} минут. "
         if not disconnect else
-        f"❗ Подключение {peer.peer_name} было разорвано из-за неактивности. ") +
+        f"❗ Подключение {peer.name} было разорвано из-за неактивности. ") +
         "Введи /unblock, чтобы обновить время действия подключения.")
 
 @interval_observer.expire_date_warning_observer()

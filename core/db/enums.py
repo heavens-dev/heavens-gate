@@ -59,3 +59,7 @@ class ProtocolType(StrEnum):
     WIREGUARD = "wg"
     AMNEZIA_WIREGUARD = "awg"
     XRAY = "xray"
+
+
+class SubscriptionType(StrEnum):
+    DEFAULT = "Default"

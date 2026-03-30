@@ -1,5 +1,6 @@
 import datetime
 import random
+import secrets
 from typing import Optional, Union
 
 from peewee import SQL, DoesNotExist
@@ -8,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, PrivateAttr
 
 from core.db.enums import ClientStatusChoices, PeerStatusChoices, ProtocolType
 from core.db.model_serializer import BasePeer, User, WireguardPeer, XrayPeer
-from core.db.models import (PeersTableModel, UserModel, WireguardPeerModel,
+from core.db.models import (PeerModel, UserModel, WireguardPeerModel,
                             XrayPeerModel, db)
 from core.logs import core_logger
 from core.wg.keygen import (generate_preshared_key, generate_private_key,
@@ -64,7 +65,7 @@ class Client(BaseModel):
 
     @core_logger.catch()
     def __add_peer(self,
-                   peer_name: str,
+                   name: str,
                    peer_type: ProtocolType,
                    **kwargs
                    ) -> Optional[Union[WireguardPeer, XrayPeer]]:
@@ -72,6 +73,7 @@ class Client(BaseModel):
         Adds a new peer to the database, based on the provided peer type and keyword arguments.
 
         Args:
+            name (str): The name of the peer to add.
             peer_type (ProtocolType): The type of the peer to add.
             **kwargs: Arbitrary keyword arguments containing the fields to add to the peer.
 
@@ -81,10 +83,10 @@ class Client(BaseModel):
         """
         with db.atomic() as transaction:
             try:
-                peer = BasePeer.model_validate(PeersTableModel.create(
+                peer = BasePeer.model_validate(PeerModel.create(
                     user_id=self.__model,
-                    peer_type=peer_type.value,
-                    peer_name=peer_name
+                    type=peer_type.value,
+                    name=name
                 ))
                 core_logger.debug(f"Created a new base peer with ID: {peer.peer_id}")
                 match peer_type:
@@ -155,15 +157,15 @@ class Client(BaseModel):
             try:
                 if peer_fields:
                     is_updated = (
-                        PeersTableModel.update(**peer_fields)
-                        .where(PeersTableModel.id == peer_id)
+                        PeerModel.update(**peer_fields)
+                        .where(PeerModel.id == peer_id)
                         .execute()
                     ) == 1
                     if not is_updated:
                         core_logger.error(f"Something went wrong while updating peer: {peer_id}")
                         return False
                 if protocol_specific_fields:
-                    protocol = PeersTableModel.get(PeersTableModel.id == peer_id).peer_type
+                    protocol = PeerModel.get(PeerModel.id == peer_id).peer_type
                     match protocol:
                         case ProtocolType.WIREGUARD | \
                              ProtocolType.AMNEZIA_WIREGUARD:
@@ -229,20 +231,23 @@ class Client(BaseModel):
         wireguard_args["Jmax"] = Jmax
 
         return self.__add_peer(
-            peer_name=peer_name,
+            name=peer_name,
             peer_type=ProtocolType.AMNEZIA_WIREGUARD if is_amnezia else ProtocolType.WIREGUARD,
             **wireguard_args
         )
 
     def add_xray_peer(self, flow: str, inbound_id: int, peer_name: Optional[str] = None) -> XrayPeer:
+        hash_id = secrets.token_urlsafe(8)
+
         if not peer_name:
-            peer_name = f"{self.userdata.name}_{ClientFactory.get_latest_peer_id() + 1}"
+            peer_name = f"{self.userdata.name}_{hash_id}"
 
         peer = self.__add_peer(
-            peer_name=peer_name,
+            name=peer_name,
             peer_type=ProtocolType.XRAY,
             flow=flow,
             inbound_id=inbound_id,
+            hash_id=hash_id
         )
         with core_logger.contextualize(peer=peer):
             core_logger.info(f"New peer was created.")
@@ -252,7 +257,7 @@ class Client(BaseModel):
             self,
             protocol_type: Optional[ProtocolType] = None,
             *criteria
-        ) -> Optional[list[Union[PeersTableModel, WireguardPeerModel, XrayPeerModel]]]:
+        ) -> Optional[list[Union[PeerModel, WireguardPeerModel, XrayPeerModel]]]:
         """
         Retrieve peers from the database based on protocol type and additional criteria.
 
@@ -275,31 +280,31 @@ class Client(BaseModel):
             case ProtocolType.WIREGUARD | ProtocolType.AMNEZIA_WIREGUARD:
                 return list(
                     WireguardPeerModel.select(
-                        PeersTableModel,
+                        PeerModel,
                         WireguardPeerModel,
-                        PeersTableModel.id.alias("peer_id")
+                        PeerModel.id.alias("peer_id")
                     )
                     .join(
-                        PeersTableModel,
-                        on=(PeersTableModel.id == WireguardPeerModel.peer)
+                        PeerModel,
+                        on=(PeerModel.id == WireguardPeerModel.peer)
                     )
-                    .where(PeersTableModel.user == self.__model, *criteria)
+                    .where(PeerModel.user == self.__model, *criteria)
                 )
             case ProtocolType.XRAY:
                 return list(XrayPeerModel.select(
-                                PeersTableModel,
+                                PeerModel,
                                 XrayPeerModel,
-                                PeersTableModel.id.alias("peer_id")
+                                PeerModel.id.alias("peer_id")
                             )
                             .join(
-                                PeersTableModel,
-                                on=(PeersTableModel.id == XrayPeerModel.peer)
+                                PeerModel,
+                                on=(PeerModel.id == XrayPeerModel.peer)
                             )
-                            .where(PeersTableModel.user == self.__model, *criteria)
+                            .where(PeerModel.user == self.__model, *criteria)
                             )
             case _:
-                return list(PeersTableModel.select()
-                            .where(PeersTableModel.user == self.__model, *criteria)
+                return list(PeerModel.select()
+                            .where(PeerModel.user == self.__model, *criteria)
                             )
 
     @core_logger.catch()
@@ -351,7 +356,7 @@ class Client(BaseModel):
         return self.__update_client(status=status.value)
 
     def set_expire_time(self, expire_time: datetime.datetime) -> bool:
-        self.userdata.expire_time = expire_time
+        self.userdata.subscription_expiry = expire_time
         core_logger.info(f"Setting expire time to {expire_time} for user {self.userdata.user_id}")
         return self.__update_client(expire_time=expire_time)
 
@@ -373,7 +378,7 @@ class Client(BaseModel):
     def get_connected_peers(self) -> list[BasePeer]:
         return [
             BasePeer.model_validate(model)
-            for model in self.__get_peers(None, PeersTableModel.peer_status == PeerStatusChoices.STATUS_CONNECTED.value)
+            for model in self.__get_peers(None, PeerModel.status == PeerStatusChoices.STATUS_CONNECTED.value)
         ]
 
     def delete_peers(self) -> bool:
@@ -383,8 +388,8 @@ class Client(BaseModel):
         Returns:
             bool: True if operation was successfully executed, False otherwise.
         """
-        return (PeersTableModel.delete()
-                .where(PeersTableModel.user == self.userdata.user_id)
+        return (PeerModel.delete()
+                .where(PeerModel.user == self.userdata.user_id)
                 .execute()) == 1
 
     def delete_wireguard_peer_by_ip(self, ip_address: str) -> bool:
@@ -399,13 +404,13 @@ class Client(BaseModel):
         formatted_ip = ip_address.replace(".", "\\.")
 
         try:
-            peer = (PeersTableModel
+            peer = (PeerModel
                    .select()
                    .join(WireguardPeerModel)
                    .where(WireguardPeerModel.shared_ips.regexp(
                        rf"(?:[, ]|^){formatted_ip}(?:[, ]|$)"
                    ) )
-                   .where(PeersTableModel.user == self.__model)
+                   .where(PeerModel.user == self.__model)
                    .get())
 
             peer.delete_instance()
@@ -494,15 +499,15 @@ class ClientFactory(BaseModel):
     @staticmethod
     def get_peer_by_id(peer_id: int, protocol_specific: bool = False) -> Optional[BasePeer]:
         try:
-            model: PeersTableModel = PeersTableModel.get(PeersTableModel.id == peer_id)
+            model: PeerModel = PeerModel.get(PeerModel.id == peer_id)
             if protocol_specific:
-                match model.peer_type:
+                match model.type:
                     case ProtocolType.WIREGUARD.value | ProtocolType.AMNEZIA_WIREGUARD.value:
                         return WireguardPeer.model_validate(WireguardPeerModel.get(WireguardPeerModel.peer == peer_id))
                     case ProtocolType.XRAY.value:
                         return XrayPeer.model_validate(XrayPeerModel.get(XrayPeerModel.peer == peer_id))
                     case _:
-                        core_logger.warning(f"Unknown protocol type: {model.peer_type}")
+                        core_logger.warning(f"Unknown protocol type: {model.type}")
                         return None
             return BasePeer.model_validate(model)
         except DoesNotExist:
@@ -562,10 +567,15 @@ class ClientFactory(BaseModel):
 
     @staticmethod
     def get_latest_peer_id() -> int:
+        """Returns the latest peer ID in the database.
+
+        Returns:
+            int: The latest peer ID if peers exist, or 0 if there are no peers in the database.
+        """
         try:
-            result = db.execute_sql("SELECT seq FROM sqlite_sequence WHERE name = 'PeersTable'")
+            result = db.execute_sql(f"SELECT seq FROM sqlite_sequence WHERE name = 'Peers'")
             return result.fetchone()[0]
-        except (IndexError, TypeError): #? assuming that there're no peers in DB
+        except (IndexError, TypeError): # ? assuming that there're no peers in DB
             return 0
 
     @staticmethod
@@ -575,7 +585,7 @@ class ClientFactory(BaseModel):
     @staticmethod
     def delete_peer(peer: BasePeer) -> Union[BasePeer, bool]:
         try:
-            p = PeersTableModel.get(PeersTableModel.id == peer.peer_id)
+            p = PeerModel.get(PeerModel.id == peer.peer_id)
             p.delete_instance()
             return p
         except DoesNotExist:
@@ -599,10 +609,10 @@ class ClientFactory(BaseModel):
                 Returns `False` if the peer was not found or if an error occurred during deletion.
         """
         try:
-            peer: PeersTableModel = PeersTableModel.get(PeersTableModel.id == peer_id)
+            peer: PeerModel = PeerModel.get(PeerModel.id == peer_id)
 
             if protocol_specific:
-                match peer.peer_type:
+                match peer.type:
                     case ProtocolType.WIREGUARD | ProtocolType.AMNEZIA_WIREGUARD:
                         serialized_model = WireguardPeer.model_validate(
                             WireguardPeerModel.get(WireguardPeerModel.peer == peer_id)
@@ -612,7 +622,7 @@ class ClientFactory(BaseModel):
                             XrayPeerModel.get(XrayPeerModel.peer == peer_id)
                         )
                     case _:
-                        core_logger.warning(f"Unknown protocol type: {peer.peer_type}")
+                        core_logger.warning(f"Unknown protocol type: {peer.type}")
                         serialized_model = BasePeer.model_validate(peer)
             else:
                 serialized_model = BasePeer.model_validate(peer)
