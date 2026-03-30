@@ -19,7 +19,7 @@ async def test_emit_connect(connection_events: ConnectionEvents):
 
     peer = Mock()
     peer.peer_id = 1
-    peer.peer_status = PeerStatusChoices.STATUS_DISCONNECTED
+    peer.status = PeerStatusChoices.STATUS_DISCONNECTED
 
     connection_events.connected.register(triggered_func)
     await connection_events.emit_connect(client, peer)
@@ -28,7 +28,7 @@ async def test_emit_connect(connection_events: ConnectionEvents):
     client.set_peer_status.assert_called_once_with(peer.peer_id, PeerStatusChoices.STATUS_CONNECTED)
     client.set_status.assert_called_once_with(ClientStatusChoices.STATUS_CONNECTED)
 
-    assert peer.peer_status == PeerStatusChoices.STATUS_CONNECTED
+    assert peer.status == PeerStatusChoices.STATUS_CONNECTED
 
 @pytest.mark.asyncio
 async def test_emit_disconnect(connection_events: ConnectionEvents):
@@ -40,7 +40,7 @@ async def test_emit_disconnect(connection_events: ConnectionEvents):
 
     peer = Mock()
     peer.peer_id = 1
-    peer.peer_status = PeerStatusChoices.STATUS_CONNECTED
+    peer.status = PeerStatusChoices.STATUS_CONNECTED
 
     connection_events.disconnected.register(triggered_func)
     await connection_events.emit_disconnect(client, peer)
@@ -49,7 +49,7 @@ async def test_emit_disconnect(connection_events: ConnectionEvents):
     client.set_peer_status.assert_called_once_with(peer.peer_id, PeerStatusChoices.STATUS_DISCONNECTED)
     client.set_status.assert_called_once_with(ClientStatusChoices.STATUS_DISCONNECTED)
 
-    assert peer.peer_status == PeerStatusChoices.STATUS_DISCONNECTED
+    assert peer.status == PeerStatusChoices.STATUS_DISCONNECTED
 
 @pytest.mark.asyncio
 async def test_emit_disconnect_with_connected_peers(connection_events: ConnectionEvents):
@@ -61,7 +61,7 @@ async def test_emit_disconnect_with_connected_peers(connection_events: Connectio
 
     peer = Mock()
     peer.peer_id = 1
-    peer.peer_status = PeerStatusChoices.STATUS_CONNECTED
+    peer.status = PeerStatusChoices.STATUS_CONNECTED
 
     connection_events.disconnected.register(triggered_func)
     await connection_events.emit_disconnect(client, peer)
@@ -70,7 +70,7 @@ async def test_emit_disconnect_with_connected_peers(connection_events: Connectio
     client.set_peer_status.assert_called_once_with(peer.peer_id, PeerStatusChoices.STATUS_DISCONNECTED)
     client.set_status.assert_not_called()
 
-    assert peer.peer_status == PeerStatusChoices.STATUS_DISCONNECTED
+    assert peer.status == PeerStatusChoices.STATUS_DISCONNECTED
 
 @pytest.mark.asyncio
 async def test_emit_timeout(connection_events: ConnectionEvents):
@@ -82,7 +82,7 @@ async def test_emit_timeout(connection_events: ConnectionEvents):
 
     peer = Mock()
     peer.peer_id = 1
-    peer.peer_status = PeerStatusChoices.STATUS_CONNECTED
+    peer.status = PeerStatusChoices.STATUS_CONNECTED
 
     connection_events.disconnected.register(triggered_func)
     with patch("core.wg.wg_work.WGHub.disable_peer"):
@@ -92,4 +92,4 @@ async def test_emit_timeout(connection_events: ConnectionEvents):
     client.set_peer_status.assert_called_once_with(peer.peer_id, PeerStatusChoices.STATUS_TIME_EXPIRED)
     client.set_status.assert_called_once_with(ClientStatusChoices.STATUS_TIME_EXPIRED)
 
-    assert peer.peer_status == PeerStatusChoices.STATUS_TIME_EXPIRED
+    assert peer.status == PeerStatusChoices.STATUS_TIME_EXPIRED
