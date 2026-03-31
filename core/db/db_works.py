@@ -355,10 +355,10 @@ class Client(BaseModel):
         self.userdata.status = status
         return self.__update_client(status=status.value)
 
-    def set_expire_time(self, expire_time: datetime.datetime) -> bool:
+    def set_subscription_expiry(self, expire_time: datetime.datetime) -> bool:
         self.userdata.subscription_expiry = expire_time
-        core_logger.info(f"Setting expire time to {expire_time} for user {self.userdata.user_id}")
-        return self.__update_client(expire_time=expire_time)
+        core_logger.info(f"Setting subscription expiry to {expire_time} for user {self.userdata.user_id}")
+        return self.__update_client(subscription_expiry=expire_time)
 
     @core_logger.catch()
     def set_peer_status(self, peer_id: int, peer_status: PeerStatusChoices) -> bool:

@@ -83,7 +83,7 @@ def extend_users_subscription_time(client: Client, time_to_add: datetime.timedel
     if not isinstance(client.userdata.subscription_expiry, datetime.datetime) or client.userdata.subscription_expiry < now:
         client.userdata.subscription_expiry = now
 
-    is_updated = client.set_expire_time(client.userdata.subscription_expiry + time_to_add)
+    is_updated = client.set_subscription_expiry(client.userdata.subscription_expiry + time_to_add)
 
     if not is_updated:
         bot_logger.error(f"Couldn't update expire time for user {client.userdata.user_id}!")
