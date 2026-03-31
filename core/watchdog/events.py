@@ -129,7 +129,7 @@ class ConnectionEvents:
         and Peer status to `PeerStatusChoices.STATUS_DISCONNECTED`"""
         current_time = datetime.datetime.now()
         new_time = current_time + datetime.timedelta(hours=self.active_hours)
-        client.set_peer_timer(peer.peer_id, new_time)
+        client.set_peer_active_time(peer.peer_id, new_time)
         client.set_peer_status(peer.peer_id, PeerStatusChoices.STATUS_CONNECTED)
         client.set_status(ClientStatusChoices.STATUS_CONNECTED)
         # avoid triggering connection event multiple times

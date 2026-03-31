@@ -19,10 +19,11 @@ from core.wg.keygen import (generate_preshared_key, generate_private_key,
 # TODO: read BasePeer field names instead of hardcoding
 BASE_PEER_FIELDS = ("id",
                     "user_id",
-                    "peer_name",
-                    "peer_type",
-                    "peer_status",
-                    "peer_timer")
+                    "name",
+                    "type",
+                    "status",
+                    "active_until",
+                    "last_connected_at")
 
 class Client(BaseModel):
     """
@@ -373,10 +374,10 @@ class Client(BaseModel):
         return result
 
     @core_logger.catch()
-    def set_peer_timer(self, peer_id: int, time: datetime.datetime) -> bool:
-        result = self.__update_peer(peer_id, peer_timer=time)
+    def set_peer_active_time(self, peer_id: int, time: datetime.datetime) -> bool:
+        result = self.__update_peer(peer_id, active_until=time)
         with core_logger.contextualize(peer_id=peer_id, result=result):
-            core_logger.debug(f"Tried to change peer timer to {time}")
+            core_logger.debug(f"Tried to change peer active time to {time}")
         return result
 
     @core_logger.catch()

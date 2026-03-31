@@ -133,7 +133,7 @@ def unblock_timeout_connections(client: Client) -> bool:
                 client.set_status(ClientStatusChoices.STATUS_DISCONNECTED)
             case PeerStatusChoices.STATUS_CONNECTED:
                 new_time = datetime.datetime.now() + datetime.timedelta(hours=core_cfg.peer_active_time)
-                client.set_peer_timer(peer.peer_id, time=new_time)
+                client.set_peer_active_time(peer.peer_id, time=new_time)
     # updating peer timer for observer
     connections_observer.update_client_peers(client)
 
