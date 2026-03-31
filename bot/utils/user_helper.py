@@ -8,10 +8,12 @@ from pydantic import ValidationError
 from config.loader import (connections_observer, core_cfg, wghub,
                            wireguard_server_config, xray_worker)
 from core.db.db_works import Client, ClientFactory
-from core.db.enums import ClientStatusChoices, PeerStatusChoices, ProtocolType
+from core.db.enums import (ClientStatusChoices, PeerStatusChoices,
+                           ProtocolType, SubscriptionType)
 from core.db.model_serializer import WireguardPeer, XrayPeer
 from core.logs import bot_logger
 from core.wg.wgconfig_helper import get_peer_config_str
+from core.xray.xray_worker import XrayWorker
 
 
 # TODO: make this function accept ip addresses again
@@ -40,6 +42,7 @@ def get_user_data_string(client: Client, show_peer_ids: bool = False) -> list[st
     peers = client.get_all_peers(protocol_specific=True)
     peers_str = ""
     time_limitation = core_cfg.is_time_limit_disabled()
+    has_xray_peers = any(peer.type == ProtocolType.XRAY for peer in peers)
 
     for peer in peers:
         if show_peer_ids:
@@ -65,13 +68,28 @@ def get_user_data_string(client: Client, show_peer_ids: bool = False) -> list[st
     else:
         expire_time = "❌ Не оплачено"
 
+    if client.userdata.subscription_type:
+        subscription_type = SubscriptionType.to_string(client.userdata.subscription_type)
+    else:
+        subscription_type = "❌ Не оплачено"
+
+    if has_xray_peers:
+        link = xray_worker.get_subscription_link(client.userdata.vless_sub_token)
+    else:
+        link = "Нет доступных конфигураций!"
+
+
     return [f"""ℹ️ <b>Информация об аккаунте</b>:
 <b>ID</b>: <code>{client.userdata.user_id}</code>
 📅 <b>Дата регистрации</b>: {client.userdata.registered_at.strftime("%d.%m.%Y в %H:%M")}
 """,
 f"""<b>Текущий статус</b>: {ClientStatusChoices.to_string(client.userdata.status)}
 🕓 <b>Статус оплаты</b>:
-<blockquote>{expire_time}</blockquote>
+<blockquote>Подписка: {subscription_type}
+{expire_time}</blockquote>
+
+🌐 <b>Ссылка на подписку</b>:
+{link}
 
 🛜 <b>Пиры</b>:
 {peers_str or '❌ Нет пиров\n'}

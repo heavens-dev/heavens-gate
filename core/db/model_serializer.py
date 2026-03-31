@@ -3,7 +3,8 @@ from typing import Any, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from core.db.enums import ClientStatusChoices, PeerStatusChoices, ProtocolType
+from core.db.enums import (ClientStatusChoices, PeerStatusChoices,
+                           ProtocolType, SubscriptionType)
 from core.db.models import PeerModel
 
 
@@ -14,7 +15,7 @@ class User(BaseModel):
     name: str
     status: ClientStatusChoices
     registered_at: datetime
-    subscription_type: Optional[str] = Field(default=None)
+    subscription_type: Optional[SubscriptionType] = Field(default=None)
     subscription_expiry: Optional[datetime] = Field(default=None)
 
     vless_sub_token: Optional[str] = Field(default=None)
