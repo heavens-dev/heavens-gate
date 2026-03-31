@@ -447,7 +447,12 @@ class ClientFactory(BaseModel):
                 with core_logger.contextualize(model=model):
                     core_logger.info(f"User has changed his username, updating it in DB")
         except DoesNotExist:
-            model: UserModel = UserModel.create(user_id=self.user_id, name=name, **kwargs)
+            model: UserModel = UserModel.create(
+                user_id=self.user_id,
+                name=name,
+                vless_sub_token=secrets.token_urlsafe(8),
+                **kwargs
+            )
             with core_logger.contextualize(model=model):
                 core_logger.info(f"New user was created.")
             created = True
