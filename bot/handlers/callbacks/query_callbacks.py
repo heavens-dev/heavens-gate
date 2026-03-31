@@ -20,7 +20,7 @@ from bot.utils.callback_data import (GetUserCallbackData, PeerCallbackData,
 from bot.utils.states import (AddPeerStates, ContactAdminStates,
                               ExtendTimeStates, PreviewMessageStates,
                               RenamePeerStates, WhisperStates)
-from bot.utils.user_helper import (extend_users_usage_time,
+from bot.utils.user_helper import (extend_users_subscription_time,
                                    get_peer_as_input_file,
                                    get_user_data_string)
 from config.loader import bot_instance, wghub, xray_worker
@@ -207,19 +207,19 @@ async def change_peer_name_entering_callback(callback: CallbackQuery, callback_d
     await state.set_data({"tg_id": callback_data.user_id, "peer_id": callback_data.peer_id})
 
 @router.callback_query(
-    UserActionsCallbackData.filter(F.action == UserActionsEnum.EXTEND_USAGE_TIME)
+    UserActionsCallbackData.filter(F.action == UserActionsEnum.EXTEND_SUBSCRIPTION_TIME)
 )
-async def extend_usage_time_dialog_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
+async def extend_subscription_time_dialog_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
     client = ClientFactory(user_id=callback_data.user_id).get_client()
     keyboard = extend_time_keyboard(client.userdata.user_id)
     keyboard.inline_keyboard.append(cancel_keyboard().inline_keyboard[0])
     await callback.answer()
-    await callback.message.answer("🕒 На сколько продлить время использования?", reply_markup=keyboard)
+    await callback.message.answer("🕒 На сколько продлить подписку?", reply_markup=keyboard)
 
 @router.callback_query(
     TimeExtenderCallbackData.filter(F.extend_for != "custom")
 )
-async def extend_usage_time_callback(callback: CallbackQuery, callback_data: TimeExtenderCallbackData):
+async def extend_subscription_time_callback(callback: CallbackQuery, callback_data: TimeExtenderCallbackData):
     client = ClientFactory(user_id=callback_data.user_id).get_client()
     time_to_add = parse_time(callback_data.extend_for)
 
@@ -228,7 +228,7 @@ async def extend_usage_time_callback(callback: CallbackQuery, callback_data: Tim
         await callback.answer(f"❌ Неправильный формат времени: {callback_data.extend_for}")
         return
 
-    if extend_users_usage_time(client, time_to_add):
+    if extend_users_subscription_time(client, time_to_add):
         await callback.answer(f"✅ Время использования продлено на {callback_data.extend_for}.")
     else:
         await callback.answer(f"❓ Что-то пошло не так во время операции. Проверь логи.")

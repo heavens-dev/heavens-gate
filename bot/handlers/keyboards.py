@@ -80,9 +80,9 @@ def build_user_actions_keyboard(client: Client, is_admin=True) -> InlineKeyboard
             )
 
         builder.button(
-            text="📅 Продлить время",
+            text="📅 Продлить подписку",
             callback_data=UserActionsCallbackData(
-                action=UserActionsEnum.EXTEND_USAGE_TIME,
+                action=UserActionsEnum.EXTEND_SUBSCRIPTION_TIME,
                 user_id=client.userdata.user_id,
                 is_admin=is_admin
             )

@@ -7,7 +7,7 @@ from bot.utils.message_utils import preview_message
 from bot.utils.states import (AddPeerStates, ContactAdminStates,
                               ExtendTimeStates, RenamePeerStates,
                               WhisperStates)
-from bot.utils.user_helper import extend_users_usage_time
+from bot.utils.user_helper import extend_users_subscription_time
 from config.loader import (bot_cfg, bot_instance, ip_queue, wghub, xray_cfg,
                            xray_worker)
 from core.db.db_works import ClientFactory
@@ -75,7 +75,7 @@ async def extend_usage_time_custom_entered(message: Message, state: FSMContext):
 
     client = ClientFactory(user_id=user_id).get_client()
 
-    if extend_users_usage_time(client, time_to_add):
+    if extend_users_subscription_time(client, time_to_add):
         await message.answer(f"✅ Время использования продлено на {message.text}.")
     else:
         await message.answer(f"❓ Что-то пошло не так во время операции. Проверь логи.")
@@ -112,7 +112,12 @@ async def add_peers(message: Message, state: FSMContext):
                         flow="xtls-rprx-vision",
                         inbound_id=xray_cfg.inbound_id,
                     )
-                    xray_worker.add_peers(peer.inbound_id, [peer], client.userdata.subscription_expiry)
+                    xray_worker.add_peers(
+                        peer.inbound_id,
+                        [peer],
+                        client.userdata.subscription_expiry,
+                        client.userdata.vless_sub_token
+                    )
                 case _:
                     raise TypeError("Unknown protocol type")
         await message.answer("✅ Пиры были успешно добавлены.")

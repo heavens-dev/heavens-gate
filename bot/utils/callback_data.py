@@ -12,7 +12,7 @@ class UserActionsEnum(StrEnum):
     UPDATE_DATA = "update"
     CHANGE_PEER_NAME = "change_peer_name"
     CONTACT_ADMIN = "contact_admin"
-    EXTEND_USAGE_TIME = "extend_usage_time"
+    EXTEND_SUBSCRIPTION_TIME = "extend_subscription_time"
     WHISPER_USER = "whisper"
     ADD_PEER = "add_peer"
 

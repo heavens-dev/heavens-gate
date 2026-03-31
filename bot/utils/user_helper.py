@@ -77,7 +77,7 @@ f"""<b>Текущий статус</b>: {ClientStatusChoices.to_string(client.us
 {peers_str or '❌ Нет пиров\n'}
 """]
 
-def extend_users_usage_time(client: Client, time_to_add: datetime.timedelta) -> bool:
+def extend_users_subscription_time(client: Client, time_to_add: datetime.timedelta) -> bool:
     now = datetime.datetime.now()
 
     if not isinstance(client.userdata.subscription_expiry, datetime.datetime) or client.userdata.subscription_expiry < now:
@@ -91,7 +91,11 @@ def extend_users_usage_time(client: Client, time_to_add: datetime.timedelta) -> 
 
     if xray_peers := client.get_xray_peers():
         for peer in xray_peers:
-            xray_worker.update_peer(peer, expiry_time=client.userdata.subscription_expiry)
+            xray_worker.update_peer(
+                peer,
+                expiry_time=client.userdata.subscription_expiry,
+
+            )
 
     return True
 
