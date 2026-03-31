@@ -11,6 +11,7 @@ from bot.utils.states import ContactAdminStates, RenamePeerStates
 from bot.utils.user_helper import (get_user_data_string,
                                    unblock_timeout_connections)
 from core.db.db_works import ClientFactory
+from core.db.enums import SubscriptionType
 
 router = Router(name="user")
 router.message.middleware.register(LoggingMiddleware())
@@ -77,5 +78,15 @@ async def whats_new(message: Message):
 - Рефакторинг кода. Мы переписали часть кода, чтобы он стал более читабельным и понятным. Теперь мы можем добавлять новые функции быстрее и проще.
 - Обработка ошибок. Теперь бот будет обрабатывать ошибки в командах и выдавать более понятные сообщения, а также информировать админов мгновенно, если что-то пойдёт не так. Ну или будет стараться так делать.
 """
+
+    await message.answer(msg)
+
+@router.message(Command("about_sub"))
+async def about_subscription(message: Message):
+    msg = "<b>Типы подписок:</b>"
+
+    for subscription_type in SubscriptionType:
+        msg += f"<blockquote>{SubscriptionType.to_string(subscription_type)}</blockquote>\n"
+        msg += f"{SubscriptionType.description(subscription_type)}\n\n"
 
     await message.answer(msg)

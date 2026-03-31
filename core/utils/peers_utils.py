@@ -15,11 +15,11 @@ def enable_peers(
         client: Client
     ) -> None:
     for peer in peers:
-        match peer.peer_type:
+        match peer.type:
             case ProtocolType.WIREGUARD | ProtocolType.AMNEZIA_WIREGUARD:
                 wghub.enable_peer(peer)
             case ProtocolType.XRAY:
-                xray_worker.enable_peer(peer, expire_time=client.userdata.expire_time)
+                xray_worker.enable_peer(peer, expire_time=client.userdata.subscription_expiry)
             case _:
                 core_logger.warning(f"Unknown peer type: {peer.peer_type}. Can't enable peer.")
 
@@ -32,11 +32,11 @@ def disable_peers(
         client: Client = None
     ) -> None:
     for peer in peers:
-        match peer.peer_type:
+        match peer.type:
             case ProtocolType.WIREGUARD | ProtocolType.AMNEZIA_WIREGUARD:
                 wghub.disable_peer(peer)
             case ProtocolType.XRAY:
-                xray_worker.disable_peer(peer, expire_time=client.userdata.expire_time)
+                xray_worker.disable_peer(peer, expire_time=client.userdata.subscription_expiry)
             case _:
                 core_logger.warning(f"Unknown peer type: {peer.peer_type}. Can't disable peer.")
 

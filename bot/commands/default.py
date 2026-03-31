@@ -13,6 +13,7 @@ def get_default_commands() -> list[BotCommand]:
         BotCommand(command="/unblock", description="Unblock/update the connection"),
         BotCommand(command="/change_peer_name", description="Change peer name (wow)"),
         BotCommand(command="/whats_new", description="Get the latest updates"),
+        BotCommand(command="/about_sub", description="Get info about subscription types and benefits"),
     ]
 
     return commands

@@ -48,7 +48,7 @@ class WGHub:
 
     @apply_and_sync
     def add_peer(self, peer: WireguardPeer):
-        self.wgconfig.add_peer(peer.public_key, f"# {peer.peer_name}")
+        self.wgconfig.add_peer(peer.public_key, f"# {peer.name}")
         self.wgconfig.add_attr(peer.public_key, "PresharedKey", peer.preshared_key)
         self.wgconfig.add_attr(peer.public_key, "AllowedIPs", peer.shared_ips + "/32")
         with core_logger.contextualize(peer=peer):
@@ -126,7 +126,7 @@ PrivateKey = {private_key}
 
 def peer_to_str_wg_server(peer: WireguardPeer) -> str:
     return f"""
-# {peer.peer_name}
+# {peer.name}
 [Peer]
 PublicKey = {peer.public_key}
 PresharedKey = {peer.preshared_key}

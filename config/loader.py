@@ -61,7 +61,10 @@ xray_worker = XrayWorker(
     xray_cfg.username,
     xray_cfg.password,
     xray_cfg.token,
-    xray_cfg.tls
+    xray_cfg.tls,
+    xray_cfg.sub_domain,
+    xray_cfg.sub_port,
+    xray_cfg.sub_path
 )
 
 try:
