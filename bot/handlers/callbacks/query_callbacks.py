@@ -67,7 +67,7 @@ async def select_peer_callback(callback: CallbackQuery, callback_data: PeerCallb
             case ProtocolType.XRAY:
                 xray_strings += "<code>" + xray_worker.get_connection_string(peer) + "</code>\n\n"
             case _:
-                bot_logger.warning(f"Unknown protocol type: {peer.peer_type}. Skipping.")
+                bot_logger.warning(f"Unknown protocol type: {peer.type}. Skipping.")
                 continue
 
     if built_media := media_group.build():

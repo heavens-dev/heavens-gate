@@ -167,7 +167,7 @@ class Client(BaseModel):
                         core_logger.error(f"Something went wrong while updating peer: {peer_id}")
                         return False
                 if protocol_specific_fields:
-                    protocol = PeerModel.get(PeerModel.id == peer_id).peer_type
+                    protocol = PeerModel.get(PeerModel.id == peer_id).type
                     match protocol:
                         case ProtocolType.WIREGUARD | \
                              ProtocolType.AMNEZIA_WIREGUARD:
@@ -348,7 +348,7 @@ class Client(BaseModel):
 
     @core_logger.catch()
     def change_peer_name(self, peer_id: int, peer_name: str) -> bool:
-        result = self.__update_peer(peer_id, peer_name=peer_name)
+        result = self.__update_peer(peer_id, name=peer_name)
         with core_logger.contextualize(peer_id=peer_id, result=result):
             core_logger.info(f"Tried to change Peer name to {peer_name}")
         return result
@@ -368,7 +368,7 @@ class Client(BaseModel):
 
     @core_logger.catch()
     def set_peer_status(self, peer_id: int, peer_status: PeerStatusChoices) -> bool:
-        result = self.__update_peer(peer_id, peer_status=peer_status.value)
+        result = self.__update_peer(peer_id, status=peer_status.value)
         with core_logger.contextualize(peer_id=peer_id, result=result):
             core_logger.debug(f"Tried to change peer status to {peer_status}")
         return result
