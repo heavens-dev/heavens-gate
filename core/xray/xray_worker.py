@@ -1,5 +1,6 @@
 import datetime
 import re
+import secrets
 from typing import Optional
 from urllib.parse import quote
 
@@ -21,17 +22,33 @@ class XrayWorker:
             username: str,
             password: str,
             token: Optional[str] = None,
-            tls: bool = True
+            tls: bool = True,
+            sub_domain: Optional[str] = None,
+            sub_port: Optional[int] = None,
+            sub_path: Optional[str] = None
         ):
         self.host = host
         self.port = port
         host = host + ':' + port + (f"/{web_path}/" if web_path else '')
         self.api = Api(host, username, password, token, use_tls_verify=tls)
 
+        self.sub_domain = sub_domain
+        self.sub_port = sub_port
+        self.sub_path = sub_path
+
+        self.sub_host = f"{self.sub_domain}:{self.sub_port}/{self.sub_path}"
+
         if not self.__login():
             raise ValueError("Failed to login to 3x-ui API. Check your credentials.")
 
         core_logger.info("Successfully logged into 3x-ui.")
+
+    @staticmethod
+    def generate_subscription_token() -> str:
+        return secrets.token_urlsafe(8)
+
+    def get_subscription_link(self, sub_token: str) -> str:
+        return f"{self.sub_host}/{sub_token}"
 
     def __login(self) -> bool:
         """
