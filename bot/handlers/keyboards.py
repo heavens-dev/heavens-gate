@@ -4,11 +4,12 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from bot.utils.callback_data import (PeerCallbackData,
                                      PreviewMessageCallbackData,
                                      ProtocolChoiceCallbackData,
+                                     SubscriptionChoiceCallbackData,
                                      TimeExtenderCallbackData,
                                      UserActionsCallbackData, UserActionsEnum,
                                      YesOrNoEnum)
 from core.db.db_works import Client
-from core.db.enums import ClientStatusChoices, ProtocolType
+from core.db.enums import ClientStatusChoices, ProtocolType, SubscriptionType
 from core.db.model_serializer import BasePeer
 
 
@@ -100,6 +101,24 @@ def build_user_actions_keyboard(client: Client, is_admin=True) -> InlineKeyboard
             text="✉️ Отправить сообщение",
             callback_data=UserActionsCallbackData(
                 action=UserActionsEnum.WHISPER_USER,
+                user_id=client.userdata.user_id,
+                is_admin=is_admin
+            )
+        )
+
+        builder.button(
+            text="Изменить тип подписки",
+            callback_data=UserActionsCallbackData(
+                action=UserActionsEnum.CHANGE_SUBSCRIPTION,
+                user_id=client.userdata.user_id,
+                is_admin=is_admin
+            )
+        )
+
+        builder.button(
+            text="🔤 Сгенерировать новый токен подписки",
+            callback_data=UserActionsCallbackData(
+                action=UserActionsEnum.REGEN_SUBSCRIPTION_TOKEN,
                 user_id=client.userdata.user_id,
                 is_admin=is_admin
             )
@@ -215,6 +234,22 @@ def build_protocols_keyboard() -> InlineKeyboardMarkup:
         builder.button(
             text=protocol.name,
             callback_data=ProtocolChoiceCallbackData(protocol=protocol)
+        )
+
+    builder.adjust(2, repeat=True)
+
+    return builder.as_markup()
+
+def build_subscription_type_keyboard(user_id: int) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+
+    for subscription_type in SubscriptionType:
+        builder.button(
+            text=subscription_type.name,
+            callback_data=SubscriptionChoiceCallbackData(
+                subscription=subscription_type,
+                user_id=user_id
+            )
         )
 
     builder.adjust(2, repeat=True)

@@ -2,7 +2,7 @@ from enum import StrEnum
 
 from aiogram.filters.callback_data import CallbackData
 
-from core.db.enums import ProtocolType
+from core.db.enums import ProtocolType, SubscriptionType
 
 
 class UserActionsEnum(StrEnum):
@@ -12,9 +12,11 @@ class UserActionsEnum(StrEnum):
     UPDATE_DATA = "update"
     CHANGE_PEER_NAME = "change_peer_name"
     CONTACT_ADMIN = "contact_admin"
+    CHANGE_SUBSCRIPTION = "change_subscription"
     EXTEND_SUBSCRIPTION_TIME = "extend_subscription_time"
     WHISPER_USER = "whisper"
     ADD_PEER = "add_peer"
+    REGEN_SUBSCRIPTION_TOKEN = "regen_sub_token"
 
 
 class YesOrNoEnum(StrEnum):
@@ -54,3 +56,7 @@ class GetUserCallbackData(CallbackData, prefix="get_user"):
 
 class ProtocolChoiceCallbackData(CallbackData, prefix="protocol_choice"):
     protocol: ProtocolType
+
+class SubscriptionChoiceCallbackData(CallbackData, prefix="subscription_choice"):
+    user_id: int
+    subscription: SubscriptionType

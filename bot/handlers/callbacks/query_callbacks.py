@@ -9,11 +9,13 @@ from aiogram.utils.media_group import MediaGroupBuilder
 
 from bot.handlers.keyboards import (build_peer_configs_keyboard,
                                     build_protocols_keyboard,
+                                    build_subscription_type_keyboard,
                                     build_user_actions_keyboard,
                                     cancel_keyboard, extend_time_keyboard)
 from bot.utils.callback_data import (GetUserCallbackData, PeerCallbackData,
                                      PreviewMessageCallbackData,
                                      ProtocolChoiceCallbackData,
+                                     SubscriptionChoiceCallbackData,
                                      TimeExtenderCallbackData,
                                      UserActionsCallbackData, UserActionsEnum,
                                      YesOrNoEnum)
@@ -298,3 +300,26 @@ async def protocol_choice_callback(
     await state.update_data(protocol=callback_data.protocol)
 
     await callback.answer()
+
+@router.callback_query(
+    UserActionsCallbackData.filter(F.action == UserActionsEnum.CHANGE_SUBSCRIPTION)
+)
+async def change_subscription_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
+    keyboard = build_subscription_type_keyboard(callback_data.user_id)
+    keyboard.inline_keyboard.append(cancel_keyboard().inline_keyboard[0])
+    await callback.answer()
+    await callback.message.answer("👑 Выбери тип подписки для клиента", reply_markup=keyboard)
+
+@router.callback_query(SubscriptionChoiceCallbackData.filter())
+async def subscription_choice_callback(callback: CallbackQuery, callback_data: SubscriptionChoiceCallbackData):
+    client = ClientFactory(user_id=callback_data.user_id).get_client()
+    if client.set_subscription_type(callback_data.subscription):
+        await callback.answer(f"✅ Тип подписки изменён на {callback_data.subscription.name}.")
+    else:
+        await callback.answer(f"❓ Что-то пошло не так во время операции. Проверь логи.")
+
+@router.callback_query(
+    UserActionsCallbackData.filter(F.action == UserActionsEnum.REGEN_SUBSCRIPTION_TOKEN)
+)
+async def regen_subscription_token_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
+    await callback.answer(f"Эта функция пока не реализована (это временно).")

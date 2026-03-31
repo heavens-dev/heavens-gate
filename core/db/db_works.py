@@ -7,7 +7,8 @@ from peewee import SQL, DoesNotExist
 from playhouse.shortcuts import model_to_dict
 from pydantic import BaseModel, ConfigDict, PrivateAttr
 
-from core.db.enums import ClientStatusChoices, PeerStatusChoices, ProtocolType
+from core.db.enums import (ClientStatusChoices, PeerStatusChoices,
+                           ProtocolType, SubscriptionType)
 from core.db.model_serializer import BasePeer, User, WireguardPeer, XrayPeer
 from core.db.models import (PeerModel, UserModel, WireguardPeerModel,
                             XrayPeerModel, db)
@@ -354,6 +355,10 @@ class Client(BaseModel):
     def set_status(self, status: ClientStatusChoices) -> bool:
         self.userdata.status = status
         return self.__update_client(status=status.value)
+
+    def set_subscription_type(self, subscription_type: SubscriptionType) -> bool:
+        self.userdata.subscription_type = subscription_type
+        return self.__update_client(subscription_type=subscription_type.value)
 
     def set_subscription_expiry(self, expire_time: datetime.datetime) -> bool:
         self.userdata.subscription_expiry = expire_time
