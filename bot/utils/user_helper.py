@@ -111,8 +111,9 @@ def extend_users_subscription_time(client: Client, time_to_add: datetime.timedel
         for peer in xray_peers:
             xray_worker.update_peer(
                 peer,
+                # TODO: we need to pass this until xray_worker is fixed
                 expiry_time=client.userdata.subscription_expiry,
-
+                vless_sub_token=client.userdata.vless_sub_token
             )
 
     return True
