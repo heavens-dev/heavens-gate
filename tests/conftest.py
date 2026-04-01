@@ -4,7 +4,7 @@ import pytest
 
 from config.settings import Config
 from core.db.enums import PeerStatusChoices, ProtocolType
-from core.db.model_serializer import WireguardPeer
+from core.db.model_serializer import WireguardPeer, XrayPeer
 from core.db.models import init_db
 from core.wg.wg_work import WGHub
 from core.xray.xray_worker import XrayWorker
@@ -16,41 +16,52 @@ DEFAULT_PEERS = {
         peer_id=0,
         id=0,
         user_id=1,
-        peer_name="iamuser_1",
+        name="iamuser_1",
         public_key="fDW0TEh64L1qlcuNF5dSSRIhxImrCBECje2r2vXBcXI=",
         preshared_key="OGsOqOc7uoHW2DkXoZzwVxpwaSTNxQeyXZ9ukc58rgE=",
         private_key=PRIVATE_KEY,
-        peer_status=PeerStatusChoices.STATUS_DISCONNECTED,
+        status=PeerStatusChoices.STATUS_DISCONNECTED,
         shared_ips="10.0.0.2/32",
         is_amnezia=False,
-        peer_type=ProtocolType.WIREGUARD
+        type=ProtocolType.WIREGUARD
     ),
     "iamuser_1": WireguardPeer(
         peer_id=1,
         id=1,
         user_id=1,
-        peer_name="iamuser_2",
+        name="iamuser_2",
         public_key="Nts96aOJMVfQEZXt54q3MF1S7WVAGC/SDvpzN/mFXhw=",
         preshared_key="n3Fx4vZBLA6ps/Tw/s1GrVgM4oKKto4TU1ZuJBg1vao=",
         private_key=PRIVATE_KEY,
-        peer_status=PeerStatusChoices.STATUS_DISCONNECTED,
+        status=PeerStatusChoices.STATUS_DISCONNECTED,
         shared_ips="10.0.0.3/32",
         is_amnezia=False,
-        peer_type=ProtocolType.WIREGUARD
+        type=ProtocolType.WIREGUARD
     ),
     "otheruser_2": WireguardPeer(
         peer_id=2,
         id=2,
         user_id=2,
-        peer_name="otheruser_3",
+        name="otheruser_3",
         public_key="0uJLDEnjhokgSt6GAl5VErvqsVBJAS37k85cSKLPNiI=",
         preshared_key="WdOuOBVtO0Th5ZPtWFcMrpJ8PVaB8KfIQfprFVuJADc=",
         private_key=PRIVATE_KEY,
-        peer_status=PeerStatusChoices.STATUS_DISCONNECTED,
+        status=PeerStatusChoices.STATUS_DISCONNECTED,
         shared_ips="10.0.0.4/32",
         is_amnezia=False,
-        peer_type=ProtocolType.WIREGUARD
+        type=ProtocolType.WIREGUARD
     ),
+    "iamuser_3" : XrayPeer(
+        peer_id=3,
+        id=1,
+        user_id=1,
+        name="iamuser_3",
+        flow="xtls-rprx-flow",
+        status=PeerStatusChoices.STATUS_DISCONNECTED,
+        inbound_id=1,
+        hash_id="28sOfEq3qbA",
+        type=ProtocolType.XRAY
+    )
 }
 
 @pytest.fixture(scope="function")

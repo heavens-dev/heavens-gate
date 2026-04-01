@@ -1,5 +1,6 @@
 import datetime
 import re
+import secrets
 from typing import Optional
 from urllib.parse import quote
 
@@ -21,17 +22,33 @@ class XrayWorker:
             username: str,
             password: str,
             token: Optional[str] = None,
-            tls: bool = True
+            tls: bool = True,
+            sub_domain: Optional[str] = None,
+            sub_port: Optional[int] = None,
+            sub_path: Optional[str] = None
         ):
         self.host = host
         self.port = port
         host = host + ':' + port + (f"/{web_path}/" if web_path else '')
         self.api = Api(host, username, password, token, use_tls_verify=tls)
 
+        self.sub_domain = sub_domain
+        self.sub_port = sub_port
+        self.sub_path = sub_path
+
+        self.sub_host = f"{self.sub_domain}:{self.sub_port}/{self.sub_path}"
+
         if not self.__login():
             raise ValueError("Failed to login to 3x-ui API. Check your credentials.")
 
         core_logger.info("Successfully logged into 3x-ui.")
+
+    @staticmethod
+    def generate_subscription_token() -> str:
+        return secrets.token_urlsafe(8)
+
+    def get_subscription_link(self, sub_token: str) -> str:
+        return f"{self.sub_host}/{sub_token}"
 
     def __login(self) -> bool:
         """
@@ -65,9 +82,9 @@ class XrayWorker:
         """
         # TODO: pass an expiryTime argument to Client object somehow
         return Client(
-            id=str(peer.peer_id), # explicitly converting to string, bug in py3xui
-            email=peer.peer_name,
-            enable=PeerStatusChoices.xray_enabled(peer.peer_status),
+            id=str(peer.hash_id), # explicitly converting to string
+            email=peer.name,
+            enable=PeerStatusChoices.xray_enabled(peer.status),
             flow=peer.flow,
             inbound_id=peer.inbound_id,
         )
@@ -75,25 +92,35 @@ class XrayWorker:
     def get_connection_string(self, peer: XrayPeer):
         inbound = self.api.inbound.get_by_id(peer.inbound_id)
 
-        inbound_settings = inbound.stream_settings.reality_settings.get("settings")
+        inbound_reality_settings: dict = inbound.stream_settings.reality_settings.get("settings")
+        inbound_external_proxy: list = inbound.stream_settings.external_proxy
 
-        host = re.sub(r"https?://|www\.", "", self.host)
-        public_key = inbound_settings.get("publicKey")
+        if inbound_external_proxy:
+            inbound_external_proxy_settings: dict = inbound_external_proxy[0]
+            host = inbound_external_proxy_settings.get("dest")
+        else:
+            host = re.sub(r"https?://|www\.", "", self.host)
+
+        public_key = inbound_reality_settings.get("publicKey")
         website_name = inbound.stream_settings.reality_settings.get("serverNames")[0]
         short_id = inbound.stream_settings.reality_settings.get("shortIds")[0]
-        fingerprint = inbound_settings.get("fingerprint")
+        fingerprint = inbound_reality_settings.get("fingerprint")
         remark = quote(inbound.remark)
-        peer_name = quote(peer.peer_name)
+        peer_name = quote(peer.name)
 
         return (
-            f"vless://{peer.peer_id}@{host}:{inbound.port}"
+            f"vless://{peer.hash_id}@{host}:{inbound.port}"
             f"?type=tcp&security=reality&pbk={public_key}&fp={fingerprint}"
             f"&sni={website_name}&sid={short_id}&spx=%2F&flow={peer.flow}#{remark}-{peer_name}"
         )
 
     @core_logger.catch()
     def add_peers(
-        self, inbound_id: int, peers: list[XrayPeer], expiry_time: Optional[datetime.datetime] = None
+        self,
+        inbound_id: int,
+        peers: list[XrayPeer],
+        expiry_time: Optional[datetime.datetime] = None,
+        sub_token: Optional[str] = None
     ) -> None:
         """
         Add XRay peers to a specified inbound.
@@ -105,6 +132,7 @@ class XrayWorker:
             inbound_id (int): The ID of the inbound to add peers to.
             peers (list[XrayPeer]): List of peer objects to be added.
             expiry_time (datetime.datetime, optional): Expiration time for the peers. Defaults to None.
+            sub_token (str, optional): Subscription token for VLESS protocol. Defaults to None.
         """
         clients = []
 
@@ -112,11 +140,13 @@ class XrayWorker:
             if peer.inbound_id != inbound_id:
                 with core_logger.contextualize(peer_id=peer.peer_id):
                     core_logger.warning(
-                        f"Inbound ID does not match the peer's inbound ID: {peer.inbound_id} != {inbound_id}"
+                        f"Given inbound ID does not match the peer's inbound ID: {peer.inbound_id} != {inbound_id}"
                     )
             client = self.peer_to_client(peer)
             if expiry_time is not None:
                 client.expiry_time = int(expiry_time.timestamp() * 1000)
+            if sub_token is not None:
+                client.sub_id = sub_token
             clients.append(client)
 
         self.api.client.add(inbound_id, clients)
@@ -125,7 +155,12 @@ class XrayWorker:
             core_logger.info(f"Added new Xray peers.")
 
     @core_logger.catch()
-    def update_peer(self, peer: XrayPeer, expiry_time: Optional[datetime.datetime] = None) -> None:
+    def update_peer(
+        self,
+        peer: XrayPeer,
+        expiry_time: Optional[datetime.datetime] = None,
+        vless_sub_token: Optional[str] = None
+    ) -> None:
         """
         Update an Xray peer in the API and optionally set its expiry time.
         """
@@ -133,6 +168,8 @@ class XrayWorker:
 
         if expiry_time is not None:
             client.expiry_time = int(expiry_time.timestamp() * 1000)
+        if vless_sub_token is not None:
+            client.sub_id = vless_sub_token
         self.api.client.update(client.id, client)
 
         with core_logger.contextualize(xray_peer=peer):
@@ -151,8 +188,9 @@ class XrayWorker:
         try:
             online_clients = self.api.client.online()
             for client in online_clients:
-                if client == peer.peer_name:
+                if client == peer.name:
                     return True
+            core_logger.debug(f"Peer {peer.name} is not connected, online clients: {online_clients}.")
             return False
         except JSONDecodeError:
             # so, here 3x-ui API probably returned an empty response ( {} )

@@ -32,6 +32,8 @@ class ConnectionEvents:
         self.active_hours = active_hours
         self.wghub = wghub
         self.xray = xray
+        self.is_time_limitation_disabled: bool = active_hours == 0
+        """If True, time limitation for all peers is disabled. It means that peers won't be automatically disconnected after a certain period of time."""
 
         self.connected = EventObserver(required_types=[Client, BasePeer])
         """Decorated methods must have a `Client` and `BasePeer` argument"""
@@ -74,8 +76,13 @@ class ConnectionEvents:
             The method will automatically emit connect/disconnect events when the
             peer's status changes.
         """
-        if isinstance(peer.peer_timer, datetime.datetime) and peer.peer_status == PeerStatusChoices.STATUS_CONNECTED:
-            timedelta = peer.peer_timer - datetime.datetime.now()
+        with core_logger.contextualize(peer_id=peer.peer_id):
+            core_logger.debug("Checking peer...")
+
+        if isinstance(peer.active_until, datetime.datetime) \
+           and peer.status == PeerStatusChoices.STATUS_CONNECTED \
+           and not self.is_time_limitation_disabled:
+            timedelta = peer.active_until - datetime.datetime.now()
 
             if timedelta <= datetime.timedelta(0):
                 # True is disable
@@ -86,23 +93,23 @@ class ConnectionEvents:
                 # False is warning
                 await self.timer_observer.trigger(client, peer, disconnect=False)
 
-        if peer.peer_type in (ProtocolType.WIREGUARD, ProtocolType.AMNEZIA_WIREGUARD):
+        if peer.type in (ProtocolType.WIREGUARD, ProtocolType.AMNEZIA_WIREGUARD):
             host = await async_ping(peer.shared_ips)
             if host.is_alive:
-                if peer.peer_status == PeerStatusChoices.STATUS_DISCONNECTED:
+                if peer.status == PeerStatusChoices.STATUS_DISCONNECTED:
                     await self.emit_connect(client, peer)
                 return True
 
-            if peer.peer_status == PeerStatusChoices.STATUS_CONNECTED:
+            if peer.status == PeerStatusChoices.STATUS_CONNECTED:
                 await self.emit_disconnect(client, peer)
             return False
-        elif peer.peer_type == ProtocolType.XRAY:
+        elif peer.type == ProtocolType.XRAY:
             if self.xray.is_connected(peer):
-                if peer.peer_status == PeerStatusChoices.STATUS_DISCONNECTED:
+                if peer.status == PeerStatusChoices.STATUS_DISCONNECTED:
                     await self.emit_connect(client, peer)
                 return True
 
-            if peer.peer_status == PeerStatusChoices.STATUS_CONNECTED:
+            if peer.status == PeerStatusChoices.STATUS_CONNECTED:
                 await self.emit_disconnect(client, peer)
             return False
 
@@ -120,13 +127,15 @@ class ConnectionEvents:
 
         Updates Client status to `ClientStatusChoices.STATUS_CONNECTED`
         and Peer status to `PeerStatusChoices.STATUS_DISCONNECTED`"""
-        new_time = datetime.datetime.now() + datetime.timedelta(hours=self.active_hours)
-        client.set_peer_timer(peer.peer_id, new_time)
+        current_time = datetime.datetime.now()
+        new_time = current_time + datetime.timedelta(hours=self.active_hours)
+        client.set_peer_active_time(peer.peer_id, new_time)
         client.set_peer_status(peer.peer_id, PeerStatusChoices.STATUS_CONNECTED)
         client.set_status(ClientStatusChoices.STATUS_CONNECTED)
         # avoid triggering connection event multiple times
-        peer.peer_status = PeerStatusChoices.STATUS_CONNECTED
-        peer.peer_timer = new_time
+        peer.status = PeerStatusChoices.STATUS_CONNECTED
+        peer.active_until = new_time
+        peer.last_connected_at = current_time
         await self.connected.trigger(client, peer)
 
     async def emit_disconnect(self, client: Client, peer: BasePeer):
@@ -136,7 +145,7 @@ class ConnectionEvents:
         and Peer status to `PeerStatusChoices.STATUS_DISCONNECTED`"""
         client.set_peer_status(peer.peer_id, PeerStatusChoices.STATUS_DISCONNECTED)
         # avoid triggering disconnection event multiple times
-        peer.peer_status = PeerStatusChoices.STATUS_DISCONNECTED
+        peer.status = PeerStatusChoices.STATUS_DISCONNECTED
         if len(client.get_connected_peers()) == 0:
             client.set_status(ClientStatusChoices.STATUS_DISCONNECTED)
         await self.disconnected.trigger(client, peer)
@@ -144,8 +153,8 @@ class ConnectionEvents:
     async def emit_timeout_disconnect(self, client: Client, peer: BasePeer):
         client.set_peer_status(peer.peer_id, PeerStatusChoices.STATUS_TIME_EXPIRED)
         # avoid triggering the timer_observer multiple times
-        peer.peer_status = PeerStatusChoices.STATUS_TIME_EXPIRED
-        match peer.peer_type:
+        peer.status = PeerStatusChoices.STATUS_TIME_EXPIRED
+        match peer.type:
             case ProtocolType.WIREGUARD | ProtocolType.AMNEZIA_WIREGUARD:
                 self.wghub.disable_peer(peer)
             case ProtocolType.XRAY:
@@ -210,13 +219,13 @@ class ConnectionEvents:
                         continue
 
                     for peer in peers:
-                        if peer.peer_status in [
+                        if peer.status in [
                             PeerStatusChoices.STATUS_TIME_EXPIRED,
                             PeerStatusChoices.STATUS_BLOCKED]:
                             continue
 
                         if connected_only:
-                            if peer.peer_status == PeerStatusChoices.STATUS_CONNECTED:
+                            if peer.status == PeerStatusChoices.STATUS_CONNECTED:
                                 group.create_task(
                                     self.__check_connection(client, peer)
                                 )
@@ -293,17 +302,17 @@ class IntervalEvents:
     async def __check_users_expire_date(self):
         now = datetime.datetime.now()
         for client in ClientFactory.select_clients():
-            if not isinstance(client.userdata.expire_time, datetime.datetime) or \
+            if not isinstance(client.userdata.subscription_expiry, datetime.datetime) or \
                client.userdata.status == ClientStatusChoices.STATUS_ACCOUNT_BLOCKED:
                 continue
 
-            if client.userdata.expire_time.date() <= now.date():
+            if client.userdata.subscription_expiry.date() <= now.date():
                 core_logger.info(f"Blocking user {client.userdata.name} due to expired account.")
                 client.set_status(ClientStatusChoices.STATUS_ACCOUNT_BLOCKED)
                 peers = client.get_all_peers(protocol_specific=True)
                 disable_peers(self.wg_hub, self.xray, peers, client=client)
                 await self.expire_date_block_observer.trigger(client)
-            elif (client.userdata.expire_time - datetime.timedelta(days=1)).date() <= now.date():
+            elif (client.userdata.subscription_expiry - datetime.timedelta(days=1)).date() <= now.date():
                 core_logger.info(f"Warning user {client.userdata.name} about the expiration date.")
                 await self.expire_date_warning_observer.trigger(client)
 

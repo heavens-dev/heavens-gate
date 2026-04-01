@@ -142,20 +142,20 @@ async def disable_peer_command(message: Message):
         return
 
     client = ClientFactory(user_id=peer.user_id).get_client()
-    match peer.peer_type:
+    match peer.type:
         case ProtocolType.WIREGUARD | ProtocolType.AMNEZIA_WIREGUARD:
             wghub.disable_peer(peer)
         case ProtocolType.XRAY:
-            xray_worker.disable_peer(peer, expire_time=client.userdata.expire_time)
+            xray_worker.disable_peer(peer, expire_time=client.userdata.subscription_expiry)
         case _:
-            bot_logger.warning(f"Unknown peer type: {peer.peer_type}. Can't disable peer.")
+            bot_logger.warning(f"Unknown peer type: {peer.type}. Can't disable peer.")
             await message.answer("❌ Неподдерживаемый тип пира. Странно...")
             return
     client.set_peer_status(peer.peer_id, PeerStatusChoices.STATUS_BLOCKED)
     await message.answer("✅ Пир отключён.")
     await message.bot.send_message(
         client.userdata.user_id,
-        f"‼️ Пир {peer.peer_name} был принудительно заблокирован. Обратись к администрации, чтобы уточнить детали."
+        f"‼️ Пир {peer.name} был принудительно заблокирован. Обратись к администрации, чтобы уточнить детали."
     )
 
     with bot_logger.contextualize(peer=peer):
@@ -179,20 +179,20 @@ async def enable_peer_command(message: Message):
         return
 
     client = ClientFactory(user_id=peer.user_id).get_client()
-    match peer.peer_type:
+    match peer.type:
         case ProtocolType.WIREGUARD | ProtocolType.AMNEZIA_WIREGUARD:
             wghub.enable_peer(peer)
         case ProtocolType.XRAY:
-            xray_worker.enable_peer(peer, expire_time=client.userdata.expire_time)
+            xray_worker.enable_peer(peer, expire_time=client.userdata.subscription_expiry)
         case _:
-            bot_logger.warning(f"Unknown peer type: {peer.peer_type}. Can't enable peer.")
+            bot_logger.warning(f"Unknown peer type: {peer.type}. Can't enable peer.")
             await message.answer("❌ Неподдерживаемый тип пира. Странно...")
             return
     client.set_peer_status(peer.peer_id, PeerStatusChoices.STATUS_DISCONNECTED)
     await message.answer("✅ Пир включён.")
     await message.bot.send_message(
         client.userdata.user_id,
-        f"‼️ Пир {peer.peer_name} был разблокирован. Можешь начать пользоваться в течение короткого времени."
+        f"‼️ Пир {peer.name} был разблокирован. Можешь начать пользоваться в течение короткого времени."
     )
 
     with bot_logger.contextualize(peer=peer):
@@ -213,10 +213,10 @@ async def delete_peer(message: Message):
         await message.answer("❌ Пир не найден.")
         return
 
-    if peer.peer_type in (ProtocolType.WIREGUARD, ProtocolType.AMNEZIA_WIREGUARD):
+    if peer.type in (ProtocolType.WIREGUARD, ProtocolType.AMNEZIA_WIREGUARD):
         wghub.delete_peer(peer)
         ip_queue.release_ip(peer.shared_ips)
-    elif peer.peer_type == ProtocolType.XRAY:
+    elif peer.type == ProtocolType.XRAY:
         xray_worker.delete_peer(peer)
 
     await message.answer("✅ Пир был успешно удалён.")

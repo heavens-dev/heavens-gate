@@ -3,8 +3,9 @@ from typing import Any, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from core.db.enums import ClientStatusChoices, PeerStatusChoices, ProtocolType
-from core.db.models import PeersTableModel
+from core.db.enums import (ClientStatusChoices, PeerStatusChoices,
+                           ProtocolType, SubscriptionType)
+from core.db.models import PeerModel
 
 
 class User(BaseModel):
@@ -12,9 +13,12 @@ class User(BaseModel):
 
     user_id: Union[int, str]
     name: str
-    registered_at: datetime
     status: ClientStatusChoices
-    expire_time: Optional[datetime] = Field(default=None)
+    registered_at: datetime
+    subscription_type: Optional[SubscriptionType] = Field(default=None)
+    subscription_expiry: Optional[datetime] = Field(default=None)
+
+    vless_sub_token: Optional[str] = Field(default=None)
 
 
 class BasePeer(BaseModel):
@@ -28,10 +32,10 @@ class BasePeer(BaseModel):
         user_id (Union[int, str]): The identifier of the user associated with this peer.
         peer_id (int, optional): The identifier for the peer.
         Automatically sets to `id` if not provided.
-        peer_name (str): The name or identifier for the peer.
-        peer_type (ProtocolType): The protocol type of the peer.
-        peer_status (PeerStatusChoices): The current status of the peer.
-        peer_timer (datetime, optional): Timestamp for peer-related timing operations.
+        name (str): The name or identifier for the peer.
+        type (ProtocolType): The protocol type of the peer.
+        status (PeerStatusChoices): The current status of the peer.
+        active_until (datetime, optional): Timestamp for peer-related timing operations.
         Defaults to None.
 
     Note:
@@ -45,23 +49,26 @@ class BasePeer(BaseModel):
     id: int = Field()
     user_id: Union[int, str] = Field()
     peer_id: Optional[int] = Field(default=None)
-    """`peer_id` is the real id of the peer from PeersTableModel, not local from it's table"""
+    """`peer_id` is the real id of the peer from Peers table, not local from it's table"""
 
-    peer_name: str = Field()
-    peer_type: ProtocolType = Field()
-    peer_status: PeerStatusChoices = Field()
-    peer_timer: Optional[datetime] = Field(default=None)
+    name: str = Field()
+    type: ProtocolType = Field()
+    status: PeerStatusChoices = Field()
+    active_until: Optional[datetime] = Field(default=None)
+    last_connected_at: Optional[datetime] = Field(default=None)
+    """Timestamp for the last successful connection check event."""
 
     @model_validator(mode="before")
     @classmethod
     def apply_peer_fields(cls, data):
-        if not isinstance(data, (dict, PeersTableModel)):
-            if hasattr(data, "peer") and issubclass(data.peer.__class__, PeersTableModel):
+        if not isinstance(data, (dict, PeerModel)):
+            if hasattr(data, "peer") and issubclass(data.peer.__class__, PeerModel):
                 data.user_id = data.peer.user_id
-                data.peer_name = data.peer.peer_name
-                data.peer_type = data.peer.peer_type
-                data.peer_status = data.peer.peer_status
-                data.peer_timer = data.peer.peer_timer
+                data.name = data.peer.name
+                data.type = data.peer.type
+                data.status = data.peer.status
+                data.active_until = data.peer.active_until
+                data.last_connected_at = data.peer.last_connected_at
         return data
 
     def model_post_init(self, __context: Any) -> None:
@@ -110,3 +117,5 @@ class XrayPeer(BasePeer):
     # Xray fields
     inbound_id: int
     flow: str
+    hash_id: str
+    """Unique hash ID for the peer, used for identification in Xray. Generated as a URL-safe token."""

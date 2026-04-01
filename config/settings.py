@@ -68,7 +68,10 @@ class Config:
             password=self.cfg.get("Xray", "password"),
             token=self.cfg.get("Xray", "token", fallback=None),
             tls=self.cfg.getboolean("Xray", "tls", fallback=True),
-            inbound_id=self.cfg.getint("Xray", "inbound_id", fallback=1)
+            inbound_id=self.cfg.getint("Xray", "inbound_id", fallback=1),
+            sub_domain=self.cfg.get("Xray", "sub_domain", fallback=None),
+            sub_port=self.cfg.get("Xray", "sub_port", fallback=None),
+            sub_path=self.cfg.get("Xray", "sub_path", fallback=None)
         )
 
     def write_changes(self) -> bool:
@@ -149,6 +152,9 @@ class Config:
                 inbound_id: int,
                 token: Optional[str] = None,
                 tls: bool = True,
+                sub_domain: Optional[str] = None,
+                sub_port: Optional[int] = None,
+                sub_path: Optional[str] = None
             ):
             self.host = host
             self.port = port
@@ -158,6 +164,9 @@ class Config:
             self.inbound_id = inbound_id
             self.token = token
             self.tls = tls
+            self.sub_domain = sub_domain
+            self.sub_port = sub_port
+            self.sub_path = sub_path
 
     class Core:
         def __init__(self,
@@ -182,3 +191,11 @@ class Config:
             self.prometheus_update_interval = prometheus_update_interval
             self.prometheus_auth_username = prometheus_auth_username
             self.prometheus_auth_password = prometheus_auth_password
+
+        def is_time_limit_disabled(self) -> bool:
+            """Checks if time limitation for all peers is disabled (peer_active_time equals to 0)
+
+            Returns:
+                bool: True if peer_active_time == 0, False otherwise
+            """
+            return self.peer_active_time == 0

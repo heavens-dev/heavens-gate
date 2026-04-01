@@ -11,6 +11,7 @@ from bot.utils.states import ContactAdminStates, RenamePeerStates
 from bot.utils.user_helper import (get_user_data_string,
                                    unblock_timeout_connections)
 from core.db.db_works import ClientFactory
+from core.db.enums import SubscriptionType
 
 router = Router(name="user")
 router.message.middleware.register(LoggingMiddleware())
@@ -72,10 +73,28 @@ async def contact(message: Message, state: FSMContext):
 async def whats_new(message: Message):
     msg = """<b>Что нового?</b>
 
-- Поддержка XRay. Поскольку (Amnezia) Wireguard часто не работает на мобильных провайдерах, мы рекомендуем использовать XRay в случае, когда Wireguard не работает. Учитывай, что этот протокол медленнее, чем Wireguard.
-- Улучшенный интерфейс. Чтобы не путаться в куче конфигов, теперь все подключения будут специально проименованы, чтобы ты мог легко их различать.
-- Рефакторинг кода. Мы переписали часть кода, чтобы он стал более читабельным и понятным. Теперь мы можем добавлять новые функции быстрее и проще.
-- Обработка ошибок. Теперь бот будет обрабатывать ошибки в командах и выдавать более понятные сообщения, а также информировать админов мгновенно, если что-то пойдёт не так. Ну или будет стараться так делать.
+<blockquote> 🌇 <b>Новые подписки</b></blockquote>
+Мы предоставляем теперь отдельный доступ к обходу белых списков в подписке Heaven's Gate ☀️ Clear. Классическая подписка также никуда не пропала, и все клиенты по умолчанию остаются именно на ней.
+
+<blockquote> 🌐 <b>Подписки VLess</b></blockquote>
+Теперь для доступа к нескольким конфигурациям XRay ты можешь использовать одну ссылку на подписку VLess. Подписки обновляют конфигурации, если они как-либо изменяются, так что тебе не нужно беспокоиться о том, что конфиг может устареть.
+
+<blockquote> 🛜 <b>Heaven's Relay</b></blockquote>
+Головной сервер Relay теперь является частью основной инфраструктуры. Это значит, что мы сможем добавлять новые локации быстрее, а ты сможешь выбирать, к какой локации подключаться без необходимости стучаться к нам за новым конфигом.
+(доступно временно только для клиентов с подпиской ☀️ Clear)
+
+У нас всё ещё есть планы по добавлению новых функций, и это не все перечисленные нововведения.
+Спасибо, что остаёшься с нами. Чистого неба над головой, и свободного и быстрого интернета! 🩵
 """
+
+    await message.answer(msg)
+
+@router.message(Command("about_sub"))
+async def about_subscription(message: Message):
+    msg = "<b>Типы подписок:</b>"
+
+    for subscription_type in SubscriptionType:
+        msg += f"<blockquote>{SubscriptionType.to_string(subscription_type)}</blockquote>\n"
+        msg += f"{SubscriptionType.description(subscription_type)}\n\n"
 
     await message.answer(msg)

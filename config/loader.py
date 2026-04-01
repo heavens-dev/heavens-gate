@@ -7,7 +7,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from config.settings import Config
 from core.db.db_works import ClientFactory
 from core.db.models import init_db
-from core.logs import core_logger, init_file_loggers
+from core.logs import add_loggers, core_logger
 from core.monitoring.monitor import PrometheusMonitor
 from core.utils.ip_utils import IPQueue, generate_ip_addresses
 from core.watchdog.events import ConnectionEvents, IntervalEvents
@@ -25,12 +25,14 @@ wireguard_server_config = cfg.get_wireguard_server_config()
 core_cfg = cfg.get_core_config()
 xray_cfg = cfg.get_xray_server_config()
 
+add_loggers(core_cfg.logs_path, is_debug=cfg.debug)
+
 if cfg.debug:
     core_logger.warning("DEBUG MODE IS ENABLED! Disable it in production! Every message will be logged.")
 if cfg.is_canary:
     core_logger.warning("Canary version is enabled! Disable it on production.")
-
-init_file_loggers(core_cfg.logs_path, is_debug=cfg.debug)
+if core_cfg.is_time_limit_disabled():
+    core_logger.info("Time limitation for peers is disabled.")
 
 RESERVED_IP_ADDRESSES = [
     wireguard_server_config.user_ip + ".0",
@@ -60,7 +62,10 @@ xray_worker = XrayWorker(
     xray_cfg.username,
     xray_cfg.password,
     xray_cfg.token,
-    xray_cfg.tls
+    xray_cfg.tls,
+    xray_cfg.sub_domain,
+    xray_cfg.sub_port,
+    xray_cfg.sub_path
 )
 
 try:

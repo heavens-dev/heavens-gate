@@ -59,3 +59,30 @@ class ProtocolType(StrEnum):
     WIREGUARD = "wg"
     AMNEZIA_WIREGUARD = "awg"
     XRAY = "xray"
+
+
+class SubscriptionType(StrEnum):
+    DEFAULT = "Default"
+    CLEAR = "Clear"
+
+    @staticmethod
+    def to_string(subscription: Type["SubscriptionType"]) -> str:
+        match subscription:
+            case subscription.DEFAULT:
+                return "⛅ Classic"
+            case subscription.CLEAR:
+                return "☀️ Clear"
+            case _:
+                return "Неизвестный тип подписки"
+
+    @staticmethod
+    def description(subscription: Type["SubscriptionType"]) -> str:
+        match subscription:
+            case subscription.DEFAULT:
+                return "Классическая подписка. Даёт полный доступ к сервису Heaven's Gate и иностранным VPN серверам.\n" \
+                "Включает в себя возможность пользоваться тремя пирами Wireguard и одной конфигурацией XRay."
+            case subscription.CLEAR:
+                return "Подписка, включающая в себя конфигурацию XRay с обходом белых списков и раздельным туннелированием, а также весь функционал классической подписки.\n" \
+                "⚠️ На конфигурации, созданные для этой подписки может быть установлен лимит по скорости и трафику."
+            case _:
+                return "Нет описания для этого типа подписки."
