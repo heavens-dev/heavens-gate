@@ -1,11 +1,15 @@
+import asyncio
 import datetime
 import re
 import secrets
+import threading
 from typing import Optional
 from urllib.parse import quote
 
 from py3xui import Api
 from py3xui.client import Client
+from remnawave import RemnawaveSDK
+from remnawave.models import CreateUserRequestDto
 from requests.exceptions import JSONDecodeError
 
 from core.db.enums import PeerStatusChoices
@@ -25,21 +29,28 @@ class XrayWorker:
             tls: bool = True,
             sub_domain: Optional[str] = None,
             sub_port: Optional[int] = None,
-            sub_path: Optional[str] = None
+            sub_path: Optional[str] = None,
+            remnawave_token: Optional[str] = None,
+            remnawave_base_url: Optional[str] = None
         ):
         self.host = host
         self.port = port
         host = host + ':' + port + (f"/{web_path}/" if web_path else '')
-        self.api = Api(host, username, password, token, use_tls_verify=tls)
+        self.__api = Api(host, username, password, token, use_tls_verify=tls)
 
         self.sub_domain = sub_domain
         self.sub_port = sub_port
         self.sub_path = sub_path
 
         self.sub_host = f"{self.sub_domain}:{self.sub_port}/{self.sub_path}"
+        self.__remnawave = None
 
         if not self.__login():
             raise ValueError("Failed to login to 3x-ui API. Check your credentials.")
+
+        if remnawave_token and remnawave_base_url:
+            self.__remnawave_login(remnawave_token, remnawave_base_url)
+            core_logger.info("Successfully authenticated with Remnawave.")
 
         core_logger.info("Successfully logged into 3x-ui.")
 
@@ -47,8 +58,39 @@ class XrayWorker:
     def generate_subscription_token() -> str:
         return secrets.token_urlsafe(8)
 
+    @staticmethod
+    def _run_async(coro):
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(coro)
+
+        result = {"value": None, "error": None}
+
+        def runner():
+            try:
+                result["value"] = asyncio.run(coro)
+            except Exception as e:
+                result["error"] = e
+
+        thread = threading.Thread(target=runner, daemon=True)
+        thread.start()
+        thread.join()
+
+        if result["error"] is not None:
+            raise result["error"]
+
+        return result["value"]
+
     def get_subscription_link(self, sub_token: str) -> str:
         return f"{self.sub_host}/{sub_token}"
+
+    def __remnawave_login(self, token: str, base_url: str) -> None:
+        try:
+            self.__remnawave = RemnawaveSDK(token=token, base_url=base_url)
+        except Exception as e:
+            core_logger.error(f"Failed to authenticate with Remnawave: {e}")
+            return None
 
     def __login(self) -> bool:
         """
@@ -61,7 +103,7 @@ class XrayWorker:
             ValueError: If the login fails, typically due to invalid credentials.
         """
         try:
-            self.api.login()
+            self.__api.login()
         except ValueError as e: # typically raised when login fails due to invalid credentials
             return False
         return True
@@ -90,7 +132,7 @@ class XrayWorker:
         )
 
     def get_connection_string(self, peer: XrayPeer):
-        inbound = self.api.inbound.get_by_id(peer.inbound_id)
+        inbound = self.__api.inbound.get_by_id(peer.inbound_id)
 
         inbound_reality_settings: dict = inbound.stream_settings.reality_settings.get("settings")
         inbound_external_proxy: list = inbound.stream_settings.external_proxy
@@ -149,7 +191,7 @@ class XrayWorker:
                 client.sub_id = sub_token
             clients.append(client)
 
-        self.api.client.add(inbound_id, clients)
+        self.__api.client.add(inbound_id, clients)
 
         with core_logger.contextualize(xray_peers=peers):
             core_logger.info(f"Added new Xray peers.")
@@ -170,7 +212,7 @@ class XrayWorker:
             client.expiry_time = int(expiry_time.timestamp() * 1000)
         if vless_sub_token is not None:
             client.sub_id = vless_sub_token
-        self.api.client.update(client.id, client)
+        self.__api.client.update(client.id, client)
 
         with core_logger.contextualize(xray_peer=peer):
             core_logger.info(f"Updated Xray peer.")
@@ -178,7 +220,7 @@ class XrayWorker:
     @core_logger.catch()
     def delete_peer(self, peer: XrayPeer) -> None:
         client = self.peer_to_client(peer)
-        self.api.client.delete(client.inbound_id, client.id)
+        self.__api.client.delete(client.inbound_id, client.id)
 
         with core_logger.contextualize(xray_peer=peer):
             core_logger.info(f"Deleted Xray peer.")
@@ -186,7 +228,7 @@ class XrayWorker:
     @core_logger.catch()
     def is_connected(self, peer: XrayPeer) -> bool:
         try:
-            online_clients = self.api.client.online()
+            online_clients = self.__api.client.online()
             for client in online_clients:
                 if client == peer.name:
                     return True
@@ -209,7 +251,7 @@ class XrayWorker:
         client.enable = True
         if expire_time is not None:
             client.expiry_time = int(expire_time.timestamp() * 1000)
-        self.api.client.update(peer.peer_id, client)
+        self.__api.client.update(peer.peer_id, client)
 
     @core_logger.catch()
     def disable_peer(self, peer: XrayPeer, expire_time: Optional[datetime.datetime] = None) -> None:
@@ -217,4 +259,4 @@ class XrayWorker:
         client.enable = False
         if expire_time is not None:
             client.expiry_time = int(expire_time.timestamp() * 1000)
-        self.api.client.update(peer.peer_id, client)
+        self.__api.client.update(peer.peer_id, client)

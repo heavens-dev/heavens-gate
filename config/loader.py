@@ -64,11 +64,13 @@ xray_worker = XrayWorker(
     xray_cfg.tls,
     xray_cfg.sub_domain,
     xray_cfg.sub_port,
-    xray_cfg.sub_path
+    xray_cfg.sub_path,
+    xray_cfg.remnawave_token,
+    xray_cfg.remnawave_base_url
 )
 
 try:
-    inbound = xray_worker.api.inbound.get_by_id(xray_cfg.inbound_id)
+    inbound = xray_worker.__api.inbound.get_by_id(xray_cfg.inbound_id)
     with core_logger.contextualize(
         remark=inbound.remark,
         is_enabled=inbound.enable,

@@ -66,7 +66,9 @@ class Config:
             inbound_id=self.cfg.getint("Xray", "inbound_id", fallback=1),
             sub_domain=self.cfg.get("Xray", "sub_domain", fallback=None),
             sub_port=self.cfg.get("Xray", "sub_port", fallback=None),
-            sub_path=self.cfg.get("Xray", "sub_path", fallback=None)
+            sub_path=self.cfg.get("Xray", "sub_path", fallback=None),
+            remnawave_token=self.cfg.get("Xray", "remnawave_api_key", fallback=None),
+            remnawave_base_url=self.cfg.get("Xray", "remnawave_host", fallback=None)
         )
 
     def write_changes(self) -> bool:
@@ -149,7 +151,9 @@ class Config:
                 tls: bool = True,
                 sub_domain: Optional[str] = None,
                 sub_port: Optional[int] = None,
-                sub_path: Optional[str] = None
+                sub_path: Optional[str] = None,
+                remnawave_token: Optional[str] = None,
+                remnawave_base_url: Optional[str] = None
             ):
             self.host = host
             self.port = port
@@ -162,6 +166,8 @@ class Config:
             self.sub_domain = sub_domain
             self.sub_port = sub_port
             self.sub_path = sub_path
+            self.remnawave_token = remnawave_token
+            self.remnawave_base_url = remnawave_base_url
 
     class Core:
         def __init__(self,
