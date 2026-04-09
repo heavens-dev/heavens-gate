@@ -1,4 +1,5 @@
 import asyncio
+import atexit
 import datetime
 import re
 import secrets
@@ -10,14 +11,16 @@ from py3xui import Api
 from py3xui.client import Client
 from remnawave import RemnawaveSDK
 from remnawave.exceptions import NotFoundError
-from remnawave.models import CreateUserRequestDto, UpdateUserRequestDto
+from remnawave.models import (CreateUserRequestDto,
+                              GetSubscriptionByUUIDResponseDto,
+                              UpdateUserRequestDto)
 from requests.exceptions import JSONDecodeError
 
 from core.db.enums import PeerStatusChoices
 from core.db.model_serializer import User, XrayPeer
 from core.db.serializer_extensions import SerializerExtensions
 from core.logs import core_logger
-from core.utils.uuid_utils import generate_deterministic_uuid
+from core.utils.uuid_utils import generate_deterministic_uuid_string
 
 
 class XrayWorker:
@@ -47,6 +50,11 @@ class XrayWorker:
 
         self.sub_host = f"{self.sub_domain}:{self.sub_port}/{self.sub_path}"
         self.remnawave = None
+        self._async_loop: Optional[asyncio.AbstractEventLoop] = None
+        self._async_loop_thread: Optional[threading.Thread] = None
+        self._async_loop_ready = threading.Event()
+        self._async_loop_lock = threading.Lock()
+        atexit.register(self._stop_async_loop)
 
         if not self.__login():
             raise ValueError("Failed to login to 3x-ui API. Check your credentials.")
@@ -61,32 +69,70 @@ class XrayWorker:
     def generate_subscription_token() -> str:
         return secrets.token_urlsafe(8)
 
-    @staticmethod
-    def _run_async(coro):
-        try:
-            asyncio.get_running_loop()
-        except RuntimeError:
-            return asyncio.run(coro)
+    def _run_async(self, coro):
+        self._ensure_async_loop()
+        if self._async_loop is None:
+            raise RuntimeError("Background async loop is not initialized.")
 
-        result = {"value": None, "error": None}
+        return asyncio.run_coroutine_threadsafe(coro, self._async_loop).result()
 
-        def runner():
-            try:
-                result["value"] = asyncio.run(coro)
-            except Exception as e:
-                result["error"] = e
+    def _ensure_async_loop(self) -> None:
+        loop = self._async_loop
+        if loop is not None and loop.is_running() and not loop.is_closed():
+            return
 
-        thread = threading.Thread(target=runner, daemon=True)
-        thread.start()
-        thread.join()
+        with self._async_loop_lock:
+            loop = self._async_loop
+            if loop is not None and loop.is_running() and not loop.is_closed():
+                return
 
-        if result["error"] is not None:
-            raise result["error"]
+            self._async_loop_ready.clear()
 
-        return result["value"]
+            def loop_runner() -> None:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                self._async_loop = loop
+                self._async_loop_ready.set()
+
+                loop.run_forever()
+
+                pending = asyncio.all_tasks(loop)
+                for task in pending:
+                    task.cancel()
+                if pending:
+                    loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+
+                loop.close()
+
+            self._async_loop_thread = threading.Thread(
+                target=loop_runner,
+                daemon=True,
+                name="xray-worker-async-loop"
+            )
+            self._async_loop_thread.start()
+
+        if not self._async_loop_ready.wait(timeout=5):
+            raise RuntimeError("Failed to start background async loop.")
+
+    def _stop_async_loop(self) -> None:
+        loop = self._async_loop
+        if loop is None or loop.is_closed() or not loop.is_running():
+            return
+
+        loop.call_soon_threadsafe(loop.stop)
 
     def get_subscription_link(self, sub_token: str) -> str:
         return f"{self.sub_host}/{sub_token}"
+
+    def remnawave_get_subscription_link(self, user: User) -> str:
+        try:
+            sub: GetSubscriptionByUUIDResponseDto = self._run_async(self.remnawave.subscriptions.get_subscription_by_uuid(
+                uuid=generate_deterministic_uuid_string(user.user_id)
+            ))
+            return sub.subscription_url
+        except Exception as e:
+            core_logger.error(f"Failed to get subscription with Remnawave: {e}")
+            return None
 
     def __remnawave_login(self, token: str, base_url: str) -> None:
         try:
@@ -290,7 +336,7 @@ class XrayWorker:
         new_users_count = 0
         for user in users:
             try:
-                self._run_async(self.remnawave.users.get_user(generate_deterministic_uuid(str(user.user_id))))
+                self._run_async(self.remnawave.users.get_user_by_uuid(generate_deterministic_uuid_string(str(user.user_id))))
             except NotFoundError:
                 core_logger.warning(f"User {user.user_id} not found in Remnawave during verification. Attempting to create.")
                 self.remnawave_create_user(user)
@@ -303,7 +349,7 @@ class XrayWorker:
                 CreateUserRequestDto(
                     username=userdata.name,
                     expire_at=userdata.subscription_expiry,
-                    uuid=generate_deterministic_uuid(str(userdata.user_id))
+                    uuid=generate_deterministic_uuid_string(str(userdata.user_id))
                 )
             ))
             core_logger.info(f"Successfully created user {userdata.user_id} in Remnawave.")
@@ -316,7 +362,7 @@ class XrayWorker:
         try:
             self._run_async(self.remnawave.users.update_user(
                 UpdateUserRequestDto(
-                    user_id=generate_deterministic_uuid(str(user.user_id)),
+                    user_id=generate_deterministic_uuid_string(str(user.user_id)),
                     **kwargs
                 )
             ))

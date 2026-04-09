@@ -31,6 +31,7 @@ def get_client_by_id_or_ip(user_id: Union[str, int]) -> tuple[Optional[Client], 
         return None, f"❌ Пользователь <code>{user_id}</code> не найден."
     return client, None
 
+# TODO: make it async
 def get_user_data_string(client: Client, show_peer_ids: bool = False) -> list[str]:
     """Returns human-readable data about User. Recommended to use `parse_mode="HTML"`.
 
@@ -74,6 +75,7 @@ def get_user_data_string(client: Client, show_peer_ids: bool = False) -> list[st
         subscription_type = "❌ Не оплачено"
 
     if xray_worker.remnawave:
+        # TODO: make it async
         link = xray_worker.remnawave_get_subscription_link(client.userdata)
     elif has_xray_peers:
         link = xray_worker.get_subscription_link(client.userdata.vless_sub_token)

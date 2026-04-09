@@ -256,5 +256,5 @@ async def verify_remnawave_users(message: Message):
         return
 
     msg = await message.answer("🔂 Запущена проверка пользователей Remnawave...")
-    xray_worker.remnawave_verify_users()
-    await msg.edit_text("✅ Задание завершено!")
+    new_users: int = xray_worker.remnawave_verify_users([user.userdata for user in ClientFactory.select_clients()])
+    await msg.edit_text(f"✅ Задание завершено. Создано пользователей: {new_users}")
