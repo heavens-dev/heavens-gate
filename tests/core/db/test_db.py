@@ -1,6 +1,8 @@
 import pytest
 
 from core.db.db_works import Client, ClientFactory
+from core.db.models import PeerModel
+from core.db.serializer_extensions import SerializerExtensions
 
 
 def test_create_client(db):
@@ -74,3 +76,30 @@ def test_add_xray_peer(db):
     assert peer.flow == "flow"
     assert peer.inbound_id == 123
     assert peer.hash_id is not None
+
+
+def test_serializer_extensions_get_user_from_peer_model(db):
+    client, _ = ClientFactory(user_id=777).get_or_create_client(name="serializer_user")
+    peer = client.add_wireguard_peer(shared_ips="10.0.0.7/32")
+
+    assert peer is not None
+
+    peer_model = PeerModel.get_by_id(peer.peer_id)
+    user = SerializerExtensions.get_user_from_peer_model(peer_model)
+
+    assert user is not None
+    assert user.user_id == "777"
+    assert user.name == "serializer_user"
+
+
+def test_serializer_extensions_get_user_from_serialized_peer(db):
+    client, _ = ClientFactory(user_id=778).get_or_create_client(name="serialized_peer_user")
+    peer = client.add_wireguard_peer(shared_ips="10.0.0.8/32")
+
+    assert peer is not None
+
+    user = SerializerExtensions.get_user_from_peer(peer)
+
+    assert user is not None
+    assert user.user_id == "778"
+    assert user.name == "serialized_peer_user"

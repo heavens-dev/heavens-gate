@@ -339,7 +339,7 @@ class Client(BaseModel):
             When `protocol_specific` is True, returns a concatenated list of `WireguardPeer` and `XrayPeer` objects.
         """
         if protocol_specific:
-            return self.get_wireguard_peers(is_amnezia=True) + self.get_xray_peers()
+            return self.get_wireguard_peers(is_amnezia=True) # + self.get_xray_peers() TODO: remove or adapt after xray_worker is fixed
 
         return [
             BasePeer.model_validate(model)

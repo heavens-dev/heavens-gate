@@ -73,7 +73,9 @@ def get_user_data_string(client: Client, show_peer_ids: bool = False) -> list[st
     else:
         subscription_type = "❌ Не оплачено"
 
-    if has_xray_peers:
+    if xray_worker.remnawave:
+        link = xray_worker.remnawave_get_subscription_link(client.userdata)
+    elif has_xray_peers:
         link = xray_worker.get_subscription_link(client.userdata.vless_sub_token)
     else:
         link = "Нет доступных конфигураций!"
@@ -92,7 +94,8 @@ f"""<b>Текущий статус</b>: {ClientStatusChoices.to_string(client.us
 {link}
 
 🛜 <b>Пиры</b>:
-{peers_str or '❌ Нет пиров\n'}
+Отображение временно недоступно в связи с миграцией на новый SDK.
+Воспольузйся ссылкой выше, чтобы получить доступ к конфигурациям XRay.
 """]
 
 def extend_users_subscription_time(client: Client, time_to_add: datetime.timedelta) -> bool:
@@ -109,12 +112,7 @@ def extend_users_subscription_time(client: Client, time_to_add: datetime.timedel
 
     if xray_peers := client.get_xray_peers():
         for peer in xray_peers:
-            xray_worker.update_peer(
-                peer,
-                # TODO: we need to pass this until xray_worker is fixed
-                expiry_time=client.userdata.subscription_expiry,
-                vless_sub_token=client.userdata.vless_sub_token
-            )
+            xray_worker.update_peer(peer)
 
     return True
 

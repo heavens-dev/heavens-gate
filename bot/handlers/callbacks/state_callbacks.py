@@ -37,10 +37,7 @@ async def finally_change_peer_name(message: Message, state: FSMContext):
     client = ClientFactory(user_id=user_id).get_client()
     client.change_peer_name(peer_id, new_name)
     xray_worker.update_peer(
-        ClientFactory.get_xray_peer(peer_id),
-        # TODO: we need to pass this until xray_worker is fixed
-        expiry_time=client.userdata.subscription_expiry,
-        vless_sub_token=client.userdata.vless_sub_token
+        ClientFactory.get_xray_peer(peer_id)
     )
     await state.clear()
     await message.answer("✅ Конфиг был успешно переименован!")

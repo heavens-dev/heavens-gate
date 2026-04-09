@@ -37,7 +37,7 @@ async def cmd_start(message: Message) -> None:
 
         if created:
             if cfg.is_canary:
-                ...
+                xray_worker.remnawave_create_user(client.userdata)
 
     keyboard = None
     faq_str = ""

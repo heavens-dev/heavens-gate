@@ -248,3 +248,13 @@ async def listen_clients(message: Message):
     )
     await connections_observer.run_check_connections(connected_only)
     await msg.edit_text("✅ Задание завершено!")
+
+@router.message(Command("verify_remnawave_users"))
+async def verify_remnawave_users(message: Message):
+    if not xray_worker.remnawave:
+        await message.answer("❌ Сервис Remnawave недоступен. Эта функция недоступна.")
+        return
+
+    msg = await message.answer("🔂 Запущена проверка пользователей Remnawave...")
+    xray_worker.remnawave_verify_users()
+    await msg.edit_text("✅ Задание завершено!")

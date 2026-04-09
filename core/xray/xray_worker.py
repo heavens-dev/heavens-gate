@@ -9,12 +9,15 @@ from urllib.parse import quote
 from py3xui import Api
 from py3xui.client import Client
 from remnawave import RemnawaveSDK
-from remnawave.models import CreateUserRequestDto
+from remnawave.exceptions import NotFoundError
+from remnawave.models import CreateUserRequestDto, UpdateUserRequestDto
 from requests.exceptions import JSONDecodeError
 
 from core.db.enums import PeerStatusChoices
-from core.db.model_serializer import XrayPeer
+from core.db.model_serializer import User, XrayPeer
+from core.db.serializer_extensions import SerializerExtensions
 from core.logs import core_logger
+from core.utils.uuid_utils import generate_deterministic_uuid
 
 
 class XrayWorker:
@@ -36,14 +39,14 @@ class XrayWorker:
         self.host = host
         self.port = port
         host = host + ':' + port + (f"/{web_path}/" if web_path else '')
-        self.__api = Api(host, username, password, token, use_tls_verify=tls)
+        self.api = Api(host, username, password, token, use_tls_verify=tls)
 
         self.sub_domain = sub_domain
         self.sub_port = sub_port
         self.sub_path = sub_path
 
         self.sub_host = f"{self.sub_domain}:{self.sub_port}/{self.sub_path}"
-        self.__remnawave = None
+        self.remnawave = None
 
         if not self.__login():
             raise ValueError("Failed to login to 3x-ui API. Check your credentials.")
@@ -87,7 +90,7 @@ class XrayWorker:
 
     def __remnawave_login(self, token: str, base_url: str) -> None:
         try:
-            self.__remnawave = RemnawaveSDK(token=token, base_url=base_url)
+            self.remnawave = RemnawaveSDK(token=token, base_url=base_url)
         except Exception as e:
             core_logger.error(f"Failed to authenticate with Remnawave: {e}")
             return None
@@ -103,26 +106,48 @@ class XrayWorker:
             ValueError: If the login fails, typically due to invalid credentials.
         """
         try:
-            self.__api.login()
+            self.api.login()
         except ValueError as e: # typically raised when login fails due to invalid credentials
             return False
         return True
 
     @staticmethod
-    def peer_to_client(peer: XrayPeer) -> Client:
+    def peer_to_client(peer: XrayPeer, needs_user_fields: bool = False) -> Client:
         """
         Convert an XrayPeer object to a Client object.
 
         This static method transforms an XrayPeer instance into a XRay Client instance,
         mapping the appropriate fields between the two models.
 
+        Note:
+            `needs_user_fields` should be used when the resulting `Client` object requires user-related fields such as `expiry_time` and `sub_id` and `Client` object will be used for update API calls.
+            The thing is that missing fields will be assumed to be `None`, and on update API call these `None` values **will overwrite existing values** in the API,\
+            which can lead to unintended consequences (like removing expiry time or subscription ID from a peer that previously had it).
+
         Args:
             peer (XrayPeer): The XrayPeer object to convert.
+            needs_user_fields (bool): Flag indicating whether to include user-related fields
 
         Returns:
-            Client: A newly created Client object with properties derived from the XrayPeer.
+            Client: A newly created Client object with properties derived from the XrayPeer and optionally its related user data.
         """
-        # TODO: pass an expiryTime argument to Client object somehow
+        if needs_user_fields:
+            user = SerializerExtensions.get_user_from_peer(peer)
+            core_logger.debug(f"Converting XrayPeer to Client. Peer: {peer}, Resolved User: {user}")
+            if not user:
+                raise ValueError(f"Failed to resolve user for peer {peer.peer_id} with user_id {peer.user_id}. Cannot convert to Client without user data.")
+
+            return Client(
+                id=str(peer.hash_id),
+                email=peer.name,
+                enable=PeerStatusChoices.xray_enabled(peer.status),
+                flow=peer.flow,
+                inbound_id=peer.inbound_id,
+                # int(expiry_time.timestamp() * 1000)
+                expiry_time=int(user.subscription_expiry.timestamp() * 1000) if user.subscription_expiry else None,
+                sub_id=user.vless_sub_token
+            )
+
         return Client(
             id=str(peer.hash_id), # explicitly converting to string
             email=peer.name,
@@ -132,7 +157,7 @@ class XrayWorker:
         )
 
     def get_connection_string(self, peer: XrayPeer):
-        inbound = self.__api.inbound.get_by_id(peer.inbound_id)
+        inbound = self.api.inbound.get_by_id(peer.inbound_id)
 
         inbound_reality_settings: dict = inbound.stream_settings.reality_settings.get("settings")
         inbound_external_proxy: list = inbound.stream_settings.external_proxy
@@ -176,7 +201,7 @@ class XrayWorker:
             expiry_time (datetime.datetime, optional): Expiration time for the peers. Defaults to None.
             sub_token (str, optional): Subscription token for VLESS protocol. Defaults to None.
         """
-        clients = []
+        clients: list[Client] = []
 
         for peer in peers:
             if peer.inbound_id != inbound_id:
@@ -191,7 +216,7 @@ class XrayWorker:
                 client.sub_id = sub_token
             clients.append(client)
 
-        self.__api.client.add(inbound_id, clients)
+        self.api.client.add(inbound_id, clients)
 
         with core_logger.contextualize(xray_peers=peers):
             core_logger.info(f"Added new Xray peers.")
@@ -206,13 +231,13 @@ class XrayWorker:
         """
         Update an Xray peer in the API and optionally set its expiry time.
         """
-        client = self.peer_to_client(peer)
+        client = self.peer_to_client(peer, True)
 
         if expiry_time is not None:
             client.expiry_time = int(expiry_time.timestamp() * 1000)
         if vless_sub_token is not None:
             client.sub_id = vless_sub_token
-        self.__api.client.update(client.id, client)
+        self.api.client.update(client.id, client)
 
         with core_logger.contextualize(xray_peer=peer):
             core_logger.info(f"Updated Xray peer.")
@@ -220,7 +245,7 @@ class XrayWorker:
     @core_logger.catch()
     def delete_peer(self, peer: XrayPeer) -> None:
         client = self.peer_to_client(peer)
-        self.__api.client.delete(client.inbound_id, client.id)
+        self.api.client.delete(client.inbound_id, client.id)
 
         with core_logger.contextualize(xray_peer=peer):
             core_logger.info(f"Deleted Xray peer.")
@@ -228,7 +253,7 @@ class XrayWorker:
     @core_logger.catch()
     def is_connected(self, peer: XrayPeer) -> bool:
         try:
-            online_clients = self.__api.client.online()
+            online_clients = self.api.client.online()
             for client in online_clients:
                 if client == peer.name:
                     return True
@@ -247,16 +272,56 @@ class XrayWorker:
 
     @core_logger.catch()
     def enable_peer(self, peer: XrayPeer, expire_time: Optional[datetime.datetime] = None) -> None:
-        client = self.peer_to_client(peer)
+        client = self.peer_to_client(peer, True)
         client.enable = True
         if expire_time is not None:
             client.expiry_time = int(expire_time.timestamp() * 1000)
-        self.__api.client.update(peer.peer_id, client)
+        self.api.client.update(client.id, client)
 
     @core_logger.catch()
     def disable_peer(self, peer: XrayPeer, expire_time: Optional[datetime.datetime] = None) -> None:
-        client = self.peer_to_client(peer)
+        client = self.peer_to_client(peer, True)
         client.enable = False
         if expire_time is not None:
             client.expiry_time = int(expire_time.timestamp() * 1000)
-        self.__api.client.update(peer.peer_id, client)
+        self.api.client.update(client.id, client)
+
+    def remnawave_verify_users(self, users: list[User]) -> Optional[int]:
+        new_users_count = 0
+        for user in users:
+            try:
+                self._run_async(self.remnawave.users.get_user(generate_deterministic_uuid(str(user.user_id))))
+            except NotFoundError:
+                core_logger.warning(f"User {user.user_id} not found in Remnawave during verification. Attempting to create.")
+                self.remnawave_create_user(user)
+                new_users_count += 1
+        return new_users_count
+
+    def remnawave_create_user(self, userdata: User) -> bool:
+        try:
+            self._run_async(self.remnawave.users.create_user(
+                CreateUserRequestDto(
+                    username=userdata.name,
+                    expire_at=userdata.subscription_expiry,
+                    uuid=generate_deterministic_uuid(str(userdata.user_id))
+                )
+            ))
+            core_logger.info(f"Successfully created user {userdata.user_id} in Remnawave.")
+            return True
+        except Exception as e:
+            core_logger.error(f"Failed to create user in Remnawave: {e}")
+            return False
+
+    def remnawave_update_user(self, user: User, **kwargs) -> bool:
+        try:
+            self._run_async(self.remnawave.users.update_user(
+                UpdateUserRequestDto(
+                    user_id=generate_deterministic_uuid(str(user.user_id)),
+                    **kwargs
+                )
+            ))
+            core_logger.info(f"Successfully updated user {user.user_id} in Remnawave with data: {kwargs}.")
+            return True
+        except Exception as e:
+            core_logger.error(f"Failed to update user in Remnawave: {e}")
+            return False

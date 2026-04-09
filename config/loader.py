@@ -70,7 +70,7 @@ xray_worker = XrayWorker(
 )
 
 try:
-    inbound = xray_worker.__api.inbound.get_by_id(xray_cfg.inbound_id)
+    inbound = xray_worker.api.inbound.get_by_id(xray_cfg.inbound_id)
     with core_logger.contextualize(
         remark=inbound.remark,
         is_enabled=inbound.enable,
