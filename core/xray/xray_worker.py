@@ -155,6 +155,7 @@ class XrayWorker:
         try:
             self.api.login()
         except ValueError as e: # typically raised when login fails due to invalid credentials
+            core_logger.error(f"Failed to login to 3x-ui: {e}")
             return False
         return True
 
