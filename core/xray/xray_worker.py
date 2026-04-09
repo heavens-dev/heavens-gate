@@ -21,6 +21,7 @@ from core.db.model_serializer import User, XrayPeer
 from core.db.serializer_extensions import SerializerExtensions
 from core.logs import core_logger
 from core.utils.uuid_utils import generate_deterministic_uuid_string
+from core.xray.remnawave_enums import remnawave_squads_list
 
 
 class XrayWorker:
@@ -362,7 +363,7 @@ class XrayWorker:
         try:
             self._run_async(self.remnawave.users.update_user(
                 UpdateUserRequestDto(
-                    user_id=generate_deterministic_uuid_string(str(user.user_id)),
+                    uuid=generate_deterministic_uuid_string(str(user.user_id)),
                     **kwargs
                 )
             ))

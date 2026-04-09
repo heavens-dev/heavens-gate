@@ -31,6 +31,7 @@ from core.db.enums import ClientStatusChoices, ProtocolType
 from core.logs import bot_logger
 from core.utils.date_utils import parse_time
 from core.utils.peers_utils import disable_peers, enable_peers
+from core.xray.remnawave_enums import remnawave_squads_list
 
 router = Router(name="callbacks")
 
@@ -314,6 +315,14 @@ async def change_subscription_callback(callback: CallbackQuery, callback_data: U
 async def subscription_choice_callback(callback: CallbackQuery, callback_data: SubscriptionChoiceCallbackData):
     client = ClientFactory(user_id=callback_data.user_id).get_client()
     if client.set_subscription_type(callback_data.subscription):
+        if xray_worker.remnawave \
+        and not xray_worker.remnawave_update_user(
+            client.userdata,
+            # TODO: include Canary
+            active_internal_squads=remnawave_squads_list(client.userdata.subscription_type)
+        ):
+            await callback.answer("⚠️ Тип подписки изменён, но синхронизация Remnawave не удалась. Проверь логи.")
+            return
         await callback.answer(f"✅ Тип подписки изменён на {callback_data.subscription.name}.")
     else:
         await callback.answer(f"❓ Что-то пошло не так во время операции. Проверь логи.")
