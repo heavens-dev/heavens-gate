@@ -350,7 +350,7 @@ class XrayWorker:
             self._run_async(self.remnawave.users.create_user(
                 CreateUserRequestDto(
                     username=userdata.name,
-                    expire_at=userdata.subscription_expiry,
+                    expire_at=userdata.subscription_expiry or datetime.datetime.now(),
                     uuid=generate_deterministic_uuid_string(str(userdata.user_id)),
                     active_internal_squads=remnawave_squads_list(userdata.subscription_type)
                 )
