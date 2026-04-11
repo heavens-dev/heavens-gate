@@ -116,6 +116,12 @@ def extend_users_subscription_time(client: Client, time_to_add: datetime.timedel
         for peer in xray_peers:
             xray_worker.update_peer(peer)
 
+    if xray_worker.remnawave:
+        xray_worker.remnawave_update_user(
+            client.userdata,
+            expire_at=client.userdata.subscription_expiry
+        )
+
     return True
 
 @bot_logger.catch()
