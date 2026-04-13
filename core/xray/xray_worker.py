@@ -335,14 +335,27 @@ class XrayWorker:
         self.api.client.update(client.id, client)
 
     def remnawave_verify_users(self, users: list[User]) -> Optional[int]:
+        """
+        Verify that the given users exist in Remnawave, and create them if they don't.
+
+        Args:
+            users (list[User]): List of User objects to verify in Remnawave.
+
+        Returns:
+            int: Number of newly created users.
+        """
         new_users_count = 0
         for user in users:
             try:
-                self._run_async(self.remnawave.users.get_user_by_uuid(generate_deterministic_uuid_string(str(user.user_id))))
+                self._run_async(self.remnawave.users.get_user_by_uuid(
+                    generate_deterministic_uuid_string(str(user.user_id)))
+                )
             except NotFoundError:
-                core_logger.warning(f"User {user.user_id} not found in Remnawave during verification. Attempting to create.")
-                self.remnawave_create_user(user)
-                new_users_count += 1
+                core_logger.warning(
+                    f"User {user.user_id} not found in Remnawave during verification. Attempting to create."
+                )
+                if self.remnawave_create_user(user):
+                    new_users_count += 1
         return new_users_count
 
     def remnawave_create_user(self, userdata: User) -> bool:
@@ -362,6 +375,16 @@ class XrayWorker:
             return False
 
     def remnawave_update_user(self, user: User, **kwargs) -> bool:
+        """Update a user in Remnawave with given kwargs.
+        As refernce to what can be updated - see `UpdateUserRequestDto` in Remnawave SDK.
+
+        Args:
+            user (User): The user whose Remnawave record should be updated.
+            **kwargs: Arbitrary keyword arguments corresponding to fields in `UpdateUserRequestDto` that should be updated for the user.
+
+        Returns:
+            bool: True if the update was successful, False otherwise.
+        """
         try:
             self._run_async(self.remnawave.users.update_user(
                 UpdateUserRequestDto(
