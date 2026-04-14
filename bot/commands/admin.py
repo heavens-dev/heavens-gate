@@ -26,6 +26,7 @@ def get_admin_commands() -> list[BotCommand]:
         BotCommand(command="/enable_peer", description="Enables peer (wow)."),
         BotCommand(command="/delete_peer", description="Deletes peer."),
         BotCommand(command="/users", description="Get all users in paginated message."),
+        BotCommand(command="/dump", description="Export clients dump as CSV file."),
         BotCommand(command="/syncconfig", description="Syncs config file with WG."),
         BotCommand(
             command="/listen_clients",

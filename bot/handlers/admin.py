@@ -1,11 +1,14 @@
 import asyncio
+import datetime
 import os
 import sys
+import tempfile
+from pathlib import Path
 
 from aiogram import F, Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message
+from aiogram.types import BufferedInputFile, Message
 
 from bot.handlers.keyboards import (build_protocols_keyboard,
                                     build_user_actions_keyboard,
@@ -16,13 +19,14 @@ from bot.utils.inline_paginator import UsersInlineKeyboardPaginator
 from bot.utils.message_utils import preview_message
 from bot.utils.states import AddPeerStates, WhisperStates
 from bot.utils.user_helper import get_user_data_string
-from config.loader import (bot_cfg, connections_observer, ip_queue, wghub,
-                           xray_worker)
+from config.loader import (bot_cfg, cfg, connections_observer, db_cfg,
+                           ip_queue, wghub, xray_worker)
 from core.db.db_works import Client, ClientFactory
 from core.db.enums import ClientStatusChoices, PeerStatusChoices, ProtocolType
 from core.logs import bot_logger
 from core.utils.ip_utils import check_ip_address
 from core.utils.peers_utils import disable_peers, enable_peers
+from export_clients_csv import export_clients_dump
 
 router = Router(name="admin")
 router.message.filter(
@@ -30,6 +34,40 @@ router.message.filter(
 )
 router.message.middleware.register(ClientGettersMiddleware())
 router.message.middleware.register(LoggingMiddleware())
+
+
+@router.message(Command("dump"))
+async def dump_clients(message: Message):
+    layout = "canary" if cfg.is_canary else "master"
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_name = f"clients_dump_{layout}_{timestamp}.csv"
+
+    status_message = await message.answer("🗂️ Подготавливаю CSV-дамп клиентов...")
+
+    try:
+        with tempfile.TemporaryDirectory(prefix="hg_dump_") as temp_dir:
+            output_path = Path(temp_dir) / output_name
+
+            clients_count, resolved_layout, _ = await asyncio.to_thread(
+                export_clients_dump,
+                output_path=output_path,
+                db_path=db_cfg.path,
+                layout=layout,
+            )
+
+            dump_bytes = output_path.read_bytes()
+
+        await message.answer_document(
+            document=BufferedInputFile(file=dump_bytes, filename=output_name),
+            caption=(
+                f"✅ Дамп готов. Пользователей: {clients_count}. "
+                f"Режим: {resolved_layout}."
+            ),
+        )
+        await status_message.delete()
+    except Exception as exc:
+        bot_logger.exception(f"Couldn't create clients dump: {exc}")
+        await status_message.edit_text("❌ Не удалось создать дамп. Проверь логи ядра.")
 
 
 @router.message(Command("reboot"))

@@ -10,6 +10,7 @@ test.*
 .service
 get-pip.py
 *.back
+*.csv
 
 # Folders
 .vscode
