@@ -31,13 +31,13 @@ def test_add_and_get_wireguard_peers(db, default_peers):
     peers = client.get_wireguard_peers(is_amnezia=False)
 
     assert len(peers) == 2
-    assert peers[0].peer_name == default_peers["iamuser_0"].peer_name
+    assert peers[0].name == default_peers["iamuser_0"].name
     assert peers[0].shared_ips == default_peers["iamuser_0"].shared_ips
     assert peers[0].public_key == default_peers["iamuser_0"].public_key
     assert peers[0].private_key == default_peers["iamuser_0"].private_key
     assert peers[0].preshared_key == default_peers["iamuser_0"].preshared_key
 
-    assert peers[1].peer_name == default_peers["iamuser_1"].peer_name
+    assert peers[1].name == default_peers["iamuser_1"].name
     assert peers[1].shared_ips == default_peers["iamuser_1"].shared_ips
     assert peers[1].public_key == default_peers["iamuser_1"].public_key
     assert peers[1].private_key == default_peers["iamuser_1"].private_key
@@ -73,3 +73,4 @@ def test_add_xray_peer(db):
 
     assert peer.flow == "flow"
     assert peer.inbound_id == 123
+    assert peer.hash_id is not None
