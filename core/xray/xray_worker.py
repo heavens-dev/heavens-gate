@@ -1,6 +1,7 @@
 import asyncio
 import atexit
 import datetime
+import os
 import re
 import secrets
 import threading
@@ -44,6 +45,12 @@ class XrayWorker:
         self.port = port
         host = host + ':' + port + (f"/{web_path}/" if web_path else '')
         self.api = Api(host, username, password, token, use_tls_verify=tls)
+        self._3xui_mock_enabled = os.getenv("HEAVENS_GATE_3XUI_MOCK", "1").lower() not in (
+            "0",
+            "false",
+            "no",
+            "off",
+        )
 
         self.sub_domain = sub_domain
         self.sub_port = sub_port
@@ -57,14 +64,20 @@ class XrayWorker:
         self._async_loop_lock = threading.Lock()
         atexit.register(self._stop_async_loop)
 
-        if not self.__login():
+        if not self._3xui_mock_enabled and not self.__login():
             raise ValueError("Failed to login to 3x-ui API. Check your credentials.")
 
         if remnawave_token and remnawave_base_url:
             self.__remnawave_login(remnawave_token, remnawave_base_url)
             core_logger.info("Successfully authenticated with Remnawave.")
 
-        core_logger.info("Successfully logged into 3x-ui.")
+        if self._3xui_mock_enabled:
+            core_logger.warning(
+                "3x-ui API calls are mocked because HEAVENS_GATE_3XUI_MOCK is enabled. "
+                "Remnawave methods continue to use the real Remnawave API."
+            )
+        else:
+            core_logger.info("Successfully logged into 3x-ui.")
 
     @staticmethod
     def generate_subscription_token() -> str:
@@ -124,6 +137,19 @@ class XrayWorker:
 
     def get_subscription_link(self, sub_token: str) -> str:
         return f"{self.sub_host}/{sub_token}"
+
+    def _log_mocked_3xui_call(self, action: str, **context) -> None:
+        core_logger.warning(
+            f"Skipped 3x-ui API call `{action}`: 3x-ui compatibility is temporarily mocked.",
+            **context
+        )
+
+    def get_inbound_by_id(self, inbound_id: int):
+        if self._3xui_mock_enabled:
+            self._log_mocked_3xui_call("get_inbound_by_id", inbound_id=inbound_id)
+            return None
+
+        return self.api.inbound.get_by_id(inbound_id)
 
     def remnawave_get_subscription_link(self, user: User) -> str:
         try:
@@ -205,7 +231,20 @@ class XrayWorker:
         )
 
     def get_connection_string(self, peer: XrayPeer):
-        inbound = self.api.inbound.get_by_id(peer.inbound_id)
+        if self._3xui_mock_enabled:
+            user = SerializerExtensions.get_user_from_peer(peer)
+            self._log_mocked_3xui_call(
+                "get_connection_string",
+                peer_id=peer.peer_id,
+                inbound_id=peer.inbound_id,
+            )
+
+            if user and user.vless_sub_token:
+                return self.get_subscription_link(user.vless_sub_token)
+
+            return "XRay config is temporarily unavailable; use the Remnawave subscription link."
+
+        inbound = self.get_inbound_by_id(peer.inbound_id)
 
         inbound_reality_settings: dict = inbound.stream_settings.reality_settings.get("settings")
         inbound_external_proxy: list = inbound.stream_settings.external_proxy
@@ -249,6 +288,14 @@ class XrayWorker:
             expiry_time (datetime.datetime, optional): Expiration time for the peers. Defaults to None.
             sub_token (str, optional): Subscription token for VLESS protocol. Defaults to None.
         """
+        if self._3xui_mock_enabled:
+            self._log_mocked_3xui_call(
+                "add_peers",
+                inbound_id=inbound_id,
+                peer_ids=[peer.peer_id for peer in peers],
+            )
+            return
+
         clients: list[Client] = []
 
         for peer in peers:
@@ -279,6 +326,14 @@ class XrayWorker:
         """
         Update an Xray peer in the API and optionally set its expiry time.
         """
+        if self._3xui_mock_enabled:
+            self._log_mocked_3xui_call(
+                "update_peer",
+                peer_id=peer.peer_id,
+                inbound_id=peer.inbound_id,
+            )
+            return
+
         client = self.peer_to_client(peer, True)
 
         if expiry_time is not None:
@@ -292,6 +347,14 @@ class XrayWorker:
 
     @core_logger.catch()
     def delete_peer(self, peer: XrayPeer) -> None:
+        if self._3xui_mock_enabled:
+            self._log_mocked_3xui_call(
+                "delete_peer",
+                peer_id=peer.peer_id,
+                inbound_id=peer.inbound_id,
+            )
+            return
+
         client = self.peer_to_client(peer)
         self.api.client.delete(client.inbound_id, client.id)
 
@@ -300,6 +363,16 @@ class XrayWorker:
 
     @core_logger.catch()
     def is_connected(self, peer: XrayPeer) -> bool:
+        if self._3xui_mock_enabled:
+            self._log_mocked_3xui_call(
+                "is_connected",
+                peer_id=peer.peer_id,
+                inbound_id=peer.inbound_id,
+            )
+            # Preserve already-known DB state and avoid disconnecting active users just
+            # because the 3x-ui online-clients endpoint is temporarily incompatible.
+            return peer.status == PeerStatusChoices.STATUS_CONNECTED
+
         try:
             online_clients = self.api.client.online()
             for client in online_clients:
@@ -320,6 +393,14 @@ class XrayWorker:
 
     @core_logger.catch()
     def enable_peer(self, peer: XrayPeer, expire_time: Optional[datetime.datetime] = None) -> None:
+        if self._3xui_mock_enabled:
+            self._log_mocked_3xui_call(
+                "enable_peer",
+                peer_id=peer.peer_id,
+                inbound_id=peer.inbound_id,
+            )
+            return
+
         client = self.peer_to_client(peer, True)
         client.enable = True
         if expire_time is not None:
@@ -328,6 +409,14 @@ class XrayWorker:
 
     @core_logger.catch()
     def disable_peer(self, peer: XrayPeer, expire_time: Optional[datetime.datetime] = None) -> None:
+        if self._3xui_mock_enabled:
+            self._log_mocked_3xui_call(
+                "disable_peer",
+                peer_id=peer.peer_id,
+                inbound_id=peer.inbound_id,
+            )
+            return
+
         client = self.peer_to_client(peer, True)
         client.enable = False
         if expire_time is not None:
