@@ -14,7 +14,7 @@ from remnawave.exceptions import NotFoundError
 from remnawave.models import (CreateUserRequestDto,
                               GetSubscriptionByUUIDResponseDto,
                               UpdateUserRequestDto)
-from requests.exceptions import JSONDecodeError
+from requests.exceptions import HTTPError, JSONDecodeError
 
 from core.db.enums import PeerStatusChoices
 from core.db.model_serializer import User, XrayPeer
@@ -90,7 +90,15 @@ class XrayWorker:
         atexit.register(self._stop_async_loop)
 
         if not self._3xui_mock_enabled and not self.__login():
-            raise ValueError("Failed to login to 3x-ui API. Check your credentials.")
+            if remnawave_token and remnawave_base_url:
+                self._3xui_mock_enabled = True
+                self.api = _Mock3XuiApi()
+                core_logger.warning(
+                    "Failed to login to 3x-ui API; continuing with mocked 3x-ui API "
+                    "because Remnawave is configured."
+                )
+            else:
+                raise ValueError("Failed to login to 3x-ui API. Check your credentials.")
 
         if remnawave_token and remnawave_base_url:
             self.__remnawave_login(remnawave_token, remnawave_base_url)
@@ -209,7 +217,7 @@ class XrayWorker:
 
         try:
             self.api.login()
-        except ValueError as e: # typically raised when login fails due to invalid credentials
+        except (ValueError, HTTPError) as e: # typically raised when login fails due to invalid credentials or incompatible API routes
             core_logger.error(f"Failed to login to 3x-ui: {e}")
             return False
         return True
