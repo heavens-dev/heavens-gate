@@ -66,7 +66,8 @@ xray_worker = XrayWorker(
     xray_cfg.sub_port,
     xray_cfg.sub_path,
     xray_cfg.remnawave_token,
-    xray_cfg.remnawave_base_url
+    xray_cfg.remnawave_base_url,
+    xray_cfg.ignore_xui_api
 )
 
 try:

@@ -40,6 +40,9 @@ web_path=WPIDu2c198c
 username=nice
 password=cock
 tls=True
+ignore_xui_api=True
+remnawave_host=https://remnawave.example.com
+remnawave_api_key=api_key
 """)
     return path
 
@@ -79,5 +82,6 @@ def test_load_config(config_path):
     assert xray_cfg.password == "cock"
     assert xray_cfg.token is None
     assert xray_cfg.tls is True
+    assert xray_cfg.ignore_xui_api is True
     assert xray_cfg.remnawave_token == "api_key"
     assert xray_cfg.remnawave_base_url == "https://remnawave.example.com"

@@ -1,7 +1,6 @@
 import asyncio
 import atexit
 import datetime
-import os
 import re
 import secrets
 import threading
@@ -39,18 +38,14 @@ class XrayWorker:
             sub_port: Optional[int] = None,
             sub_path: Optional[str] = None,
             remnawave_token: Optional[str] = None,
-            remnawave_base_url: Optional[str] = None
+            remnawave_base_url: Optional[str] = None,
+            ignore_xui_api: bool = False
         ):
         self.host = host
         self.port = port
         host = host + ':' + port + (f"/{web_path}/" if web_path else '')
         self.api = Api(host, username, password, token, use_tls_verify=tls)
-        self._3xui_mock_enabled = os.getenv("HEAVENS_GATE_3XUI_MOCK", "1").lower() not in (
-            "0",
-            "false",
-            "no",
-            "off",
-        )
+        self._3xui_mock_enabled = ignore_xui_api
 
         self.sub_domain = sub_domain
         self.sub_port = sub_port
@@ -73,7 +68,7 @@ class XrayWorker:
 
         if self._3xui_mock_enabled:
             core_logger.warning(
-                "3x-ui API calls are mocked because HEAVENS_GATE_3XUI_MOCK is enabled. "
+                "3x-ui API calls are mocked because ignore_xui_api is enabled. "
                 "Remnawave methods continue to use the real Remnawave API."
             )
         else:

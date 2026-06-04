@@ -68,7 +68,8 @@ class Config:
             sub_port=self.cfg.get("Xray", "sub_port", fallback=None),
             sub_path=self.cfg.get("Xray", "sub_path", fallback=None),
             remnawave_token=self.cfg.get("Xray", "remnawave_api_key", fallback=None),
-            remnawave_base_url=self.cfg.get("Xray", "remnawave_host", fallback=None)
+            remnawave_base_url=self.cfg.get("Xray", "remnawave_host", fallback=None),
+            ignore_xui_api=self.cfg.getboolean("Xray", "ignore_xui_api", fallback=False)
         )
 
     def write_changes(self) -> bool:
@@ -153,7 +154,8 @@ class Config:
                 sub_port: Optional[int] = None,
                 sub_path: Optional[str] = None,
                 remnawave_token: Optional[str] = None,
-                remnawave_base_url: Optional[str] = None
+                remnawave_base_url: Optional[str] = None,
+                ignore_xui_api: bool = False
             ):
             self.host = host
             self.port = port
@@ -168,6 +170,7 @@ class Config:
             self.sub_path = sub_path
             self.remnawave_token = remnawave_token
             self.remnawave_base_url = remnawave_base_url
+            self.ignore_xui_api = ignore_xui_api
 
     class Core:
         def __init__(self,
