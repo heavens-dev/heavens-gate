@@ -203,6 +203,10 @@ class XrayWorker:
         Raises:
             ValueError: If the login fails, typically due to invalid credentials.
         """
+        if self._3xui_mock_enabled:
+            self._log_mocked_3xui_call("login")
+            return True
+
         try:
             self.api.login()
         except ValueError as e: # typically raised when login fails due to invalid credentials
