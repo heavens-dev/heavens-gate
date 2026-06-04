@@ -24,6 +24,33 @@ from core.utils.uuid_utils import generate_deterministic_uuid_string
 from core.xray.remnawave_enums import remnawave_squads_list
 
 
+class _Mock3XuiEndpoint:
+    def __getattr__(self, name):
+        def _mocked_method(*args, **kwargs):
+            core_logger.warning(
+                f"Skipped 3x-ui API call `{name}` on mocked endpoint: "
+                "3x-ui compatibility is temporarily mocked."
+            )
+
+            if name == "online":
+                return []
+            return None
+
+        return _mocked_method
+
+
+class _Mock3XuiApi:
+    def __init__(self):
+        self.client = _Mock3XuiEndpoint()
+        self.inbound = _Mock3XuiEndpoint()
+
+    def login(self):
+        core_logger.warning(
+            "Skipped 3x-ui API call `login`: 3x-ui compatibility is temporarily mocked."
+        )
+        return True
+
+
 class XrayWorker:
     def __init__(
             self,
@@ -44,8 +71,11 @@ class XrayWorker:
         self.host = host
         self.port = port
         host = host + ':' + port + (f"/{web_path}/" if web_path else '')
-        self.api = Api(host, username, password, token, use_tls_verify=tls)
         self._3xui_mock_enabled = ignore_xui_api
+        if self._3xui_mock_enabled:
+            self.api = _Mock3XuiApi()
+        else:
+            self.api = Api(host, username, password, token, use_tls_verify=tls)
 
         self.sub_domain = sub_domain
         self.sub_port = sub_port
