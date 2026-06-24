@@ -31,7 +31,10 @@ async def cmd_start(message: Message) -> None:
 
     with db_instance.atomic():
         # just in case.
-        name = message.chat.username or f"{message.chat.first_name}" or message.chat.id
+        name = message.chat.username \
+               or message.chat.first_name \
+               or message.chat.last_name \
+               or str(message.chat.id)
         client, created = ClientFactory(user_id=message.chat.id).get_or_create_client(
             name=name
         )
