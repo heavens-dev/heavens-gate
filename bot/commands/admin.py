@@ -34,6 +34,7 @@ def get_admin_commands() -> list[BotCommand]:
             "If an argument is False, runs event for every single peer. True by default"
         ),
         BotCommand(command="/create_user", description="Creates a new user with specified ID and name. Format: ID:user_name."),
+        BotCommand(command="/set_remna_uuid", description="Sets Remnawave user UUID for a specific user. Format: \"ID UUID\"."),
     ])
 
     return commands

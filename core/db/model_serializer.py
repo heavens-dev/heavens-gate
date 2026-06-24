@@ -20,6 +20,8 @@ class User(BaseModel):
 
     vless_sub_token: Optional[str] = Field(default=None)
 
+    remnawave_user_uuid: Optional[str] = Field(default=None)
+
 
 class BasePeer(BaseModel):
     """

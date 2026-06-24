@@ -186,8 +186,10 @@ class XrayWorker:
 
     def remnawave_get_subscription_link(self, user: User) -> str:
         try:
+            uuid = user.remnawave_user_uuid or generate_deterministic_uuid_string(user.user_id)
+
             sub: GetSubscriptionByUUIDResponseDto = self._run_async(self.remnawave.subscriptions.get_subscription_by_uuid(
-                uuid=generate_deterministic_uuid_string(user.user_id)
+                uuid=uuid
             ))
             return sub.subscription_url
         except Exception as e:
@@ -473,9 +475,9 @@ class XrayWorker:
         new_users_count = 0
         for user in users:
             try:
-                self._run_async(self.remnawave.users.get_user_by_uuid(
-                    generate_deterministic_uuid_string(str(user.user_id)))
-                )
+                uuid = user.remnawave_user_uuid or generate_deterministic_uuid_string(str(user.user_id))
+
+                self._run_async(self.remnawave.users.get_user_by_uuid(uuid))
             except NotFoundError:
                 core_logger.warning(
                     f"User {user.user_id} not found in Remnawave during verification. Attempting to create."
@@ -486,11 +488,13 @@ class XrayWorker:
 
     def remnawave_create_user(self, userdata: User) -> bool:
         try:
+            uuid = userdata.remnawave_user_uuid or generate_deterministic_uuid_string(str(userdata.user_id))
+
             self._run_async(self.remnawave.users.create_user(
                 CreateUserRequestDto(
                     username=userdata.name,
                     expire_at=userdata.subscription_expiry or datetime.datetime.now(),
-                    uuid=generate_deterministic_uuid_string(str(userdata.user_id)),
+                    uuid=uuid,
                     active_internal_squads=remnawave_squads_list(userdata.subscription_type)
                 )
             ))
@@ -512,9 +516,11 @@ class XrayWorker:
             bool: True if the update was successful, False otherwise.
         """
         try:
+            uuid = user.remnawave_user_uuid or generate_deterministic_uuid_string(str(user.user_id))
+
             self._run_async(self.remnawave.users.update_user(
                 UpdateUserRequestDto(
-                    uuid=generate_deterministic_uuid_string(str(user.user_id)),
+                    uuid=uuid,
                     **kwargs
                 )
             ))

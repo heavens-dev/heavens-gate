@@ -26,6 +26,7 @@ from core.db.enums import ClientStatusChoices, PeerStatusChoices, ProtocolType
 from core.logs import bot_logger
 from core.utils.ip_utils import check_ip_address
 from core.utils.peers_utils import disable_peers, enable_peers
+from core.utils.uuid_utils import is_valid_uuid
 from export_clients_csv import export_clients_dump
 
 router = Router(name="admin")
@@ -314,7 +315,7 @@ async def create_user(message: Message, state: FSMContext):
     else:
         # split only on the first ':' to allow ':' in name
         if ":" not in args[1]:
-            await message.answer("❌ Неверный формат данных. Используй формат <code>ID:имя_пользователя</code>.")
+            await message.answer("❌ Неверный формат данных: используй формат <code>ID:имя_пользователя</code>.")
             return
 
         user_id_raw, name_raw = args[1].split(":", 1)
@@ -322,16 +323,16 @@ async def create_user(message: Message, state: FSMContext):
         name = name_raw.strip()
 
         if not user_id.isdigit():
-            await message.answer("❌ Неверный формат данных. ID должен быть числом.")
+            await message.answer("❌ Неверный формат данных: ID должен быть числом.")
             return
 
         if not name:
-            await message.answer("❌ Неверный формат данных. Имя не может быть пустым.")
+            await message.answer("❌ Неверный формат данных: имя не может быть пустым.")
             return
 
         # reject names containing any whitespace character
         if any(ch.isspace() for ch in name):
-            await message.answer("❌ Неверный формат данных. Имя пользователя не должно содержать пробелов.")
+            await message.answer("❌ Неверный формат данных: имя пользователя не должно содержать пробелов.")
             return
 
         await state.set_state(AddUserStates.preview_entering)
@@ -342,3 +343,36 @@ async def create_user(message: Message, state: FSMContext):
             "Изменить ID будет нельзя!",
             reply_markup=preview_keyboard()
         )
+
+@router.message(Command("set_remna_uuid", "set_remnawave_uuid"))
+async def set_remnawave_uuid(message: Message):
+    args = message.text.split()
+
+    if len(args) <= 2:
+        await message.answer("❌ Сообщение должно содержать ID пользователя и UUID в Remnawave в формате: \"ID UUID\".")
+        return
+
+    user_id_raw, uuid_raw = args[1], args[2]
+    user_id = user_id_raw.strip()
+    uuid = uuid_raw.strip()
+
+    if not user_id.isdigit():
+        await message.answer("❌ Неверный формат данных: ID должен быть числом.")
+        return
+
+    if not is_valid_uuid(uuid):
+        await message.answer("❌ Неверный формат данных: некорректный UUID.")
+        return
+
+    client = ClientFactory(user_id=int(user_id)).get_client()
+
+    if not client:
+        await message.answer(f"❌ Пользователь с ID {user_id} не найден.")
+        return
+
+    is_updated = client.set_remnawave_user_uuid(uuid)
+
+    if is_updated:
+        await message.answer(f"✅ UUID Remnawave для пользователя <code>{client.userdata.name}:{client.userdata.user_id}</code> успешно установлен.")
+    else:
+        await message.answer(f"❌ Не удалось установить UUID Remnawave для пользователя <code>{client.userdata.name}:{client.userdata.user_id}</code>. Проверь логи ядра.")

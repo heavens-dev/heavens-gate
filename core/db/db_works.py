@@ -366,6 +366,10 @@ class Client(BaseModel):
         core_logger.info(f"Setting subscription expiry to {expire_time} for user {self.userdata.user_id}")
         return self.__update_client(subscription_expiry=expire_time)
 
+    def set_remnawave_user_uuid(self, uuid: str) -> bool:
+        self.userdata.remnawave_user_uuid = uuid
+        return self.__update_client(remnawave_user_uuid=uuid)
+
     @core_logger.catch()
     def set_peer_status(self, peer_id: int, peer_status: PeerStatusChoices) -> bool:
         result = self.__update_peer(peer_id, status=peer_status.value)
