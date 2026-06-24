@@ -2,9 +2,10 @@ from aiogram import Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 
-from bot.handlers.keyboards import build_reply_to_message_keyboard
+from bot.handlers.keyboards import (build_reply_to_message_keyboard,
+                                    preview_keyboard)
 from bot.utils.message_utils import preview_message
-from bot.utils.states import (AddPeerStates, ContactAdminStates,
+from bot.utils.states import (AddPeerStates, AddUserStates, ContactAdminStates,
                               ExtendTimeStates, RenamePeerStates,
                               WhisperStates)
 from bot.utils.user_helper import extend_users_subscription_time
@@ -130,3 +131,44 @@ async def add_peers(message: Message, state: FSMContext):
     finally:
         await state.clear()
         return
+
+@router.message(AddUserStates.credentials_entering)
+async def verify_user_credentials(message: Message, state: FSMContext):
+    if message.text.lower() in ["отмена", "cancel"]:
+        await message.answer("❌ Действие отменено.")
+        await state.clear()
+        return
+
+    # split only on the first ':' to allow ':' in name
+    if ":" not in message.text:
+        await message.answer("❌ Неправильный формат данных. Введи их в формате <code>user_id:name</code>.")
+        await state.clear()
+        return
+
+    user_id_raw, name_raw = message.text.split(":", 1)
+    user_id = user_id_raw.strip()
+    name = name_raw.strip()
+
+    if not user_id.isdigit():
+        await message.answer("❌ ID пользователя должен быть числом.")
+        await state.clear()
+        return
+
+    if not name:
+        await message.answer("❌ Имя пользователя не должно быть пустым.")
+        await state.clear()
+        return
+
+    if any(ch.isspace() for ch in name):
+        await message.answer("❌ Имя пользователя не должно содержать пробелов.")
+        await state.clear()
+        return
+
+    await state.set_state(AddUserStates.preview_entering)
+    await state.set_data({"user_id": int(user_id), "name": name})
+
+    await message.answer(
+        f"⚠️ <b>Подтверди создание пользователя с ID <code>{user_id}</code> и именем <code>{name}</code>.</b> "
+        "Изменить ID будет нельзя!",
+        reply_markup=preview_keyboard()
+    )

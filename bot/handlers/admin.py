@@ -12,12 +12,12 @@ from aiogram.types import BufferedInputFile, Message
 
 from bot.handlers.keyboards import (build_protocols_keyboard,
                                     build_user_actions_keyboard,
-                                    cancel_keyboard)
+                                    cancel_keyboard, preview_keyboard)
 from bot.middlewares.client_getters_middleware import ClientGettersMiddleware
 from bot.middlewares.logging_middleware import LoggingMiddleware
 from bot.utils.inline_paginator import UsersInlineKeyboardPaginator
 from bot.utils.message_utils import preview_message
-from bot.utils.states import AddPeerStates, WhisperStates
+from bot.utils.states import AddPeerStates, AddUserStates, WhisperStates
 from bot.utils.user_helper import get_user_data_string
 from config.loader import (bot_cfg, cfg, connections_observer, db_cfg,
                            ip_queue, wghub, xray_worker)
@@ -296,3 +296,49 @@ async def verify_remnawave_users(message: Message):
     msg = await message.answer("🔂 Запущена проверка пользователей Remnawave...")
     new_users: int = xray_worker.remnawave_verify_users([user.userdata for user in ClientFactory.select_clients()])
     await msg.edit_text(f"✅ Задание завершено. Создано пользователей: {new_users}")
+
+@router.message(Command("create_user"))
+async def create_user(message: Message, state: FSMContext):
+    args = message.text.split()
+
+    if len(args) <= 1:
+        await state.set_state(AddUserStates.credentials_entering)
+        await message.answer(
+            "✏️ Введи данные нового пользователя в формате <code>ID:имя_пользователя</code>.\n"
+            "ID должен быть числом, имя может содержать любые символы.\n\n"
+            "Пример: <code>12345:John_Doe</code>\n\n"
+            "Если хочешь отменить действие, напиши 'отмена' или 'cancel'.",
+            reply_markup=cancel_keyboard()
+        )
+        return
+    else:
+        # split only on the first ':' to allow ':' in name
+        if ":" not in args[1]:
+            await message.answer("❌ Неверный формат данных. Используй формат <code>ID:имя_пользователя</code>.")
+            return
+
+        user_id_raw, name_raw = args[1].split(":", 1)
+        user_id = user_id_raw.strip()
+        name = name_raw.strip()
+
+        if not user_id.isdigit():
+            await message.answer("❌ Неверный формат данных. ID должен быть числом.")
+            return
+
+        if not name:
+            await message.answer("❌ Неверный формат данных. Имя не может быть пустым.")
+            return
+
+        # reject names containing any whitespace character
+        if any(ch.isspace() for ch in name):
+            await message.answer("❌ Неверный формат данных. Имя пользователя не должно содержать пробелов.")
+            return
+
+        await state.set_state(AddUserStates.preview_entering)
+        await state.set_data({"user_id": int(user_id), "name": name})
+
+        await message.answer(
+            f"⚠️ <b>Подтверди создание пользователя с ID <code>{user_id}</code> и именем <code>{name}</code>.</b> "
+            "Изменить ID будет нельзя!",
+            reply_markup=preview_keyboard()
+        )

@@ -20,3 +20,7 @@ class WhisperStates(StatesGroup):
 class AddPeerStates(StatesGroup):
     select_protocol = State()
     select_amount = State()
+
+class AddUserStates(StatesGroup):
+    credentials_entering = State()
+    preview_entering = State()

@@ -48,7 +48,7 @@ class UserActionsCallbackData(CallbackData, prefix="user_action"):
     action: UserActionsEnum
     is_admin: bool
 
-class PreviewMessageCallbackData(CallbackData, prefix="preview"):
+class PreviewCallbackData(CallbackData, prefix="preview"):
     answer: YesOrNoEnum
 
 class GetUserCallbackData(CallbackData, prefix="get_user"):

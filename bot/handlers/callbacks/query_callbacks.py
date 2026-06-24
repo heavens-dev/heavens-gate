@@ -13,13 +13,13 @@ from bot.handlers.keyboards import (build_peer_configs_keyboard,
                                     build_user_actions_keyboard,
                                     cancel_keyboard, extend_time_keyboard)
 from bot.utils.callback_data import (GetUserCallbackData, PeerCallbackData,
-                                     PreviewMessageCallbackData,
+                                     PreviewCallbackData,
                                      ProtocolChoiceCallbackData,
                                      SubscriptionChoiceCallbackData,
                                      TimeExtenderCallbackData,
                                      UserActionsCallbackData, UserActionsEnum,
                                      YesOrNoEnum)
-from bot.utils.states import (AddPeerStates, ContactAdminStates,
+from bot.utils.states import (AddPeerStates, AddUserStates, ContactAdminStates,
                               ExtendTimeStates, PreviewMessageStates,
                               RenamePeerStates, WhisperStates)
 from bot.utils.user_helper import (extend_users_subscription_time,
@@ -165,8 +165,8 @@ async def add_peer_callback(callback: CallbackQuery, callback_data: UserActionsC
 
     await callback.answer()
 
-@router.callback_query(PreviewMessageCallbackData.filter(), PreviewMessageStates.preview)
-async def preview_message_callback(callback: CallbackQuery, callback_data: PreviewMessageCallbackData, state: FSMContext):
+@router.callback_query(PreviewCallbackData.filter(), PreviewMessageStates.preview)
+async def preview_message_callback(callback: CallbackQuery, callback_data: PreviewCallbackData, state: FSMContext):
     await callback.answer()
     await callback.message.delete()
     if callback_data.answer == YesOrNoEnum.ANSWER_NO:
@@ -332,3 +332,27 @@ async def subscription_choice_callback(callback: CallbackQuery, callback_data: S
 )
 async def regen_subscription_token_callback(callback: CallbackQuery, callback_data: UserActionsCallbackData):
     await callback.answer(f"Эта функция пока не реализована (это временно).")
+
+@router.callback_query(PreviewCallbackData.filter(), AddUserStates.preview_entering)
+async def add_user_callback(callback: CallbackQuery, callback_data: PreviewCallbackData, state: FSMContext):
+    data = await state.get_data()
+    user_id = data["user_id"]
+    name = data["name"]
+
+    await callback.answer()
+    await state.clear()
+    if callback_data.answer == YesOrNoEnum.ANSWER_NO:
+        await callback.message.answer("❌ Создание пользователя отменено.")
+        return
+
+    client, created = ClientFactory(user_id=user_id).get_or_create_client(name=name)
+
+    await callback.message.delete()
+
+    if created:
+        await callback.message.answer(f"✅ Пользователь <code>{client.userdata.name}:{client.userdata.user_id}</code> создан.")
+        bot_logger.warning(f"User {client.userdata.name}:{client.userdata.user_id} manually created by admin {callback.from_user.id}.")
+
+        xray_worker.remnawave_create_user(client.userdata)
+    else:
+        await callback.message.answer(f"ℹ️ Пользователь <code>{client.userdata.name}:{client.userdata.user_id}</code> уже существует.")

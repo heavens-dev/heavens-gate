@@ -1,8 +1,7 @@
 from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from bot.utils.callback_data import (PeerCallbackData,
-                                     PreviewMessageCallbackData,
+from bot.utils.callback_data import (PeerCallbackData, PreviewCallbackData,
                                      ProtocolChoiceCallbackData,
                                      SubscriptionChoiceCallbackData,
                                      TimeExtenderCallbackData,
@@ -165,11 +164,13 @@ def build_user_actions_keyboard(client: Client, is_admin=True) -> InlineKeyboard
     return builder.as_markup()
 
 def preview_keyboard() -> InlineKeyboardMarkup:
+    """A simple inline keyboard with Yes/No buttons for confirmation of an action."""
+
     builder = InlineKeyboardBuilder()
 
     builder.button(
         text="✅ Да",
-        callback_data=PreviewMessageCallbackData(
+        callback_data=PreviewCallbackData(
             answer=YesOrNoEnum.ANSWER_YES,
         )
     )
@@ -178,7 +179,7 @@ def preview_keyboard() -> InlineKeyboardMarkup:
 
     builder.button(
         text="❌ Нет",
-        callback_data=PreviewMessageCallbackData(
+        callback_data=PreviewCallbackData(
             answer=YesOrNoEnum.ANSWER_NO,
         )
     )
