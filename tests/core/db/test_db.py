@@ -80,7 +80,12 @@ def test_add_xray_peer(db):
 
 def test_serializer_extensions_get_user_from_peer_model(db):
     client, _ = ClientFactory(user_id=777).get_or_create_client(name="serializer_user")
-    peer = client.add_wireguard_peer(shared_ips="10.0.0.7/32")
+    peer = client.add_wireguard_peer(
+        shared_ips="10.0.0.7/32",
+        public_key="public_key",
+        private_key="private_key",
+        preshared_key="preshared_key"
+    )
 
     assert peer is not None
 
@@ -94,7 +99,12 @@ def test_serializer_extensions_get_user_from_peer_model(db):
 
 def test_serializer_extensions_get_user_from_serialized_peer(db):
     client, _ = ClientFactory(user_id=778).get_or_create_client(name="serialized_peer_user")
-    peer = client.add_wireguard_peer(shared_ips="10.0.0.8/32")
+    peer = client.add_wireguard_peer(
+        shared_ips="10.0.0.8/32",
+        public_key="public_key",
+        private_key="private_key",
+        preshared_key="preshared_key"
+    )
 
     assert peer is not None
 
