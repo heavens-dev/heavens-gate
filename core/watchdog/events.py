@@ -1,13 +1,14 @@
 import asyncio
 import datetime
-from contextlib import suppress
 from typing import Callable, Coroutine, Union
 
 from icmplib import async_ping
 
-from core.db.db_works import Client, ClientFactory
-from core.db.enums import ClientStatusChoices, PeerStatusChoices, ProtocolType
-from core.db.model_serializer import BasePeer, WireguardPeer, XrayPeer
+from core.db.db_works import Client, ClientFactory, OrganizationFactory
+from core.db.enums import (ClientStatusChoices, PeerStatusChoices,
+                           ProtocolType, SubscriptionType)
+from core.db.model_serializer import (BasePeer, Organization, User,
+                                      WireguardPeer, XrayPeer)
 from core.logs import core_logger
 from core.utils.peers_utils import disable_peers
 from core.watchdog.object import CallableObject
@@ -246,6 +247,13 @@ class IntervalEvents:
         """Observer triggers if there's one day left before blocking user. Requires `Client` as an argument."""
         self.expire_date_block_observer = EventObserver(required_types=[Client])
         """Observer triggers if the expiration date has passed. Requires `Client` as an argument."""
+
+        self.organization_expire_date_warning_observer = EventObserver(required_types=[User, Organization, int])
+        """Observer triggers if there's one day left before blocking organization.
+        Requires `User`, `Organization` and `int` as arguments."""
+        self.organization_expire_date_block_observer = EventObserver(required_types=[User, Organization])
+        """Observer triggers if the expiration date of an organization has passed. Requires `User` and `Organization` as arguments."""
+
         self.wg_hub = wg_hub
         self.xray = xray
 
@@ -302,6 +310,8 @@ class IntervalEvents:
     async def __check_users_expire_date(self):
         now = datetime.datetime.now()
         for client in ClientFactory.select_clients():
+            if client.userdata.subscription_type == SubscriptionType.ENTERPRISE:
+                continue
             if not isinstance(client.userdata.subscription_expiry, datetime.datetime) or \
                client.userdata.status == ClientStatusChoices.STATUS_ACCOUNT_BLOCKED:
                 continue
@@ -316,6 +326,32 @@ class IntervalEvents:
                 core_logger.info(f"Warning user {client.userdata.name} about the expiration date.")
                 await self.expire_date_warning_observer.trigger(client)
 
+    async def __check_organizations_expire_date(self):
+        now = datetime.datetime.now()
+        for org in OrganizationFactory.select_organizations():
+            if not isinstance(org.orgdata.subscription_expiry, datetime.datetime):
+                continue
+
+            owners = org.get_owners()
+
+            # ? should we consider sending a block message to members?
+            if org.orgdata.subscription_expiry.date() <= now.date():
+                core_logger.info(f"Blocking organization {org.orgdata.name} members due to expired subscription.")
+                members: list[Client] = org.get_members(as_client=True)
+                for member in members:
+                    member.set_status(ClientStatusChoices.STATUS_ACCOUNT_BLOCKED)
+                    peers = member.get_all_peers(protocol_specific=True)
+                    disable_peers(self.wg_hub, self.xray, peers, client=member)
+                for owner in owners:
+                    await self.organization_expire_date_block_observer.trigger(owner, org)
+            # ? warning three days prior to expiration date
+            elif (org.orgdata.subscription_expiry - datetime.timedelta(days=3)).date() <= now.date():
+                days_left = (org.orgdata.subscription_expiry - now).days
+                core_logger.info(f"Warning organization {org.orgdata.name} about the expiration date.")
+                for owner in owners:
+                    await self.organization_expire_date_warning_observer.trigger(owner, org, days_left)
+
     async def run_checkers(self):
         async with asyncio.TaskGroup() as group:
             group.create_task(self.scheduled_runner(self.__check_users_expire_date, datetime.time(3, 0)))
+            group.create_task(self.scheduled_runner(self.__check_organizations_expire_date, datetime.time(3, 0)))

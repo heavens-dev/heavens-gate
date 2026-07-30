@@ -1,8 +1,8 @@
 import datetime
 import secrets
 
-from peewee import (BooleanField, CharField, DateTimeField, ForeignKeyField,
-                    IntegerField, Model)
+from peewee import (BooleanField, CharField, CompositeKey, DateTimeField,
+                    ForeignKeyField, IntegerField, Model)
 from playhouse.sqlite_ext import AutoIncrementField, SqliteExtDatabase
 
 from core.db.enums import (ClientStatusChoices, PeerStatusChoices,
@@ -50,9 +50,18 @@ class OrganizationModel(BaseModel):
     id = AutoIncrementField()
     name = CharField(unique=True)
     subscription_expiry = DateTimeField(default=None, null=True)
+    registered_at = DateTimeField(default=datetime.datetime.now)
 
     class Meta:
         table_name = "Organizations"
+
+class OrganizationOwnerModel(BaseModel):
+    organization = ForeignKeyField(OrganizationModel, backref="owners", on_delete="CASCADE")
+    user = ForeignKeyField(UserModel, backref="managed_organizations", on_delete="CASCADE", unique=True)
+
+    class Meta:
+        primary_key = CompositeKey("organization", "user")
+        table_name = "OrganizationOwners"
 
 class PeerModel(BaseModel):
     id = AutoIncrementField()
@@ -112,6 +121,13 @@ class XrayPeerModel(BaseModel):
 def init_db(path: str):
     db.init(database=path, pragmas={"foreign_keys": 1})
     db.connect()
-    db.create_tables((UserModel, PeerModel, WireguardPeerModel, XrayPeerModel))
+    db.create_tables((
+        UserModel,
+        PeerModel,
+        OrganizationModel,
+        OrganizationOwnerModel,
+        WireguardPeerModel,
+        XrayPeerModel
+    ))
     core_logger.info(f"Database initialized at {path}")
     return db

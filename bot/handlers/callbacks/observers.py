@@ -6,7 +6,7 @@ from aiogram import Router
 from config.loader import bot_instance, connections_observer, interval_observer
 from core.db.db_works import Client
 from core.db.enums import SubscriptionType
-from core.db.model_serializer import BasePeer
+from core.db.model_serializer import BasePeer, Organization, User
 from core.logs import bot_logger
 
 router = Router(name="observers")
@@ -53,4 +53,20 @@ async def block_user_expire_date(client: Client):
     await bot_instance.send_message(client.userdata.user_id,
         "❌ Твой аккаунт заблокирован из-за истечения оплаченного времени. "
         "Если ты хочешь продлить доступ, свяжись с нами."
+    )
+
+@interval_observer.organization_expire_date_warning_observer()
+async def warn_organization_expire_date(user: User, org: Organization, days_left: int):
+    await bot_instance.send_message(user.user_id,
+        f'⚠️ Время действия подписки вашей организации "{org.name}" истекает через {days_left} дней. '
+        'Свяжитесь с администрацией или ответственными лицами вашей организации для продления подписки.\n\n'
+        '(вы получаете это сообщение, так как являетесь владельцем или ответственным лицом организации в сервисе)'
+    )
+
+@interval_observer.organization_expire_date_block_observer()
+async def block_organization_expire_date(user: User, org: Organization):
+    await bot_instance.send_message(user.user_id,
+        f'❌ Время действия подписки вашей организации "{org.name}" истекло. '
+        'Все пользователи организации были заблокированы и более не могут использовать сервис без продления.\n\n'
+        '(вы получаете это сообщение, так как являетесь владельцем или ответственным лицом организации в сервисе)'
     )

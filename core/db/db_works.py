@@ -11,8 +11,9 @@ from core.db.enums import (ClientStatusChoices, PeerStatusChoices,
                            ProtocolType, SubscriptionType)
 from core.db.model_serializer import (BasePeer, Organization, User,
                                       WireguardPeer, XrayPeer)
-from core.db.models import (OrganizationModel, PeerModel, UserModel,
-                            WireguardPeerModel, XrayPeerModel, db)
+from core.db.models import (OrganizationModel, OrganizationOwnerModel,
+                            PeerModel, UserModel, WireguardPeerModel,
+                            XrayPeerModel, db)
 from core.logs import core_logger
 from core.wg.keygen import (generate_preshared_key, generate_private_key,
                             generate_public_key)
@@ -655,10 +656,10 @@ class ClientFactory(BaseModel):
             core_logger.info(f"Peer with ID {peer_id} not found.")
             return False
 
-class Organization(BaseModel):
-    org_id: int
-
+class OrganizationRepository(BaseModel):
     model_config = ConfigDict()
+
+    orgdata: Organization = PrivateAttr(init=True)
     __model: OrganizationModel = PrivateAttr(init=True)
 
     def __init__(self, **kwargs):
@@ -681,21 +682,198 @@ class Organization(BaseModel):
                 .where(OrganizationModel.id == self.org_id)
                 .execute()) == 1
 
-    def set_subscription_expiry(self, expire_time: datetime.datetime) -> bool:
+    def add_owner(self, user_id: Union[int, str]) -> bool:
+        try:
+            user = UserModel.get(UserModel.user_id == user_id)
+
+            # ? user can be an owner of only one organization
+            # ? if a query returns a record, it means that the user is already an owner of an organization
+            is_already_owner = OrganizationOwnerModel.get_or_none(
+                OrganizationOwnerModel.organization == self.__model,
+                OrganizationOwnerModel.user == user
+            )
+
+            if is_already_owner:
+                return False
+
+            OrganizationOwnerModel.create(
+                organization=self.__model,
+                user=user
+            )
+            core_logger.info(f"User {user_id} was added as an owner of organization {self.orgdata.org_id}")
+
+            return True
+        except DoesNotExist:
+            return False
+
+    def remove_owner(self, user_id: Union[int, str]) -> bool:
+        try:
+            user = UserModel.get(UserModel.user_id == user_id)
+
+            owner_record = OrganizationOwnerModel.get_or_none(
+                OrganizationOwnerModel.organization == self.__model,
+                OrganizationOwnerModel.user == user
+            )
+
+            if not owner_record:
+                return False
+
+            owner_record.delete_instance()
+            core_logger.info(f"User {user_id} was removed as an owner of organization {self.orgdata.org_id}")
+
+            return True
+        except DoesNotExist:
+            return False
+
+    def get_owners(self) -> list[User]:
+        owners = (UserModel
+                  .select()
+                  .join(OrganizationOwnerModel)
+                  .where(OrganizationOwnerModel.organization == self.__model))
+        return [User.model_validate(owner) for owner in owners]
+
+    def is_user_owner(self, user_id: Union[int, str]) -> bool:
+        """Checks if a user is an owner of the current organization.
+
+        Args:
+            user_id (Union[int, str]): The unique identifier of the user to check.
+
+        Returns:
+            bool: True if the user is an owner of the organization, False otherwise.
+        """
+        try:
+            user = UserModel.get(UserModel.user_id == user_id)
+
+            owner_record = OrganizationOwnerModel.get_or_none(
+                OrganizationOwnerModel.organization == self.__model,
+                OrganizationOwnerModel.user == user
+            )
+
+            return owner_record is not None
+        except DoesNotExist:
+            return False
+
+    def add_member(self, user_id: Union[int, str]) -> bool:
+        try:
+            user = UserModel.get(UserModel.user_id == user_id)
+            if user.organization_id is not None:
+                core_logger.info(
+                    f"User {user_id} is already a member of organization {user.organization_id}. Cannot add to organization {self.orgdata.org_id}."
+                )
+                return False
+            user.organization_id = self.orgdata.org_id
+            user.save()
+            core_logger.info(f"User {user_id} was added as a member of organization {self.orgdata.org_id}")
+            return True
+        except DoesNotExist:
+            return False
+
+    def remove_member(self, user_id: Union[int, str]) -> bool:
+        try:
+            user = UserModel.get(UserModel.user_id == user_id)
+            if user.organization_id != self.orgdata.org_id:
+                core_logger.info(
+                    f"User {user_id} is not a member of organization {self.orgdata.org_id}. Cannot remove."
+                )
+                return False
+            user.organization_id = None
+            user.save()
+            core_logger.info(f"User {user_id} was removed as a member of organization {self.orgdata.org_id}")
+            return True
+        except DoesNotExist:
+            return False
+
+    def get_members(self, as_client: bool = False) -> list[Union[User, Client]]:
+        """
+        Retrieves all members of the current organization.
+
+        Args:
+            as_client (bool): If True, returns a list of `Client` objects. If False, returns a list of `User` objects. Defaults to False.
+        """
+        members = UserModel.select().where(UserModel.organization_id == self.orgdata.org_id)
+        if as_client:
+            return [Client(model=member, userdata=User.model_validate(member)) for member in members]
+        return [User.model_validate(member) for member in members]
+
+    def is_user_member(self, user_id: Union[int, str]) -> bool:
+        """Checks if a user is a member of the current organization.
+
+        Args:
+            user_id (Union[int, str]): The unique identifier of the user to check.
+
+        Returns:
+            bool: True if the user is a member of the organization, False otherwise.
+        """
+        try:
+            user = UserModel.get(UserModel.user_id == user_id)
+            return user.organization_id == self.orgdata.org_id
+        except DoesNotExist:
+            return False
+
+    def set_organization_expiry(self, expire_time: datetime.datetime) -> bool:
         self.orgdata.subscription_expiry = expire_time
         core_logger.info(f"Setting subscription expiry to {expire_time} for organization {self.orgdata.org_id}")
         return self.__update_organization(subscription_expiry=expire_time)
 
-    def get_organization(self) -> Optional[Organization]:
+    def set_organization_name(self, name: str) -> bool:
+        self.orgdata.name = name
+        core_logger.info(f"Setting organization name to {name} for organization {self.orgdata.org_id}")
+        return self.__update_organization(name=name)
+
+    # ? is this a buisness logic? idk, but for now it's here
+    def sync_subscription_to_members(self) -> bool:
         """
-        Retrieves an Organization instance associated with the organization ID.
+        Synchronizes the subscription expiry date of the organization to all its members.
 
         Returns:
-            Optional[Organization]: An Organization instance containing the organization model and validated organization data,
-                             or None if the organization does not exist in the database.
+            bool: True if the synchronization was successful, False otherwise.
         """
         try:
-            model = OrganizationModel.get(OrganizationModel.id == self.org_id)
-            return Organization(model=model, orgdata=Organization.model_validate(model))
+            members = UserModel.select().where(UserModel.organization_id == self.orgdata.org_id)
+            for member in members:
+                member.subscription_expiry = self.orgdata.subscription_expiry
+                member.subscription_type = SubscriptionType.ENTERPRISE.value
+                member.save()
+            core_logger.info(f"Synchronized subscription to all members of organization {self.orgdata.org_id}")
+            return True
+        except Exception as e:
+            core_logger.error(f"Error while synchronizing subscription: {e}")
+            return False
+
+class OrganizationFactory(BaseModel):
+    model_config = ConfigDict()
+
+    @staticmethod
+    def create_organization(name: str) -> OrganizationRepository:
+        model = OrganizationModel.create(name=name)
+        return OrganizationRepository(model=model, orgdata=Organization.model_validate(model))
+
+    @staticmethod
+    def get_by_id(org_id: int) -> Optional[OrganizationRepository]:
+        try:
+            model = OrganizationModel.get(OrganizationModel.id == org_id)
+            return OrganizationRepository(model=model, orgdata=Organization.model_validate(model))
         except DoesNotExist:
             return None
+
+    @staticmethod
+    def get_by_name(name: str) -> Optional[OrganizationRepository]:
+        try:
+            model = OrganizationModel.get(OrganizationModel.name == name)
+            return OrganizationRepository(model=model, orgdata=Organization.model_validate(model))
+        except DoesNotExist:
+            return None
+
+    @staticmethod
+    def select_organizations() -> list[OrganizationRepository]:
+        return [OrganizationRepository(model=org, orgdata=Organization.model_validate(org)) for org in OrganizationModel.select()]
+
+    @staticmethod
+    def delete_organization(org_id: int) -> bool:
+        try:
+            org = OrganizationModel.get(OrganizationModel.id == org_id)
+            org.delete_instance()
+            return True
+        except DoesNotExist:
+            core_logger.info(f"Organization with ID {org_id} not found.")
+            return False

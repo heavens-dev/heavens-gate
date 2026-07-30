@@ -22,14 +22,22 @@ class User(BaseModel):
 
     remnawave_user_uuid: Optional[str] = Field(default=None)
 
+    organization_id: Optional[int] = Field(default=None)
+
 
 class Organization(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: int
+    org_id: int = Field(alias="id")
     name: str
     subscription_expiry: Optional[datetime] = Field(default=None)
+    registered_at: datetime
 
+class OrganizationOwner(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    organization: Organization
+    user: User
 
 class BasePeer(BaseModel):
     """
