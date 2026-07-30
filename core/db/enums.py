@@ -64,6 +64,7 @@ class ProtocolType(StrEnum):
 class SubscriptionType(StrEnum):
     DEFAULT = "Default"
     CLEAR = "Clear"
+    ENTERPRISE = "Enterprise"
 
     @staticmethod
     def to_string(subscription: Type["SubscriptionType"]) -> str:
@@ -72,6 +73,8 @@ class SubscriptionType(StrEnum):
                 return "⛅ Classic"
             case subscription.CLEAR:
                 return "☀️ Clear"
+            case subscription.ENTERPRISE:
+                return "🏢 Enterprise"
             case _:
                 return "Неизвестный тип подписки"
 

@@ -5,6 +5,7 @@ from aiogram import Router
 
 from config.loader import bot_instance, connections_observer, interval_observer
 from core.db.db_works import Client
+from core.db.enums import SubscriptionType
 from core.db.model_serializer import BasePeer
 from core.logs import bot_logger
 
@@ -38,6 +39,8 @@ async def warn_user_timeout(client: Client, peer: BasePeer, disconnect: bool):
 
 @interval_observer.expire_date_warning_observer()
 async def warn_user_expire_date(client: Client):
+    if client.userdata.subscription_type == SubscriptionType.ENTERPRISE:
+        return
     await bot_instance.send_message(client.userdata.user_id,
         "⚠️ Твой аккаунт будет заблокирован через 24 часа из-за истечения оплаченного времени. "
         "Свяжись с администрацией для продления доступа."
@@ -45,6 +48,8 @@ async def warn_user_expire_date(client: Client):
 
 @interval_observer.expire_date_block_observer()
 async def block_user_expire_date(client: Client):
+    if client.userdata.subscription_type == SubscriptionType.ENTERPRISE:
+        return
     await bot_instance.send_message(client.userdata.user_id,
         "❌ Твой аккаунт заблокирован из-за истечения оплаченного времени. "
         "Если ты хочешь продлить доступ, свяжись с нами."

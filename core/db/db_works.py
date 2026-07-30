@@ -3,15 +3,16 @@ import random
 import secrets
 from typing import Optional, Union
 
-from peewee import SQL, DoesNotExist
+from peewee import DoesNotExist
 from playhouse.shortcuts import model_to_dict
 from pydantic import BaseModel, ConfigDict, PrivateAttr
 
 from core.db.enums import (ClientStatusChoices, PeerStatusChoices,
                            ProtocolType, SubscriptionType)
-from core.db.model_serializer import BasePeer, User, WireguardPeer, XrayPeer
-from core.db.models import (PeerModel, UserModel, WireguardPeerModel,
-                            XrayPeerModel, db)
+from core.db.model_serializer import (BasePeer, Organization, User,
+                                      WireguardPeer, XrayPeer)
+from core.db.models import (OrganizationModel, PeerModel, UserModel,
+                            WireguardPeerModel, XrayPeerModel, db)
 from core.logs import core_logger
 from core.wg.keygen import (generate_preshared_key, generate_private_key,
                             generate_public_key)
@@ -361,6 +362,7 @@ class Client(BaseModel):
         self.userdata.subscription_type = subscription_type
         return self.__update_client(subscription_type=subscription_type.value)
 
+
     def set_subscription_expiry(self, expire_time: datetime.datetime) -> bool:
         self.userdata.subscription_expiry = expire_time
         core_logger.info(f"Setting subscription expiry to {expire_time} for user {self.userdata.user_id}")
@@ -369,6 +371,10 @@ class Client(BaseModel):
     def set_remnawave_user_uuid(self, uuid: str) -> bool:
         self.userdata.remnawave_user_uuid = uuid
         return self.__update_client(remnawave_user_uuid=uuid)
+
+    def set_organization_id(self, org_id: int) -> bool:
+        self.userdata.organization_id = org_id
+        return self.__update_client(organization_id=org_id)
 
     @core_logger.catch()
     def set_peer_status(self, peer_id: int, peer_status: PeerStatusChoices) -> bool:
@@ -648,3 +654,48 @@ class ClientFactory(BaseModel):
         except DoesNotExist:
             core_logger.info(f"Peer with ID {peer_id} not found.")
             return False
+
+class Organization(BaseModel):
+    org_id: int
+
+    model_config = ConfigDict()
+    __model: OrganizationModel = PrivateAttr(init=True)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        if "model" not in kwargs.keys():
+            raise AttributeError("model attribute was not found in kwargs.")
+        self.__model = kwargs["model"]
+
+    def __update_organization(self, **kwargs) -> bool:
+        """
+        Updates organization data in the database using provided keyword arguments.
+
+        Args:
+            **kwargs: Variable keyword arguments containing fields and values to update for the organization.
+
+        Returns:
+            bool: True if exactly one record was updated, False otherwise.
+        """
+        return (self.__model.update(**kwargs)
+                .where(OrganizationModel.id == self.org_id)
+                .execute()) == 1
+
+    def set_subscription_expiry(self, expire_time: datetime.datetime) -> bool:
+        self.orgdata.subscription_expiry = expire_time
+        core_logger.info(f"Setting subscription expiry to {expire_time} for organization {self.orgdata.org_id}")
+        return self.__update_organization(subscription_expiry=expire_time)
+
+    def get_organization(self) -> Optional[Organization]:
+        """
+        Retrieves an Organization instance associated with the organization ID.
+
+        Returns:
+            Optional[Organization]: An Organization instance containing the organization model and validated organization data,
+                             or None if the organization does not exist in the database.
+        """
+        try:
+            model = OrganizationModel.get(OrganizationModel.id == self.org_id)
+            return Organization(model=model, orgdata=Organization.model_validate(model))
+        except DoesNotExist:
+            return None

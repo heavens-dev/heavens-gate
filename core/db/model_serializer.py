@@ -23,6 +23,14 @@ class User(BaseModel):
     remnawave_user_uuid: Optional[str] = Field(default=None)
 
 
+class Organization(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    subscription_expiry: Optional[datetime] = Field(default=None)
+
+
 class BasePeer(BaseModel):
     """
     Base class for peer-related models that inherits from BaseModel.

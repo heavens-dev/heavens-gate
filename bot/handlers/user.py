@@ -94,6 +94,7 @@ async def about_subscription(message: Message):
     msg = "<b>Типы подписок:</b>"
 
     for subscription_type in SubscriptionType:
+        if subscription_type == SubscriptionType.ENTERPRISE: continue
         msg += f"<blockquote>{SubscriptionType.to_string(subscription_type)}</blockquote>\n"
         msg += f"{SubscriptionType.description(subscription_type)}\n\n"
 
