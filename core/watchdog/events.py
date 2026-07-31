@@ -343,13 +343,13 @@ class IntervalEvents:
                     peers = member.get_all_peers(protocol_specific=True)
                     disable_peers(self.wg_hub, self.xray, peers, client=member)
                 for owner in owners:
-                    await self.organization_expire_date_block_observer.trigger(owner, org)
+                    await self.organization_expire_date_block_observer.trigger(owner, org.orgdata)
             # ? warning three days prior to expiration date
             elif (org.orgdata.subscription_expiry - datetime.timedelta(days=3)).date() <= now.date():
                 days_left = (org.orgdata.subscription_expiry - now).days
                 core_logger.info(f"Warning organization {org.orgdata.name} about the expiration date.")
                 for owner in owners:
-                    await self.organization_expire_date_warning_observer.trigger(owner, org, days_left)
+                    await self.organization_expire_date_warning_observer.trigger(owner, org.orgdata, days_left)
 
     async def run_checkers(self):
         async with asyncio.TaskGroup() as group:
