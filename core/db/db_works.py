@@ -398,6 +398,20 @@ class Client(BaseModel):
             for model in self.__get_peers(None, PeerModel.status == PeerStatusChoices.STATUS_CONNECTED.value)
         ]
 
+    def get_owned_org(self) -> Optional[Organization]:
+        """
+        Retrieves the organization owned by the user, if any.
+
+        Returns:
+            Organization: The organization object if the user is an owner, None otherwise.
+        """
+        try:
+            org_owner = OrganizationOwnerModel.get(OrganizationOwnerModel.user == self.__model)
+            org = OrganizationModel.get(OrganizationModel.id == org_owner.organization_id)
+            return Organization.model_validate(org)
+        except DoesNotExist:
+            return None
+
     def delete_peers(self) -> bool:
         """
         Deletes all peer records associated with the current user from the database.
@@ -689,7 +703,6 @@ class OrganizationRepository(BaseModel):
             # ? user can be an owner of only one organization
             # ? if a query returns a record, it means that the user is already an owner of an organization
             is_already_owner = OrganizationOwnerModel.get_or_none(
-                OrganizationOwnerModel.organization == self.__model,
                 OrganizationOwnerModel.user == user
             )
 
