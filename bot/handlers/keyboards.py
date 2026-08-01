@@ -1,7 +1,8 @@
 from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from bot.utils.callback_data import (PeerCallbackData, PreviewCallbackData,
+from bot.utils.callback_data import (OrgActionsCallbackData, OrgActionsEnum,
+                                     PeerCallbackData, PreviewCallbackData,
                                      ProtocolChoiceCallbackData,
                                      SubscriptionChoiceCallbackData,
                                      TimeExtenderCallbackData,
@@ -266,6 +267,66 @@ def build_reply_to_message_keyboard(user_id: int) -> InlineKeyboardMarkup:
             user_id=user_id,
             action=UserActionsEnum.WHISPER_USER,
             is_admin=True
+        )
+    )
+
+    return builder.as_markup()
+
+def build_org_actions_keyboard(org_id: int, is_admin: bool) -> InlineKeyboardMarkup:
+    """Build an inline keyboard markup for organization actions.
+
+    Args:
+        org_id (int): The ID of the organization for which the actions are being built.
+        is_admin (bool): A boolean indicating whether the user is an admin of the **bot**, **NOT** the organization.
+
+    Returns:
+        InlineKeyboardMarkup: A markup object containing the configured inline keyboard for organization actions.
+    """
+    builder = InlineKeyboardBuilder()
+
+    if is_admin:
+        builder.button(
+            text="➕ Добавить участника",
+            callback_data=OrgActionsCallbackData(
+                org_id=org_id,
+                action=OrgActionsEnum.ADD_MEMBER,
+                is_admin=is_admin
+            )
+        )
+
+        builder.button(
+            text="➖ Удалить участника",
+            callback_data=OrgActionsCallbackData(
+                org_id=org_id,
+                action=OrgActionsEnum.REMOVE_MEMBER,
+                is_admin=is_admin
+            )
+        )
+
+        builder.button(
+            text="📅 Продлить подписку",
+            callback_data=OrgActionsCallbackData(
+                org_id=org_id,
+                action=OrgActionsEnum.EXTEND_SUBSCRIPTION_TIME,
+                is_admin=is_admin
+            )
+        )
+
+    builder.button(
+        text="👥 Просмотреть участников",
+        callback_data=OrgActionsCallbackData(
+            org_id=org_id,
+            action=OrgActionsEnum.VIEW_MEMBERS,
+            is_admin=is_admin
+        )
+    )
+
+    builder.button(
+        text="🔄 Обновить данные",
+        callback_data=OrgActionsCallbackData(
+            org_id=org_id,
+            action=OrgActionsEnum.REFRESH_ORG,
+            is_admin=is_admin
         )
     )
 

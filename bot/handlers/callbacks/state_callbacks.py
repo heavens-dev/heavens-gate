@@ -6,8 +6,8 @@ from bot.handlers.keyboards import (build_reply_to_message_keyboard,
                                     preview_keyboard)
 from bot.utils.message_utils import preview_message
 from bot.utils.states import (AddPeerStates, AddUserStates, ContactAdminStates,
-                              ExtendTimeStates, RenamePeerStates,
-                              WhisperStates)
+                              ExtendTimeStates, OrgAddMemberStates,
+                              RenamePeerStates, WhisperStates)
 from bot.utils.user_helper import extend_users_subscription_time
 from config.loader import (bot_cfg, bot_instance, ip_queue, wghub, xray_cfg,
                            xray_worker)
@@ -172,3 +172,24 @@ async def verify_user_credentials(message: Message, state: FSMContext):
         "Изменить ID будет нельзя!",
         reply_markup=preview_keyboard()
     )
+
+@router.message(OrgAddMemberStates.member_id_entering)
+async def org_add_member(message: Message, state: FSMContext):
+    if not message.text.isdigit():
+        await message.answer("❌ ID пользователя должен быть числом.")
+        await state.clear()
+        return
+
+    client = ClientFactory(user_id=int(message.text)).get_client()
+    if not client:
+        await message.answer("❌ Пользователь с таким ID не найден.")
+        await state.clear()
+        return
+
+    await message.answer(
+        f"⚠️ <b>Подтверди добавление пользователя {client.userdata.name} "
+        f"(<code>{client.userdata.user_id}</code>) в организацию.</b> ",
+        reply_markup=preview_keyboard()
+    )
+    await state.update_data({"member_id": client.userdata.user_id})
+    await state.set_state(OrgAddMemberStates.confirm)

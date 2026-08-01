@@ -63,7 +63,7 @@ def get_user_data_string(client: Client, show_peer_ids: bool = False) -> list[st
     if client.userdata.subscription_expiry:
         expire_time = f'До: {client.userdata.subscription_expiry.strftime("%d.%m.%Y")}\n'
         if client.userdata.subscription_expiry > datetime.datetime.now():
-            expire_time += f'Осталось времени: {humanize.naturaldelta(client.userdata.subscription_expiry - datetime.datetime.now())}'
+            expire_time += f'Осталось времени: {humanize.naturaldelta(client.userdata.subscription_expiry - datetime.datetime.now(), months=False)}'
         else:
             expire_time += "❌ Время истекло"
     else:

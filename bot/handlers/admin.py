@@ -15,13 +15,14 @@ from bot.handlers.keyboards import (build_protocols_keyboard,
                                     cancel_keyboard, preview_keyboard)
 from bot.middlewares.client_getters_middleware import ClientGettersMiddleware
 from bot.middlewares.logging_middleware import LoggingMiddleware
-from bot.utils.inline_paginator import UsersInlineKeyboardPaginator
 from bot.utils.message_utils import preview_message
+from bot.utils.orgs_inline_paginator import OrgsInlineKeyboardPaginator
 from bot.utils.states import AddPeerStates, AddUserStates, WhisperStates
 from bot.utils.user_helper import get_user_data_string
+from bot.utils.users_inline_paginator import UsersInlineKeyboardPaginator
 from config.loader import (bot_cfg, cfg, connections_observer, db_cfg,
                            ip_queue, wghub, xray_worker)
-from core.db.db_works import Client, ClientFactory
+from core.db.db_works import Client, ClientFactory, OrganizationFactory
 from core.db.enums import ClientStatusChoices, PeerStatusChoices, ProtocolType
 from core.logs import bot_logger
 from core.utils.ip_utils import check_ip_address
@@ -376,3 +377,11 @@ async def set_remnawave_uuid(message: Message):
         await message.answer(f"✅ UUID Remnawave для пользователя <code>{client.userdata.name}:{client.userdata.user_id}</code> успешно установлен.")
     else:
         await message.answer(f"❌ Не удалось установить UUID Remnawave для пользователя <code>{client.userdata.name}:{client.userdata.user_id}</code>. Проверь логи ядра.")
+
+@router.message(Command("orgs", "organizations"))
+async def list_orgs(message: Message):
+    orgs = OrganizationFactory.select_organizations()
+    paginator = OrgsInlineKeyboardPaginator(orgs, router, callback_prefix="orgs_", caller_user_id=message.from_user.id)
+    msg = await message.answer("Список всех организаций:", reply_markup=paginator.markup)
+    await asyncio.sleep(60)
+    await msg.delete()

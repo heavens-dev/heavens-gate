@@ -24,3 +24,19 @@ class AddPeerStates(StatesGroup):
 class AddUserStates(StatesGroup):
     credentials_entering = State()
     preview_entering = State()
+
+class OrgCreateStates(StatesGroup):
+    name_entering = State()
+
+class OrgAddMemberStates(StatesGroup):
+    member_id_entering = State()
+    confirm = State()
+
+class OrgRemoveMemberStates(StatesGroup):
+    member_id_entering = State()
+
+class OrgAddOwnerStates(StatesGroup):
+    owner_id_entering = State()
+
+class OrgExtendSubStates(StatesGroup):
+    time_entering = State()

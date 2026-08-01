@@ -60,3 +60,34 @@ class ProtocolChoiceCallbackData(CallbackData, prefix="protocol_choice"):
 class SubscriptionChoiceCallbackData(CallbackData, prefix="subscription_choice"):
     user_id: int
     subscription: SubscriptionType
+
+
+class OrgActionsEnum(StrEnum):
+    VIEW_ORG = "view_org"
+    ADD_MEMBER = "add_member"
+    REMOVE_MEMBER = "remove_member"
+    VIEW_MEMBERS = "view_members"
+    EXTEND_SUBSCRIPTION_TIME = "extend_sub_time"
+    REFRESH_ORG = "refresh_org"
+
+
+class OrgActionsCallbackData(CallbackData, prefix="org_action"):
+    org_id: int
+    action: OrgActionsEnum
+    user_id: int
+    is_admin: bool
+
+
+class GetOrgCallbackData(CallbackData, prefix="get_org"):
+    user_id: int
+    org_id: int
+
+class OrgTimeExtenderCallbackData(CallbackData, prefix="org_time_extender"):
+    """Time extender callback data for organizations.
+
+    Args:
+        org_id (int): organization id
+        extend_for (str): time to extend for. Example: 1d, 1w, 1M, 3M, 6M, 1Y
+    """
+    org_id: int
+    extend_for: str

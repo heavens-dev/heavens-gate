@@ -3,10 +3,12 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message
 
-from bot.handlers.keyboards import (build_peer_configs_keyboard,
+from bot.handlers.keyboards import (build_org_actions_keyboard,
+                                    build_peer_configs_keyboard,
                                     build_user_actions_keyboard,
                                     cancel_keyboard)
 from bot.middlewares.logging_middleware import LoggingMiddleware
+from bot.utils.orgs_helper import build_organization_info
 from bot.utils.states import ContactAdminStates, RenamePeerStates
 from bot.utils.user_helper import (get_user_data_string,
                                    unblock_timeout_connections)
@@ -99,3 +101,18 @@ async def about_subscription(message: Message):
         msg += f"{SubscriptionType.description(subscription_type)}\n\n"
 
     await message.answer(msg)
+
+@router.message(Command("org", "organization", "my_org", "my_organization"))
+async def view_org(message: Message):
+    client = ClientFactory(user_id=message.from_user.id).get_client()
+    org = client.get_owned_org()
+
+    if not org:
+        await message.answer("❌ Ты не являешься владельцем или ответственным лицом какой-либо организации.")
+        return
+
+    org_info = build_organization_info(org)
+    await message.answer(
+        org_info,
+        reply_markup=build_org_actions_keyboard(org.orgdata.org_id, client.userdata.user_id, is_admin=False)
+    )

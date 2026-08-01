@@ -33,11 +33,6 @@ class Organization(BaseModel):
     subscription_expiry: Optional[datetime] = Field(default=None)
     registered_at: datetime
 
-class OrganizationOwner(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    organization: Organization
-    user: User
 
 class BasePeer(BaseModel):
     """

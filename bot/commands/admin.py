@@ -35,6 +35,8 @@ def get_admin_commands() -> list[BotCommand]:
         ),
         BotCommand(command="/create_user", description="Creates a new user with specified ID and name. Format: ID:user_name."),
         BotCommand(command="/set_remna_uuid", description="Sets Remnawave user UUID for a specific user. Format: \"ID UUID\"."),
+        BotCommand(command="/create_org", description="Creates a new organization with specified name. Format: org_name."),
+        BotCommand(command="/organizations", description="Get all organizations in paginated message. Alias: /orgs"),
     ])
 
     return commands

@@ -7,26 +7,30 @@ from aiogram.fsm.state import default_state
 from aiogram.types import CallbackQuery
 from aiogram.utils.media_group import MediaGroupBuilder
 
-from bot.handlers.keyboards import (build_peer_configs_keyboard,
+from bot.handlers.keyboards import (build_org_actions_keyboard,
+                                    build_peer_configs_keyboard,
                                     build_protocols_keyboard,
                                     build_subscription_type_keyboard,
                                     build_user_actions_keyboard,
                                     cancel_keyboard, extend_time_keyboard)
-from bot.utils.callback_data import (GetUserCallbackData, PeerCallbackData,
-                                     PreviewCallbackData,
+from bot.utils.callback_data import (GetOrgCallbackData, GetUserCallbackData,
+                                     OrgActionsCallbackData, OrgActionsEnum,
+                                     PeerCallbackData, PreviewCallbackData,
                                      ProtocolChoiceCallbackData,
                                      SubscriptionChoiceCallbackData,
                                      TimeExtenderCallbackData,
                                      UserActionsCallbackData, UserActionsEnum,
                                      YesOrNoEnum)
+from bot.utils.orgs_helper import build_organization_info
 from bot.utils.states import (AddPeerStates, AddUserStates, ContactAdminStates,
-                              ExtendTimeStates, PreviewMessageStates,
+                              ExtendTimeStates, OrgAddMemberStates,
+                              OrgRemoveMemberStates, PreviewMessageStates,
                               RenamePeerStates, WhisperStates)
 from bot.utils.user_helper import (extend_users_subscription_time,
                                    get_peer_as_input_file,
                                    get_user_data_string)
 from config.loader import bot_instance, wghub, xray_worker
-from core.db.db_works import ClientFactory
+from core.db.db_works import ClientFactory, OrganizationFactory
 from core.db.enums import ClientStatusChoices, ProtocolType
 from core.logs import bot_logger
 from core.utils.date_utils import parse_time
@@ -356,3 +360,91 @@ async def add_user_callback(callback: CallbackQuery, callback_data: PreviewCallb
         xray_worker.remnawave_create_user(client.userdata)
     else:
         await callback.message.answer(f"ℹ️ Пользователь <code>{client.userdata.name}:{client.userdata.user_id}</code> уже существует.")
+
+@router.callback_query(
+    OrgActionsCallbackData.filter(F.action == OrgActionsEnum.ADD_MEMBER)
+)
+async def add_org_member_callback(callback: CallbackQuery, callback_data: OrgActionsCallbackData, state: FSMContext):
+    await state.clear()
+    await callback.message.answer(
+        f"🆔 Введи ID пользователя, которого необходимо добавть в организацию",
+        reply_markup=cancel_keyboard()
+    )
+    await state.update_data(org_id=callback_data.org_id)
+    await state.set_state(OrgAddMemberStates.member_id_entering)
+
+@router.callback_query(PreviewCallbackData.filter(), OrgAddMemberStates.confirm)
+async def org_add_member_confirm_callback(callback: CallbackQuery, callback_data: PreviewCallbackData, state: FSMContext):
+    data = await state.get_data()
+    member_id: int = data["member_id"]
+    org_id: int = data["org_id"]
+
+    await callback.answer()
+    await state.clear()
+    if callback_data.answer == YesOrNoEnum.ANSWER_NO:
+        await callback.message.answer("❌ Добавление пользователя в организацию отменено.")
+        return
+
+    org = OrganizationFactory.get_by_id(org_id)
+
+    if org.add_member(member_id):
+        await callback.message.answer(f"✅ Пользователь с ID {member_id} был добавлен в организацию <code>{org.orgdata.name}</code>.")
+        await bot_instance.send_message(
+            chat_id=member_id,
+            text=f"ℹ️ Вы были добавлены в организацию <code>{org.orgdata.name}</code> (ID: {org.orgdata.org_id}). "
+            "Подписка и доступ к сервисам будут предоставлены в соответствии с политикой вашей организации.\n\n"
+            "Если вы считаете, что это произошло по ошибке, пожалуйста, свяжитесь с администрацией."
+        )
+        bot_logger.info(f"User (ID: {member_id}) was added to organization {org.orgdata.name} (ID: {org.orgdata.org_id}) by admin {callback.from_user.id}.")
+    else:
+        await callback.message.answer(f"❌ Не удалось добавить пользователя в организацию. Возможно, он уже является членом организации.")
+
+@router.callback_query(
+    OrgActionsCallbackData.filter(F.action == OrgActionsEnum.REMOVE_MEMBER)
+)
+async def remove_org_member_callback(callback: CallbackQuery, callback_data: OrgActionsCallbackData, state: FSMContext):
+    data = await state.get_data()
+    member_id: int = data["member_id"]
+    org_id: int = data["org_id"]
+
+    await callback.answer()
+    await state.clear()
+    if callback_data.answer == YesOrNoEnum.ANSWER_NO:
+        await callback.message.answer("❌ Удаление пользователя из организации отменено.")
+        return
+
+    org = OrganizationFactory.get_by_id(org_id)
+
+    if org.remove_member(member_id):
+        await callback.message.answer(f"✅ Пользователь с ID {member_id} был удалён из организации <code>{org.orgdata.name}</code>.")
+        await bot_instance.send_message(
+            chat_id=member_id,
+            text=f"ℹ️ Вы были исключены из организации <code>{org.orgdata.name}</code> (ID: {org.orgdata.org_id}). "
+            "Вам более не предоставляется доступ к сервисам Heaven's Gate без подписки.\n\n"
+            "Если вы считаете, что это произошло по ошибке, пожалуйста, свяжитесь с администрацией или ответственным представителем организации."
+        )
+        bot_logger.info(f"User (ID: {member_id}) was removed from organization {org.orgdata.name} (ID: {org.orgdata.org_id}) by admin {callback.from_user.id}.")
+    else:
+        await callback.message.answer(f"❌ Не удалось удалить пользователя из организации. Возможно, он не является членом организации.")
+
+@router.callback_query(PreviewCallbackData.filter(), OrgRemoveMemberStates.confirm)
+async def org_remove_member_confirm_callback(callback: CallbackQuery, callback_data: PreviewCallbackData, state: FSMContext):
+    data = await state.get_data()
+    member_id: int = data["member_id"]
+    org_id: int = data["org_id"]
+
+    await callback.answer()
+    await state.clear()
+    if callback_data.answer == YesOrNoEnum.ANSWER_NO:
+        await callback.message.answer("❌ Удаление пользователя из организации отменено.")
+        return
+
+@router.callback_query(GetOrgCallbackData.filter())
+async def get_org_callback(callback: CallbackQuery, callback_data: GetOrgCallbackData):
+    org = OrganizationFactory.get_organization(callback_data.org_id)
+    await callback.answer()
+    org_info = build_organization_info(org)
+    await callback.message.answer(
+        org_info,
+        reply_markup=build_org_actions_keyboard(org.orgdata.org_id, is_admin=True)
+    )

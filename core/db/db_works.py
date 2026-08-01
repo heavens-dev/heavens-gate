@@ -398,17 +398,17 @@ class Client(BaseModel):
             for model in self.__get_peers(None, PeerModel.status == PeerStatusChoices.STATUS_CONNECTED.value)
         ]
 
-    def get_owned_org(self) -> Optional[Organization]:
+    def get_owned_org(self) -> Optional["OrganizationRepository"]:
         """
         Retrieves the organization owned by the user, if any.
 
         Returns:
-            Organization: The organization object if the user is an owner, None otherwise.
+            OrganizationRepository: The organization repository object if the user is an owner, None otherwise.
         """
         try:
             org_owner = OrganizationOwnerModel.get(OrganizationOwnerModel.user == self.__model)
             org = OrganizationModel.get(OrganizationModel.id == org_owner.organization_id)
-            return Organization.model_validate(org)
+            return OrganizationRepository(orgdata=Organization.model_validate(org), model=org)
         except DoesNotExist:
             return None
 
@@ -780,6 +780,9 @@ class OrganizationRepository(BaseModel):
             return True
         except DoesNotExist:
             return False
+        except Exception as e:
+            core_logger.error(f"Error while adding organization member: {e}")
+            return False
 
     def remove_member(self, user_id: Union[int, str]) -> bool:
         try:
@@ -790,10 +793,15 @@ class OrganizationRepository(BaseModel):
                 )
                 return False
             user.organization_id = None
+            user.subscription_expiry = None
+            user.subscription_type = None
             user.save()
             core_logger.info(f"User {user_id} was removed as a member of organization {self.orgdata.org_id}")
             return True
         except DoesNotExist:
+            return False
+        except Exception as e:
+            core_logger.error(f"Error while removing organization member: {e}")
             return False
 
     def get_members(self, as_client: bool = False) -> list[Union[User, Client]]:

@@ -17,7 +17,14 @@ class UsersInlineKeyboardPaginator:
     goto_last_page = "⏭"
     current_page_label = "{} / {}"
 
-    def __init__(self, data: list[Client], router: Router, items_per_page: int = 5, current_page: int = 1, callback_prefix: str = "page_"):
+    def __init__(
+        self,
+        data: list[Client],
+        router: Router,
+        items_per_page: int = 5,
+        current_page: int = 1,
+        callback_prefix: str = "page_"
+    ):
         self.__data = data
         self.router = router
         self.items_per_page = items_per_page
