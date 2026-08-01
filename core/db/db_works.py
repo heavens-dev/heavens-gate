@@ -373,6 +373,12 @@ class Client(BaseModel):
         self.userdata.remnawave_user_uuid = uuid
         return self.__update_client(remnawave_user_uuid=uuid)
 
+    def clear_subscription(self) -> bool:
+        """Resets the user's subscription type and expiry date to None (unpaid)."""
+        self.userdata.subscription_type = None
+        self.userdata.subscription_expiry = None
+        return self.__update_client(subscription_type=None, subscription_expiry=None)
+
     def set_organization_id(self, org_id: int) -> bool:
         self.userdata.organization_id = org_id
         return self.__update_client(organization_id=org_id)
@@ -673,7 +679,7 @@ class ClientFactory(BaseModel):
 class OrganizationRepository(BaseModel):
     model_config = ConfigDict()
 
-    orgdata: Organization = PrivateAttr(init=True)
+    orgdata: Organization
     __model: OrganizationModel = PrivateAttr(init=True)
 
     def __init__(self, **kwargs):
@@ -693,7 +699,7 @@ class OrganizationRepository(BaseModel):
             bool: True if exactly one record was updated, False otherwise.
         """
         return (self.__model.update(**kwargs)
-                .where(OrganizationModel.id == self.org_id)
+                .where(OrganizationModel.id == self.orgdata.org_id)
                 .execute()) == 1
 
     def add_owner(self, user_id: Union[int, str]) -> bool:
@@ -738,11 +744,19 @@ class OrganizationRepository(BaseModel):
         except DoesNotExist:
             return False
 
-    def get_owners(self) -> list[User]:
+    def get_owners(self, as_client: bool = False) -> list[Union[User, Client]]:
+        """
+        Retrieves all owners of the current organization.
+
+        Args:
+            as_client (bool): If True, returns a list of `Client` objects. If False, returns a list of `User` objects. Defaults to False.
+        """
         owners = (UserModel
                   .select()
                   .join(OrganizationOwnerModel)
                   .where(OrganizationOwnerModel.organization == self.__model))
+        if as_client:
+            return [Client(model=owner, userdata=User.model_validate(owner)) for owner in owners]
         return [User.model_validate(owner) for owner in owners]
 
     def is_user_owner(self, user_id: Union[int, str]) -> bool:
@@ -787,14 +801,15 @@ class OrganizationRepository(BaseModel):
     def remove_member(self, user_id: Union[int, str]) -> bool:
         try:
             user = UserModel.get(UserModel.user_id == user_id)
-            if user.organization_id != self.orgdata.org_id:
+            # ? organization_id is a foreign key that references the OrganizationModel.
+            # organization_id_id is the raw FK value (id or None), so we don't
+            # need to load the related object (and avoid None.id crashes).
+            if user.organization_id_id != self.orgdata.org_id:
                 core_logger.info(
                     f"User {user_id} is not a member of organization {self.orgdata.org_id}. Cannot remove."
                 )
                 return False
             user.organization_id = None
-            user.subscription_expiry = None
-            user.subscription_type = None
             user.save()
             core_logger.info(f"User {user_id} was removed as a member of organization {self.orgdata.org_id}")
             return True

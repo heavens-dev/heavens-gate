@@ -16,10 +16,12 @@ from bot.handlers.keyboards import (build_protocols_keyboard,
 from bot.middlewares.client_getters_middleware import ClientGettersMiddleware
 from bot.middlewares.logging_middleware import LoggingMiddleware
 from bot.utils.message_utils import preview_message
-from bot.utils.orgs_inline_paginator import OrgsInlineKeyboardPaginator
+from bot.utils.pagination.orgs_inline_paginator import \
+    OrgsInlineKeyboardPaginator
+from bot.utils.pagination.users_inline_paginator import \
+    UsersInlineKeyboardPaginator
 from bot.utils.states import AddPeerStates, AddUserStates, WhisperStates
 from bot.utils.user_helper import get_user_data_string
-from bot.utils.users_inline_paginator import UsersInlineKeyboardPaginator
 from config.loader import (bot_cfg, cfg, connections_observer, db_cfg,
                            ip_queue, wghub, xray_worker)
 from core.db.db_works import Client, ClientFactory, OrganizationFactory
@@ -272,8 +274,8 @@ async def syncconfig(message: Message):
 @router.message(Command("users"))
 async def users(message: Message):
     all_clients = ClientFactory.select_clients()
-    paginator = UsersInlineKeyboardPaginator(all_clients, router)
-    msg = await message.answer("Список всех пользователей:", reply_markup=paginator.markup)
+    paginator = UsersInlineKeyboardPaginator(all_clients, router, chat_id=message.chat.id)
+    msg = await message.answer("👥 Список всех пользователей:", reply_markup=paginator.markup)
     await asyncio.sleep(60)
     await msg.delete()
 
@@ -380,8 +382,42 @@ async def set_remnawave_uuid(message: Message):
 
 @router.message(Command("orgs", "organizations"))
 async def list_orgs(message: Message):
-    orgs = OrganizationFactory.select_organizations()
-    paginator = OrgsInlineKeyboardPaginator(orgs, router, callback_prefix="orgs_", caller_user_id=message.from_user.id)
-    msg = await message.answer("Список всех организаций:", reply_markup=paginator.markup)
+    orgs = [org.orgdata for org in OrganizationFactory.select_organizations()]
+    if not orgs:
+        await message.answer("❌ Организации пока не созданы.")
+        return
+
+    paginator = OrgsInlineKeyboardPaginator(
+        orgs,
+        router,
+        chat_id=message.chat.id,
+        caller_user_id=message.from_user.id
+    )
+    msg = await message.answer("🌇 Список всех организаций:", reply_markup=paginator.markup)
     await asyncio.sleep(60)
     await msg.delete()
+
+@router.message(Command("create_org"))
+async def create_org(message: Message):
+    args = message.text.split()
+
+    if len(args) <= 1:
+        await message.answer("❌ Сообщение должно содержать название организации в формате: \"/create_org org_name\".")
+        return
+
+    name = " ".join(args[1:]).strip()
+
+    if not name:
+        await message.answer("❌ Название организации не может быть пустым.")
+        return
+
+    if OrganizationFactory.get_by_name(name):
+        await message.answer(f"❌ Организация с названием <code>{name}</code> уже существует.")
+        return
+
+    org = OrganizationFactory.create_organization(name=name)
+    bot_logger.info(f"Organization {org.orgdata.name} (ID: {org.orgdata.org_id}) was created by admin {message.from_user.id}.")
+    await message.answer(
+        f"✅ Организация <code>{org.orgdata.name}</code> создана (ID: <code>{org.orgdata.org_id}</code>).\n"
+        f"Теперь её можно найти в списке командой /orgs."
+    )

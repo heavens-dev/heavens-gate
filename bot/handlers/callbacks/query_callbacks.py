@@ -1,3 +1,4 @@
+import datetime
 from contextlib import suppress
 
 from aiogram import F, Router
@@ -8,30 +9,39 @@ from aiogram.types import CallbackQuery
 from aiogram.utils.media_group import MediaGroupBuilder
 
 from bot.handlers.keyboards import (build_org_actions_keyboard,
+                                    build_org_extend_time_keyboard,
                                     build_peer_configs_keyboard,
                                     build_protocols_keyboard,
                                     build_subscription_type_keyboard,
                                     build_user_actions_keyboard,
-                                    cancel_keyboard, extend_time_keyboard)
+                                    cancel_keyboard, extend_time_keyboard,
+                                    preview_keyboard)
 from bot.utils.callback_data import (GetOrgCallbackData, GetUserCallbackData,
                                      OrgActionsCallbackData, OrgActionsEnum,
+                                     OrgMemberSelectionCallbackData,
+                                     OrgTimeExtenderCallbackData,
                                      PeerCallbackData, PreviewCallbackData,
                                      ProtocolChoiceCallbackData,
                                      SubscriptionChoiceCallbackData,
                                      TimeExtenderCallbackData,
                                      UserActionsCallbackData, UserActionsEnum,
                                      YesOrNoEnum)
-from bot.utils.orgs_helper import build_organization_info
+from bot.utils.orgs_helper import (build_organization_info,
+                                   extend_organization_subscription_time)
+from bot.utils.pagination.orgs_inline_paginator import \
+    OrgMembersInlineKeyboardPaginator
 from bot.utils.states import (AddPeerStates, AddUserStates, ContactAdminStates,
                               ExtendTimeStates, OrgAddMemberStates,
-                              OrgRemoveMemberStates, PreviewMessageStates,
-                              RenamePeerStates, WhisperStates)
+                              OrgAddOwnerStates, OrgExtendSubStates,
+                              OrgRemoveMemberStates, OrgRemoveOwnerStates,
+                              PreviewMessageStates, RenamePeerStates,
+                              WhisperStates)
 from bot.utils.user_helper import (extend_users_subscription_time,
                                    get_peer_as_input_file,
                                    get_user_data_string)
 from config.loader import bot_instance, wghub, xray_worker
 from core.db.db_works import ClientFactory, OrganizationFactory
-from core.db.enums import ClientStatusChoices, ProtocolType
+from core.db.enums import ClientStatusChoices, ProtocolType, SubscriptionType
 from core.logs import bot_logger
 from core.utils.date_utils import parse_time
 from core.utils.peers_utils import disable_peers, enable_peers
@@ -364,14 +374,73 @@ async def add_user_callback(callback: CallbackQuery, callback_data: PreviewCallb
 @router.callback_query(
     OrgActionsCallbackData.filter(F.action == OrgActionsEnum.ADD_MEMBER)
 )
-async def add_org_member_callback(callback: CallbackQuery, callback_data: OrgActionsCallbackData, state: FSMContext):
+async def add_org_member_callback(callback: CallbackQuery, callback_data: OrgActionsCallbackData):
+    org = OrganizationFactory.get_by_id(callback_data.org_id)
+    if not org:
+        await callback.answer("❌ Организация не найдена.")
+        return
+
+    clients = [
+        client for client in ClientFactory.select_clients()
+        if not org.is_user_member(client.userdata.user_id)
+    ]
+
+    if not clients:
+        await callback.answer("❌ Нет пользователей, которых можно добавить в организацию.")
+        return
+
+    paginator = OrgMembersInlineKeyboardPaginator(
+        clients,
+        router,
+        chat_id=callback.message.chat.id,
+        org_id=callback_data.org_id,
+        action=OrgActionsEnum.ADD_MEMBER,
+        is_admin=callback_data.is_admin,
+        callback_prefix="org_add_member_",
+        allow_manual_input=True
+    )
+
+    await callback.answer()
+    await callback.message.answer(
+        "👤 Выбери пользователя, которого нужно добавить в организацию:",
+        reply_markup=paginator.markup
+    )
+
+@router.callback_query(
+    OrgActionsCallbackData.filter(F.action == OrgActionsEnum.ADD_MEMBER_MANUAL)
+)
+async def add_org_member_manual_callback(callback: CallbackQuery, callback_data: OrgActionsCallbackData, state: FSMContext):
     await state.clear()
     await callback.message.answer(
-        f"🆔 Введи ID пользователя, которого необходимо добавть в организацию",
+        f"🆔 Введи ID пользователя, которого необходимо добавить в организацию",
         reply_markup=cancel_keyboard()
     )
     await state.update_data(org_id=callback_data.org_id)
     await state.set_state(OrgAddMemberStates.member_id_entering)
+
+    await callback.answer()
+
+@router.callback_query(
+    OrgMemberSelectionCallbackData.filter(F.action == OrgActionsEnum.ADD_MEMBER)
+)
+async def select_org_member_to_add_callback(callback: CallbackQuery, callback_data: OrgMemberSelectionCallbackData, state: FSMContext):
+    client = ClientFactory(user_id=callback_data.member_id).get_client()
+
+    if not client:
+        await callback.answer("❌ Пользователь не найден.")
+        return
+
+    await callback.answer()
+    await state.set_data({
+        "org_id": callback_data.org_id,
+        "member_id": client.userdata.user_id
+    })
+    await state.set_state(OrgAddMemberStates.confirm)
+    await callback.message.answer(
+        f"⚠️ <b>Подтверди добавление пользователя {client.userdata.name} "
+        f"(<code>{client.userdata.user_id}</code>) в организацию.</b>",
+        reply_markup=preview_keyboard()
+    )
 
 @router.callback_query(PreviewCallbackData.filter(), OrgAddMemberStates.confirm)
 async def org_add_member_confirm_callback(callback: CallbackQuery, callback_data: PreviewCallbackData, state: FSMContext):
@@ -386,12 +455,25 @@ async def org_add_member_confirm_callback(callback: CallbackQuery, callback_data
         return
 
     org = OrganizationFactory.get_by_id(org_id)
+    if not org:
+        await callback.message.answer("❌ Организация не найдена.")
+        return
 
     if org.add_member(member_id):
+        client = ClientFactory(user_id=member_id).get_client()
+        client.set_subscription_type(SubscriptionType.ENTERPRISE)
+        client.set_subscription_expiry(org.orgdata.subscription_expiry)
+
+        if xray_worker.remnawave:
+            xray_worker.remnawave_update_user(
+                client.userdata,
+                expire_at=org.orgdata.subscription_expiry
+            )
+
         await callback.message.answer(f"✅ Пользователь с ID {member_id} был добавлен в организацию <code>{org.orgdata.name}</code>.")
         await bot_instance.send_message(
             chat_id=member_id,
-            text=f"ℹ️ Вы были добавлены в организацию <code>{org.orgdata.name}</code> (ID: {org.orgdata.org_id}). "
+            text=f"ℹ️ Вы были добавлены в организацию <code>{org.orgdata.name}</code>. "
             "Подписка и доступ к сервисам будут предоставлены в соответствии с политикой вашей организации.\n\n"
             "Если вы считаете, что это произошло по ошибке, пожалуйста, свяжитесь с администрацией."
         )
@@ -402,30 +484,70 @@ async def org_add_member_confirm_callback(callback: CallbackQuery, callback_data
 @router.callback_query(
     OrgActionsCallbackData.filter(F.action == OrgActionsEnum.REMOVE_MEMBER)
 )
-async def remove_org_member_callback(callback: CallbackQuery, callback_data: OrgActionsCallbackData, state: FSMContext):
-    data = await state.get_data()
-    member_id: int = data["member_id"]
-    org_id: int = data["org_id"]
-
-    await callback.answer()
-    await state.clear()
-    if callback_data.answer == YesOrNoEnum.ANSWER_NO:
-        await callback.message.answer("❌ Удаление пользователя из организации отменено.")
+async def remove_org_member_callback(callback: CallbackQuery, callback_data: OrgActionsCallbackData):
+    org = OrganizationFactory.get_by_id(callback_data.org_id)
+    if not org:
+        await callback.answer("❌ Организация не найдена.")
         return
 
-    org = OrganizationFactory.get_by_id(org_id)
+    members = org.get_members(as_client=True)
 
-    if org.remove_member(member_id):
-        await callback.message.answer(f"✅ Пользователь с ID {member_id} был удалён из организации <code>{org.orgdata.name}</code>.")
-        await bot_instance.send_message(
-            chat_id=member_id,
-            text=f"ℹ️ Вы были исключены из организации <code>{org.orgdata.name}</code> (ID: {org.orgdata.org_id}). "
-            "Вам более не предоставляется доступ к сервисам Heaven's Gate без подписки.\n\n"
-            "Если вы считаете, что это произошло по ошибке, пожалуйста, свяжитесь с администрацией или ответственным представителем организации."
-        )
-        bot_logger.info(f"User (ID: {member_id}) was removed from organization {org.orgdata.name} (ID: {org.orgdata.org_id}) by admin {callback.from_user.id}.")
-    else:
-        await callback.message.answer(f"❌ Не удалось удалить пользователя из организации. Возможно, он не является членом организации.")
+    if not members:
+        await callback.answer("❌ В организации нет участников.")
+        return
+
+    paginator = OrgMembersInlineKeyboardPaginator(
+        members,
+        router,
+        chat_id=callback.message.chat.id,
+        org_id=callback_data.org_id,
+        action=OrgActionsEnum.REMOVE_MEMBER,
+        is_admin=callback_data.is_admin,
+        callback_prefix="org_remove_member_",
+        allow_manual_input=True
+    )
+
+    await callback.answer()
+    await callback.message.answer(
+        "🗑 Выбери пользователя, которого нужно удалить из организации:",
+        reply_markup=paginator.markup
+    )
+
+@router.callback_query(
+    OrgActionsCallbackData.filter(F.action == OrgActionsEnum.REMOVE_MEMBER_MANUAL)
+)
+async def remove_org_member_manual_callback(callback: CallbackQuery, callback_data: OrgActionsCallbackData, state: FSMContext):
+    await state.clear()
+    await callback.message.answer(
+        f"🆔 Введи ID пользователя, которого необходимо удалить из организации",
+        reply_markup=cancel_keyboard()
+    )
+    await state.update_data(org_id=callback_data.org_id)
+    await state.set_state(OrgRemoveMemberStates.member_id_entering)
+
+    await callback.answer()
+
+@router.callback_query(
+    OrgMemberSelectionCallbackData.filter(F.action == OrgActionsEnum.REMOVE_MEMBER)
+)
+async def select_org_member_to_remove_callback(callback: CallbackQuery, callback_data: OrgMemberSelectionCallbackData, state: FSMContext):
+    client = ClientFactory(user_id=callback_data.member_id).get_client()
+
+    if not client:
+        await callback.answer("❌ Пользователь не найден.")
+        return
+
+    await callback.answer()
+    await state.set_data({
+        "org_id": callback_data.org_id,
+        "member_id": client.userdata.user_id
+    })
+    await state.set_state(OrgRemoveMemberStates.confirm)
+    await callback.message.answer(
+        f"⚠️ <b>Подтверди удаление пользователя {client.userdata.name} "
+        f"(<code>{client.userdata.user_id}</code>) из организации.</b>",
+        reply_markup=preview_keyboard()
+    )
 
 @router.callback_query(PreviewCallbackData.filter(), OrgRemoveMemberStates.confirm)
 async def org_remove_member_confirm_callback(callback: CallbackQuery, callback_data: PreviewCallbackData, state: FSMContext):
@@ -439,9 +561,340 @@ async def org_remove_member_confirm_callback(callback: CallbackQuery, callback_d
         await callback.message.answer("❌ Удаление пользователя из организации отменено.")
         return
 
+    org = OrganizationFactory.get_by_id(org_id)
+    if not org:
+        await callback.message.answer("❌ Организация не найдена.")
+        return
+
+    if org.remove_member(member_id):
+        client = ClientFactory(user_id=member_id).get_client()
+        client.clear_subscription()
+        peers = client.get_all_peers(protocol_specific=True)
+        disable_peers(wghub, xray_worker, peers, client)
+
+        if xray_worker.remnawave:
+            xray_worker.remnawave_update_user(
+                client.userdata,
+                expire_at=datetime.datetime.now()
+            )
+
+        await callback.message.answer(f"✅ Пользователь с ID {member_id} был удалён из организации <code>{org.orgdata.name}</code>.")
+        await bot_instance.send_message(
+            chat_id=member_id,
+            text=f"ℹ️ Вы были исключены из организации <code>{org.orgdata.name}</code>. "
+            "Вам более не предоставляется доступ к сервисам Heaven's Gate без подписки.\n\n"
+            "Если вы считаете, что это произошло по ошибке, пожалуйста, свяжитесь с администрацией или ответственным представителем организации."
+        )
+        bot_logger.info(f"User (ID: {member_id}) was removed from organization {org.orgdata.name} (ID: {org.orgdata.org_id}) by admin {callback.from_user.id}.")
+    else:
+        await callback.message.answer(f"❌ Не удалось удалить пользователя из организации. Возможно, он не является членом организации.")
+
+@router.callback_query(
+    OrgActionsCallbackData.filter(F.action == OrgActionsEnum.ADD_OWNER)
+)
+async def add_org_owner_callback(callback: CallbackQuery, callback_data: OrgActionsCallbackData):
+    org = OrganizationFactory.get_by_id(callback_data.org_id)
+    if not org:
+        await callback.answer("❌ Организация не найдена.")
+        return
+
+    clients = [
+        client for client in ClientFactory.select_clients()
+        if not org.is_user_owner(client.userdata.user_id)
+    ]
+
+    if not clients:
+        await callback.answer("❌ Нет пользователей, которых можно назначить владельцем организации.")
+        return
+
+    paginator = OrgMembersInlineKeyboardPaginator(
+        clients,
+        router,
+        chat_id=callback.message.chat.id,
+        org_id=callback_data.org_id,
+        action=OrgActionsEnum.ADD_OWNER,
+        is_admin=callback_data.is_admin,
+        callback_prefix="org_add_owner_",
+        allow_manual_input=True
+    )
+
+    await callback.answer()
+    await callback.message.answer(
+        "👑 Выбери пользователя, которого нужно назначить владельцем организации:",
+        reply_markup=paginator.markup
+    )
+
+@router.callback_query(
+    OrgActionsCallbackData.filter(F.action == OrgActionsEnum.ADD_OWNER_MANUAL)
+)
+async def add_org_owner_manual_callback(callback: CallbackQuery, callback_data: OrgActionsCallbackData, state: FSMContext):
+    await state.clear()
+    await callback.message.answer(
+        f"🆔 Введи ID пользователя, которого необходимо назначить владельцем организации",
+        reply_markup=cancel_keyboard()
+    )
+    await state.update_data(org_id=callback_data.org_id)
+    await state.set_state(OrgAddOwnerStates.owner_id_entering)
+
+    await callback.answer()
+
+@router.callback_query(
+    OrgMemberSelectionCallbackData.filter(F.action == OrgActionsEnum.ADD_OWNER)
+)
+async def select_org_owner_to_add_callback(callback: CallbackQuery, callback_data: OrgMemberSelectionCallbackData, state: FSMContext):
+    client = ClientFactory(user_id=callback_data.member_id).get_client()
+
+    if not client:
+        await callback.answer("❌ Пользователь не найден.")
+        return
+
+    await callback.answer()
+    await state.set_data({
+        "org_id": callback_data.org_id,
+        "owner_id": client.userdata.user_id
+    })
+    await state.set_state(OrgAddOwnerStates.confirm)
+    await callback.message.answer(
+        f"⚠️ <b>Подтверди назначение пользователя {client.userdata.name} "
+        f"(<code>{client.userdata.user_id}</code>) владельцем организации.</b>",
+        reply_markup=preview_keyboard()
+    )
+
+@router.callback_query(PreviewCallbackData.filter(), OrgAddOwnerStates.confirm)
+async def org_add_owner_confirm_callback(callback: CallbackQuery, callback_data: PreviewCallbackData, state: FSMContext):
+    data = await state.get_data()
+    owner_id: int = data["owner_id"]
+    org_id: int = data["org_id"]
+
+    await callback.answer()
+    await state.clear()
+    if callback_data.answer == YesOrNoEnum.ANSWER_NO:
+        await callback.message.answer("❌ Назначение владельца отменено.")
+        return
+
+    org = OrganizationFactory.get_by_id(org_id)
+    if not org:
+        await callback.message.answer("❌ Организация не найдена.")
+        return
+
+    if org.add_owner(owner_id):
+        await callback.message.answer(f"✅ Пользователь с ID {owner_id} назначен владельцем организации <code>{org.orgdata.name}</code>.")
+        await bot_instance.send_message(
+            chat_id=owner_id,
+            text=f"👑 Вы были назначены владельцем организации <code>{org.orgdata.name}</code>. "
+            "Теперь вы можете просматривать информацию об организации командой /org.\n\n"
+            "Если вы считаете, что это произошло по ошибке, пожалуйста, свяжитесь с администрацией."
+        )
+        bot_logger.info(f"User (ID: {owner_id}) was added as owner of organization {org.orgdata.name} (ID: {org.orgdata.org_id}) by admin {callback.from_user.id}.")
+    else:
+        await callback.message.answer(f"❌ Не удалось назначить владельца. Возможно, он уже является владельцем другой организации.")
+
+@router.callback_query(
+    OrgActionsCallbackData.filter(F.action == OrgActionsEnum.REMOVE_OWNER)
+)
+async def remove_org_owner_callback(callback: CallbackQuery, callback_data: OrgActionsCallbackData):
+    org = OrganizationFactory.get_by_id(callback_data.org_id)
+    if not org:
+        await callback.answer("❌ Организация не найдена.")
+        return
+
+    owners = org.get_owners(as_client=True)
+
+    if not owners:
+        await callback.answer("❌ У организации нет владельцев.")
+        return
+
+    paginator = OrgMembersInlineKeyboardPaginator(
+        owners,
+        router,
+        chat_id=callback.message.chat.id,
+        org_id=callback_data.org_id,
+        action=OrgActionsEnum.REMOVE_OWNER,
+        is_admin=callback_data.is_admin,
+        callback_prefix="org_remove_owner_",
+        allow_manual_input=True
+    )
+
+    await callback.answer()
+    await callback.message.answer(
+        "👑 Выбери пользователя, которого нужно снять с должности владельца:",
+        reply_markup=paginator.markup
+    )
+
+@router.callback_query(
+    OrgActionsCallbackData.filter(F.action == OrgActionsEnum.REMOVE_OWNER_MANUAL)
+)
+async def remove_org_owner_manual_callback(callback: CallbackQuery, callback_data: OrgActionsCallbackData, state: FSMContext):
+    await state.clear()
+    await callback.message.answer(
+        f"🆔 Введи ID пользователя, которого необходимо снять с должности владельца организации",
+        reply_markup=cancel_keyboard()
+    )
+    await state.update_data(org_id=callback_data.org_id)
+    await state.set_state(OrgRemoveOwnerStates.owner_id_entering)
+
+    await callback.answer()
+
+@router.callback_query(
+    OrgMemberSelectionCallbackData.filter(F.action == OrgActionsEnum.REMOVE_OWNER)
+)
+async def select_org_owner_to_remove_callback(callback: CallbackQuery, callback_data: OrgMemberSelectionCallbackData, state: FSMContext):
+    client = ClientFactory(user_id=callback_data.member_id).get_client()
+
+    if not client:
+        await callback.answer("❌ Пользователь не найден.")
+        return
+
+    await callback.answer()
+    await state.set_data({
+        "org_id": callback_data.org_id,
+        "owner_id": client.userdata.user_id
+    })
+    await state.set_state(OrgRemoveOwnerStates.confirm)
+    await callback.message.answer(
+        f"⚠️ <b>Подтверди снятие пользователя {client.userdata.name} "
+        f"(<code>{client.userdata.user_id}</code>) с должности владельца организации.</b>",
+        reply_markup=preview_keyboard()
+    )
+
+@router.callback_query(PreviewCallbackData.filter(), OrgRemoveOwnerStates.confirm)
+async def org_remove_owner_confirm_callback(callback: CallbackQuery, callback_data: PreviewCallbackData, state: FSMContext):
+    data = await state.get_data()
+    owner_id: int = data["owner_id"]
+    org_id: int = data["org_id"]
+
+    await callback.answer()
+    await callback.message.delete()
+    await state.clear()
+    if callback_data.answer == YesOrNoEnum.ANSWER_NO:
+        await callback.message.answer("❌ Снятие владельца отменено.")
+        return
+
+    org = OrganizationFactory.get_by_id(org_id)
+    if not org:
+        await callback.message.answer("❌ Организация не найдена.")
+        return
+
+    if org.remove_owner(owner_id):
+        await callback.message.answer(f"✅ Пользователь с ID {owner_id} снят с должности владельца организации <code>{org.orgdata.name}</code>.")
+        await bot_instance.send_message(
+            chat_id=owner_id,
+            text=f"ℹ️ Вы были сняты с должности владельца организации <code>{org.orgdata.name}</code>.\n\n"
+            "Если вы считаете, что это произошло по ошибке, пожалуйста, свяжитесь с администрацией."
+        )
+        bot_logger.info(f"User (ID: {owner_id}) was removed as owner of organization {org.orgdata.name} (ID: {org.orgdata.org_id}) by admin {callback.from_user.id}.")
+    else:
+        await callback.message.answer(f"❌ Не удалось снять владельца. Возможно, он не является владельцем этой организации.")
+
+@router.callback_query(
+    OrgActionsCallbackData.filter(F.action == OrgActionsEnum.VIEW_MEMBERS)
+)
+async def view_org_members_callback(callback: CallbackQuery, callback_data: OrgActionsCallbackData):
+    org = OrganizationFactory.get_by_id(callback_data.org_id)
+    if not org:
+        await callback.answer("❌ Организация не найдена.")
+        return
+
+    members = org.get_members(as_client=True)
+
+    if not members:
+        await callback.answer("❌ В организации нет участников.")
+        return
+
+    paginator = OrgMembersInlineKeyboardPaginator(
+        members,
+        router,
+        chat_id=callback.message.chat.id,
+        org_id=callback_data.org_id,
+        action=OrgActionsEnum.VIEW_MEMBERS,
+        is_admin=callback_data.is_admin,
+        callback_prefix="org_view_members_"
+    )
+
+    await callback.answer()
+    await callback.message.answer(
+        "👥 Участники организации:",
+        reply_markup=paginator.markup
+    )
+
+@router.callback_query(
+    OrgMemberSelectionCallbackData.filter(F.action == OrgActionsEnum.VIEW_MEMBERS)
+)
+async def view_org_member_callback(callback: CallbackQuery, callback_data: OrgMemberSelectionCallbackData):
+    client = ClientFactory(user_id=callback_data.member_id).get_client()
+
+    if not client:
+        await callback.answer("❌ Пользователь не найден.")
+        return
+
+    await callback.answer(f"👤 {client.userdata.name} ({client.userdata.user_id})")
+
+@router.callback_query(
+    OrgActionsCallbackData.filter(F.action == OrgActionsEnum.EXTEND_SUBSCRIPTION_TIME)
+)
+async def extend_org_subscription_dialog_callback(callback: CallbackQuery, callback_data: OrgActionsCallbackData):
+    keyboard = build_org_extend_time_keyboard(callback_data.org_id)
+    keyboard.inline_keyboard.append(cancel_keyboard().inline_keyboard[0])
+    await callback.answer()
+    await callback.message.answer("🕒 На сколько продлить подписку организации?", reply_markup=keyboard)
+
+@router.callback_query(
+    OrgTimeExtenderCallbackData.filter(F.extend_for != "custom")
+)
+async def extend_org_subscription_time_callback(callback: CallbackQuery, callback_data: OrgTimeExtenderCallbackData):
+    org = OrganizationFactory.get_by_id(callback_data.org_id)
+    if not org:
+        await callback.answer("❌ Организация не найдена.")
+        return
+
+    time_to_add = parse_time(callback_data.extend_for)
+
+    if not time_to_add:
+        bot_logger.warning(f"Invalid time format, couldn't parse: {callback_data.extend_for}")
+        await callback.answer(f"❌ Неправильный формат времени: {callback_data.extend_for}")
+        return
+
+    if extend_organization_subscription_time(org, time_to_add):
+        await callback.answer(f"✅ Подписка организации продлена на {callback_data.extend_for}.")
+    else:
+        await callback.answer(f"❓ Что-то пошло не так во время операции. Проверь логи.")
+
+@router.callback_query(
+    OrgTimeExtenderCallbackData.filter(F.extend_for == "custom")
+)
+async def extend_org_subscription_time_custom(callback: CallbackQuery, callback_data: OrgTimeExtenderCallbackData, state: FSMContext):
+    await callback.answer()
+    await callback.message.edit_text(
+        f"📅 Введи время, на которое ты хочешь продлить доступ в формате "
+        "<code>число</code> + <code>(d -- дни, w -- недели, M -- месяцы, Y -- годы)</code>: "
+    )
+    await callback.message.edit_reply_markup(reply_markup=cancel_keyboard())
+    await state.set_data({"org_id": callback_data.org_id, "extend_for": callback_data.extend_for})
+    await state.set_state(OrgExtendSubStates.time_entering)
+
+@router.callback_query(
+    OrgActionsCallbackData.filter(F.action == OrgActionsEnum.REFRESH_ORG)
+)
+async def refresh_org_callback(callback: CallbackQuery, callback_data: OrgActionsCallbackData):
+    org = OrganizationFactory.get_by_id(callback_data.org_id)
+    if not org:
+        await callback.answer("❌ Организация не найдена.")
+        return
+
+    await callback.answer(f"Данные организации {org.orgdata.name} обновлены.")
+    with suppress(TelegramBadRequest):
+        await callback.message.edit_text(
+            build_organization_info(org),
+            reply_markup=build_org_actions_keyboard(org.orgdata.org_id, is_admin=callback_data.is_admin)
+        )
+
 @router.callback_query(GetOrgCallbackData.filter())
 async def get_org_callback(callback: CallbackQuery, callback_data: GetOrgCallbackData):
-    org = OrganizationFactory.get_organization(callback_data.org_id)
+    org = OrganizationFactory.get_by_id(callback_data.org_id)
+    if not org:
+        await callback.answer("❌ Организация не найдена.")
+        return
+
     await callback.answer()
     org_info = build_organization_info(org)
     await callback.message.answer(

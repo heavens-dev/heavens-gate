@@ -1,11 +1,12 @@
 from datetime import datetime
 from typing import Any, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import (BaseModel, ConfigDict, Field, field_validator,
+                      model_validator)
 
 from core.db.enums import (ClientStatusChoices, PeerStatusChoices,
                            ProtocolType, SubscriptionType)
-from core.db.models import PeerModel
+from core.db.models import OrganizationModel, PeerModel
 
 
 class User(BaseModel):
@@ -17,6 +18,14 @@ class User(BaseModel):
     registered_at: datetime
     subscription_type: Optional[SubscriptionType] = Field(default=None)
     subscription_expiry: Optional[datetime] = Field(default=None)
+
+    @field_validator("organization_id", mode="before")
+    @classmethod
+    def validate_organization_id(cls, value: Any) -> Any:
+        """Coerce a peewee FK object to its id when reading from attributes."""
+        if isinstance(value, OrganizationModel):
+            return value.id
+        return value
 
     vless_sub_token: Optional[str] = Field(default=None)
 

@@ -65,8 +65,14 @@ class SubscriptionChoiceCallbackData(CallbackData, prefix="subscription_choice")
 class OrgActionsEnum(StrEnum):
     VIEW_ORG = "view_org"
     ADD_MEMBER = "add_member"
+    ADD_MEMBER_MANUAL = "add_member_manual"
     REMOVE_MEMBER = "remove_member"
+    REMOVE_MEMBER_MANUAL = "remove_member_manual"
     VIEW_MEMBERS = "view_members"
+    ADD_OWNER = "add_owner"
+    ADD_OWNER_MANUAL = "add_owner_manual"
+    REMOVE_OWNER = "remove_owner"
+    REMOVE_OWNER_MANUAL = "remove_owner_manual"
     EXTEND_SUBSCRIPTION_TIME = "extend_sub_time"
     REFRESH_ORG = "refresh_org"
 
@@ -74,8 +80,20 @@ class OrgActionsEnum(StrEnum):
 class OrgActionsCallbackData(CallbackData, prefix="org_action"):
     org_id: int
     action: OrgActionsEnum
-    user_id: int
     is_admin: bool
+
+
+class OrgMemberSelectionCallbackData(CallbackData, prefix="org_member_select"):
+    """Callback data for selecting a user from a paginated list (add/remove/view member).
+
+    Args:
+        org_id (int): organization id
+        action (OrgActionsEnum): action to perform with the selected user
+        member_id (int): user id of the selected user
+    """
+    org_id: int
+    action: OrgActionsEnum
+    member_id: int
 
 
 class GetOrgCallbackData(CallbackData, prefix="get_org"):

@@ -5,13 +5,16 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
 from bot.handlers.keyboards import (build_reply_to_message_keyboard,
                                     preview_keyboard)
 from bot.utils.message_utils import preview_message
+from bot.utils.orgs_helper import extend_organization_subscription_time
 from bot.utils.states import (AddPeerStates, AddUserStates, ContactAdminStates,
                               ExtendTimeStates, OrgAddMemberStates,
+                              OrgAddOwnerStates, OrgExtendSubStates,
+                              OrgRemoveMemberStates, OrgRemoveOwnerStates,
                               RenamePeerStates, WhisperStates)
 from bot.utils.user_helper import extend_users_subscription_time
 from config.loader import (bot_cfg, bot_instance, ip_queue, wghub, xray_cfg,
                            xray_worker)
-from core.db.db_works import ClientFactory
+from core.db.db_works import ClientFactory, OrganizationFactory
 from core.db.enums import ProtocolType
 from core.logs import bot_logger
 from core.utils.date_utils import parse_time
@@ -193,3 +196,122 @@ async def org_add_member(message: Message, state: FSMContext):
     )
     await state.update_data({"member_id": client.userdata.user_id})
     await state.set_state(OrgAddMemberStates.confirm)
+
+@router.message(OrgRemoveMemberStates.member_id_entering)
+async def org_remove_member(message: Message, state: FSMContext):
+    if not message.text.isdigit():
+        await message.answer("❌ ID пользователя должен быть числом.")
+        await state.clear()
+        return
+
+    client = ClientFactory(user_id=int(message.text)).get_client()
+    if not client:
+        await message.answer("❌ Пользователь с таким ID не найден.")
+        await state.clear()
+        return
+
+    org = OrganizationFactory.get_by_id((await state.get_data())["org_id"])
+    if not org:
+        await message.answer("❌ Организация не найдена.")
+        await state.clear()
+        return
+
+    if not org.is_user_member(client.userdata.user_id):
+        await message.answer("❌ Пользователь не является членом этой организации.")
+        await state.clear()
+        return
+
+    await message.answer(
+        f"⚠️ <b>Подтверди удаление пользователя {client.userdata.name} "
+        f"(<code>{client.userdata.user_id}</code>) из организации.</b> ",
+        reply_markup=preview_keyboard()
+    )
+    await state.update_data({"member_id": client.userdata.user_id})
+    await state.set_state(OrgRemoveMemberStates.confirm)
+
+@router.message(OrgAddOwnerStates.owner_id_entering)
+async def org_add_owner(message: Message, state: FSMContext):
+    if not message.text.isdigit():
+        await message.answer("❌ ID пользователя должен быть числом.")
+        await state.clear()
+        return
+
+    client = ClientFactory(user_id=int(message.text)).get_client()
+    if not client:
+        await message.answer("❌ Пользователь с таким ID не найден.")
+        await state.clear()
+        return
+
+    org = OrganizationFactory.get_by_id((await state.get_data())["org_id"])
+    if not org:
+        await message.answer("❌ Организация не найдена.")
+        await state.clear()
+        return
+
+    if org.is_user_owner(client.userdata.user_id):
+        await message.answer("❌ Пользователь уже является владельцем организации.")
+        await state.clear()
+        return
+
+    await message.answer(
+        f"⚠️ <b>Подтверди назначение пользователя {client.userdata.name} "
+        f"(<code>{client.userdata.user_id}</code>) владельцем организации.</b> ",
+        reply_markup=preview_keyboard()
+    )
+    await state.update_data({"owner_id": client.userdata.user_id})
+    await state.set_state(OrgAddOwnerStates.confirm)
+
+@router.message(OrgRemoveOwnerStates.owner_id_entering)
+async def org_remove_owner(message: Message, state: FSMContext):
+    if not message.text.isdigit():
+        await message.answer("❌ ID пользователя должен быть числом.")
+        await state.clear()
+        return
+
+    client = ClientFactory(user_id=int(message.text)).get_client()
+    if not client:
+        await message.answer("❌ Пользователь с таким ID не найден.")
+        await state.clear()
+        return
+
+    org = OrganizationFactory.get_by_id((await state.get_data())["org_id"])
+    if not org:
+        await message.answer("❌ Организация не найдена.")
+        await state.clear()
+        return
+
+    if not org.is_user_owner(client.userdata.user_id):
+        await message.answer("❌ Пользователь не является владельцем этой организации.")
+        await state.clear()
+        return
+
+    await message.answer(
+        f"⚠️ <b>Подтверди снятие пользователя {client.userdata.name} "
+        f"(<code>{client.userdata.user_id}</code>) с должности владельца организации.</b> ",
+        reply_markup=preview_keyboard()
+    )
+    await state.update_data({"owner_id": client.userdata.user_id})
+    await state.set_state(OrgRemoveOwnerStates.confirm)
+
+@router.message(OrgExtendSubStates.time_entering)
+async def extend_org_subscription_time_custom_entered(message: Message, state: FSMContext):
+    data = await state.get_data()
+    org_id = data["org_id"]
+
+    await state.clear()
+
+    time_to_add = parse_time(message.text)
+
+    if not time_to_add:
+        await message.answer(f"❌ Неправильный формат времени: {message.text}")
+        return
+
+    org = OrganizationFactory.get_by_id(org_id)
+    if not org:
+        await message.answer("❌ Организация не найдена.")
+        return
+
+    if extend_organization_subscription_time(org, time_to_add):
+        await message.answer(f"✅ Время использования организации продлено на {message.text}.")
+    else:
+        await message.answer(f"❓ Что-то пошло не так во время операции. Проверь логи.")

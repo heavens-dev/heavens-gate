@@ -34,9 +34,15 @@ class OrgAddMemberStates(StatesGroup):
 
 class OrgRemoveMemberStates(StatesGroup):
     member_id_entering = State()
+    confirm = State()
 
 class OrgAddOwnerStates(StatesGroup):
     owner_id_entering = State()
+    confirm = State()
+
+class OrgRemoveOwnerStates(StatesGroup):
+    owner_id_entering = State()
+    confirm = State()
 
 class OrgExtendSubStates(StatesGroup):
     time_entering = State()

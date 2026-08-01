@@ -114,5 +114,5 @@ async def view_org(message: Message):
     org_info = build_organization_info(org)
     await message.answer(
         org_info,
-        reply_markup=build_org_actions_keyboard(org.orgdata.org_id, client.userdata.user_id, is_admin=False)
+        reply_markup=build_org_actions_keyboard(org.orgdata.org_id, is_admin=False)
     )

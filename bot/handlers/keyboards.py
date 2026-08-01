@@ -2,6 +2,7 @@ from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot.utils.callback_data import (OrgActionsCallbackData, OrgActionsEnum,
+                                     OrgTimeExtenderCallbackData,
                                      PeerCallbackData, PreviewCallbackData,
                                      ProtocolChoiceCallbackData,
                                      SubscriptionChoiceCallbackData,
@@ -304,6 +305,24 @@ def build_org_actions_keyboard(org_id: int, is_admin: bool) -> InlineKeyboardMar
         )
 
         builder.button(
+            text="👑 Добавить владельца",
+            callback_data=OrgActionsCallbackData(
+                org_id=org_id,
+                action=OrgActionsEnum.ADD_OWNER,
+                is_admin=is_admin
+            )
+        )
+
+        builder.button(
+            text="👑 Удалить владельца",
+            callback_data=OrgActionsCallbackData(
+                org_id=org_id,
+                action=OrgActionsEnum.REMOVE_OWNER,
+                is_admin=is_admin
+            )
+        )
+
+        builder.button(
             text="📅 Продлить подписку",
             callback_data=OrgActionsCallbackData(
                 org_id=org_id,
@@ -329,5 +348,39 @@ def build_org_actions_keyboard(org_id: int, is_admin: bool) -> InlineKeyboardMar
             is_admin=is_admin
         )
     )
+
+    builder.adjust(2, repeat=True)
+
+    return builder.as_markup()
+
+def build_org_extend_time_keyboard(org_id: int) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+
+    builder.button(
+        text="Продлить на 1 день",
+        callback_data=OrgTimeExtenderCallbackData(org_id=org_id, extend_for="1d")
+    )
+    builder.button(
+        text="Продлить на 1 неделю",
+        callback_data=OrgTimeExtenderCallbackData(org_id=org_id, extend_for="1w")
+    )
+    builder.button(
+        text="Продлить на 1 месяц",
+        callback_data=OrgTimeExtenderCallbackData(org_id=org_id, extend_for="1M")
+    )
+    builder.button(
+        text="Продлить на 3 месяца",
+        callback_data=OrgTimeExtenderCallbackData(org_id=org_id, extend_for="3M")
+    )
+    builder.button(
+        text="Продлить на 6 месяцев",
+        callback_data=OrgTimeExtenderCallbackData(org_id=org_id, extend_for="6M")
+    )
+    builder.button(
+        text="Ввести время",
+        callback_data=OrgTimeExtenderCallbackData(org_id=org_id, extend_for="custom")
+    )
+
+    builder.adjust(1, repeat=True)
 
     return builder.as_markup()
