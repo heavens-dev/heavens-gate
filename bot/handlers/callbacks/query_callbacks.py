@@ -199,7 +199,7 @@ async def preview_message_callback(callback: CallbackQuery, callback_data: Previ
           else "✉️ <b>Рассылка от администрации</b>:\n\n"
 
     for tg_id in message_data["user_ids"]:
-        with suppress(TelegramForbiddenError):
+        with suppress(TelegramForbiddenError, TelegramBadRequest):
             await callback.bot.send_message(tg_id, msg + message_data["message"])
 
     await callback.message.answer("✅ Сообщение отправлено!")
