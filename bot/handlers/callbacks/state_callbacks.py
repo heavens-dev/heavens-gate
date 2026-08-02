@@ -8,7 +8,8 @@ from bot.utils.message_utils import preview_message
 from bot.utils.orgs_helper import extend_organization_subscription_time
 from bot.utils.states import (AddPeerStates, AddUserStates, ContactAdminStates,
                               ExtendTimeStates, OrgAddMemberStates,
-                              OrgAddOwnerStates, OrgExtendSubStates,
+                              OrgAddOwnerStates, OrgContactAdminsStates,
+                              OrgContactOrgStates, OrgExtendSubStates,
                               OrgRemoveMemberStates, OrgRemoveOwnerStates,
                               RenamePeerStates, WhisperStates)
 from bot.utils.user_helper import extend_users_subscription_time
@@ -315,3 +316,33 @@ async def extend_org_subscription_time_custom_entered(message: Message, state: F
         await message.answer(f"✅ Время использования организации продлено на {message.text}.")
     else:
         await message.answer(f"❓ Что-то пошло не так во время операции. Проверь логи.")
+
+@router.message(OrgContactAdminsStates.message_entering)
+async def org_contact_admins_preview_message(message: Message, state: FSMContext):
+    if message.text.lower() in ["отмена", "cancel"]:
+        await message.answer("❌ Действие отменено.")
+        await state.clear()
+        return
+
+    await message.answer(
+        f"⚠️ <b>Подтверди отправку сообщения администраторам от имени организации:</b>\n\n"
+        f"<blockquote>{message.text}</blockquote>",
+        reply_markup=preview_keyboard()
+    )
+    await state.update_data({"message": message.text})
+    await state.set_state(OrgContactAdminsStates.confirm)
+
+@router.message(OrgContactOrgStates.message_entering)
+async def org_contact_org_preview_message(message: Message, state: FSMContext):
+    if message.text.lower() in ["отмена", "cancel"]:
+        await message.answer("❌ Действие отменено.")
+        await state.clear()
+        return
+
+    await message.answer(
+        f"⚠️ <b>Подтверди отправку сообщения владельцам организации:</b>\n\n"
+        f"<blockquote>{message.text}</blockquote>",
+        reply_markup=preview_keyboard()
+    )
+    await state.update_data({"message": message.text})
+    await state.set_state(OrgContactOrgStates.confirm)

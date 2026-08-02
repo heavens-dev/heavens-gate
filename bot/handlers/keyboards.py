@@ -263,10 +263,24 @@ def build_reply_to_message_keyboard(user_id: int) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
 
     builder.button(
-        text="📨 Ответить",
+        text="📨 Ответить пользователю",
         callback_data=UserActionsCallbackData(
             user_id=user_id,
             action=UserActionsEnum.WHISPER_USER,
+            is_admin=True
+        )
+    )
+
+    return builder.as_markup()
+
+def build_reply_to_org_message_keyboard(org_id: int) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+
+    builder.button(
+        text="📨 Ответить организации",
+        callback_data=OrgActionsCallbackData(
+            org_id=org_id,
+            action=OrgActionsEnum.CONTACT_ORG,
             is_admin=True
         )
     )
@@ -327,6 +341,26 @@ def build_org_actions_keyboard(org_id: int, is_admin: bool) -> InlineKeyboardMar
             callback_data=OrgActionsCallbackData(
                 org_id=org_id,
                 action=OrgActionsEnum.EXTEND_SUBSCRIPTION_TIME,
+                is_admin=is_admin
+            )
+        )
+
+        builder.button(
+            text="📞 Связаться с организацией",
+            callback_data=OrgActionsCallbackData(
+                org_id=org_id,
+                action=OrgActionsEnum.CONTACT_ORG,
+                is_admin=is_admin
+            )
+        )
+
+    # ? contact with admins while being an admin...
+    if not is_admin:
+        builder.button(
+            text="📞 Связаться с админами",
+            callback_data=OrgActionsCallbackData(
+                org_id=org_id,
+                action=OrgActionsEnum.CONTACT_ADMINS,
                 is_admin=is_admin
             )
         )

@@ -46,3 +46,11 @@ class OrgRemoveOwnerStates(StatesGroup):
 
 class OrgExtendSubStates(StatesGroup):
     time_entering = State()
+
+class OrgContactAdminsStates(StatesGroup):
+    message_entering = State()
+    confirm = State()
+
+class OrgContactOrgStates(StatesGroup):
+    message_entering = State()
+    confirm = State()

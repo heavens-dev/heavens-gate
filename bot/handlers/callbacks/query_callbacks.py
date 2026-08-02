@@ -12,6 +12,8 @@ from bot.handlers.keyboards import (build_org_actions_keyboard,
                                     build_org_extend_time_keyboard,
                                     build_peer_configs_keyboard,
                                     build_protocols_keyboard,
+                                    build_reply_to_message_keyboard,
+                                    build_reply_to_org_message_keyboard,
                                     build_subscription_type_keyboard,
                                     build_user_actions_keyboard,
                                     cancel_keyboard, extend_time_keyboard,
@@ -32,14 +34,15 @@ from bot.utils.pagination.orgs_inline_paginator import \
     OrgMembersInlineKeyboardPaginator
 from bot.utils.states import (AddPeerStates, AddUserStates, ContactAdminStates,
                               ExtendTimeStates, OrgAddMemberStates,
-                              OrgAddOwnerStates, OrgExtendSubStates,
+                              OrgAddOwnerStates, OrgContactAdminsStates,
+                              OrgContactOrgStates, OrgExtendSubStates,
                               OrgRemoveMemberStates, OrgRemoveOwnerStates,
                               PreviewMessageStates, RenamePeerStates,
                               WhisperStates)
 from bot.utils.user_helper import (extend_users_subscription_time,
                                    get_peer_as_input_file,
                                    get_user_data_string)
-from config.loader import bot_instance, wghub, xray_worker
+from config.loader import bot_cfg, bot_instance, wghub, xray_worker
 from core.db.db_works import ClientFactory, OrganizationFactory
 from core.db.enums import ClientStatusChoices, ProtocolType, SubscriptionType
 from core.logs import bot_logger
@@ -871,6 +874,97 @@ async def extend_org_subscription_time_custom(callback: CallbackQuery, callback_
     await callback.message.edit_reply_markup(reply_markup=cancel_keyboard())
     await state.set_data({"org_id": callback_data.org_id, "extend_for": callback_data.extend_for})
     await state.set_state(OrgExtendSubStates.time_entering)
+
+@router.callback_query(
+    OrgActionsCallbackData.filter(F.action == OrgActionsEnum.CONTACT_ADMINS)
+)
+async def org_contact_admins_callback(callback: CallbackQuery, callback_data: OrgActionsCallbackData, state: FSMContext):
+    await callback.answer()
+
+    await callback.message.answer(
+        "💬 <b>Введите сообщение, которое необходимо отправить администрации от имени организации:</b>",
+        reply_markup=cancel_keyboard()
+    )
+    await state.update_data(org_id=callback_data.org_id)
+    await state.set_state(OrgContactAdminsStates.message_entering)
+
+@router.callback_query(PreviewCallbackData.filter(), OrgContactAdminsStates.confirm)
+async def org_contact_admins_confirm_callback(callback: CallbackQuery, callback_data: PreviewCallbackData, state: FSMContext):
+    data = await state.get_data()
+    org_id: int = data["org_id"]
+    message: str = data["message"]
+
+    await callback.answer()
+    await state.clear()
+    if callback_data.answer == YesOrNoEnum.ANSWER_NO:
+        await callback.message.answer("❌ Отправка сообщения отменена.")
+        return
+
+    org = OrganizationFactory.get_by_id(org_id)
+    if not org:
+        await callback.message.answer("❌ Организация не найдена.")
+        return
+
+    # ? add reply to organization button to the keyboard
+    keyboard = build_reply_to_message_keyboard(callback.from_user.id)
+    keyboard.inline_keyboard.append(build_reply_to_org_message_keyboard(org_id).inline_keyboard[0])
+
+    for admin_id in bot_cfg.admins:
+        await bot_instance.send_message(
+            chat_id=admin_id,
+            text=f"📩 <b>Сообщение от организации <code>{org.orgdata.name}</code> (ID: {org.orgdata.org_id}):</b>\n\n"
+            f"{message}\n\n"
+            f"📬 <b>Отправитель</b> (владелец): {callback.from_user.username or callback.from_user.first_name} ({callback.from_user.id})\n\n"
+
+            f"Ответить на сообщение отправителю или всем владельцам организации можно по кнопке ниже.",
+            reply_markup=keyboard
+        )
+    bot_logger.info(f"Message from organization {org.orgdata.name} (ID: {org.orgdata.org_id}) was sent to admins by owner {callback.from_user.id}.")
+    await callback.message.answer("✅ Сообщение отправлено администраторам.")
+
+@router.callback_query(
+    OrgActionsCallbackData.filter(F.action == OrgActionsEnum.CONTACT_ORG)
+)
+async def org_contact_org_callback(callback: CallbackQuery, callback_data: OrgActionsCallbackData, state: FSMContext):
+    await callback.answer()
+
+    await callback.message.answer(
+        "💬 <b>Введите сообщение, которое необходимо отправить владельцам организации:</b>",
+        reply_markup=cancel_keyboard()
+    )
+    await state.update_data(org_id=callback_data.org_id)
+    await state.set_state(OrgContactOrgStates.message_entering)
+
+@router.callback_query(PreviewCallbackData.filter(), OrgContactOrgStates.confirm)
+async def org_contact_org_confirm_callback(callback: CallbackQuery, callback_data: PreviewCallbackData, state: FSMContext):
+    data = await state.get_data()
+    org_id: int = data["org_id"]
+    message: str = data["message"]
+
+    await callback.answer()
+    await state.clear()
+    if callback_data.answer == YesOrNoEnum.ANSWER_NO:
+        await callback.message.answer("❌ Отправка сообщения отменена.")
+        return
+
+    org = OrganizationFactory.get_by_id(org_id)
+    if not org:
+        await callback.message.answer("❌ Организация не найдена.")
+        return
+
+    owners = org.get_owners()
+    if not owners:
+        await callback.message.answer("❌ У организации нет владельцев, которым можно отправить сообщение.")
+        return
+
+    for owner in owners:
+        await bot_instance.send_message(
+            chat_id=owner.user_id,
+            text=f"📩 <b>Сообщение от администрации Heaven's Gate для организации <code>{org.orgdata.name}</code>:</b>\n\n"
+            f"{message}"
+        )
+    bot_logger.info(f"Message for organization {org.orgdata.name} (ID: {org.orgdata.org_id}) was sent to owners by admin {callback.from_user.id}.")
+    await callback.message.answer("✅ Сообщение отправлено владельцам организации.")
 
 @router.callback_query(
     OrgActionsCallbackData.filter(F.action == OrgActionsEnum.REFRESH_ORG)

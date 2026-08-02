@@ -74,6 +74,8 @@ class OrgActionsEnum(StrEnum):
     REMOVE_OWNER = "remove_owner"
     REMOVE_OWNER_MANUAL = "remove_owner_manual"
     EXTEND_SUBSCRIPTION_TIME = "extend_sub_time"
+    CONTACT_ADMINS = "contact_admins"
+    CONTACT_ORG = "contact_org"
     REFRESH_ORG = "refresh_org"
 
 
