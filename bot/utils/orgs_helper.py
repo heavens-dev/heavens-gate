@@ -21,7 +21,7 @@ def build_organization_info(org_repo: OrganizationRepository) -> str:
     owners = org_repo.get_owners()
 
     if org_repo.orgdata.subscription_expiry:
-        expire_time = f'Подписка истекает: <b>{org_repo.orgdata.subscription_expiry.strftime("%d.%m.%Y")}</b>\n'
+        expire_time = f'Подписка истекает <b>{org_repo.orgdata.subscription_expiry.strftime("%d.%m.%Y")}</b>\n'
         if org_repo.orgdata.subscription_expiry > datetime.datetime.now():
             expire_time += f'Осталось времени: <b>{humanize.naturaldelta(org_repo.orgdata.subscription_expiry - datetime.datetime.now(), months=False)}</b>'
         else:
@@ -31,11 +31,11 @@ def build_organization_info(org_repo: OrganizationRepository) -> str:
 
     return f"""🏢 <b>Организация:</b> <code>{org_repo.orgdata.name}</code> (ID: <code>{org_repo.orgdata.org_id}</code>)
 
-Информация о подписке:
+🕓 <b>Информация о подписке</b>:
 <blockquote>{expire_time}</blockquote>
 
-👥 Количество участников: <b>{len(members)}</b>
-Владельцы: <b>{', '.join([f'<code>{owner.name} ({owner.user_id})</code>' for owner in owners])}</b>
+👥 <b>Количество участников</b>: <b>{len(members)}</b>
+👑 <b>Владельцы</b>: {', '.join([f'<code>{owner.name} ({owner.user_id})</code>' for owner in owners])}
 """
 
 

@@ -149,7 +149,7 @@ async def unban(message: Message, client: Client):
 @router.message(Command("get_user"))
 async def get_user(message: Message, client: Client):
     await message.answer(f"Пользователь: {client.userdata.name}")
-    user_string = get_user_data_string(client, show_peer_ids=True)
+    user_string = get_user_data_string(client, is_admin=True)
     await message.answer(user_string[0])
     await message.answer(user_string[1], reply_markup=build_user_actions_keyboard(client))
 

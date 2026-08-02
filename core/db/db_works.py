@@ -418,6 +418,18 @@ class Client(BaseModel):
         except DoesNotExist:
             return None
 
+    def is_org_member(self) -> Union[bool, Organization]:
+        """Checks whether the client is a member of the organization.
+
+        Returns:
+            Union[bool, Organization]: An `Organization` object if client is a member of any organization, `False` otherwise.
+        """
+        if self.userdata.organization_id is None:
+            return False
+
+        org = OrganizationFactory.get_by_id(self.userdata.organization_id)
+        return org.orgdata
+
     def delete_peers(self) -> bool:
         """
         Deletes all peer records associated with the current user from the database.

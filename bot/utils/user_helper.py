@@ -32,8 +32,12 @@ def get_client_by_id_or_ip(user_id: Union[str, int]) -> tuple[Optional[Client], 
     return client, None
 
 # TODO: make it async
-def get_user_data_string(client: Client, show_peer_ids: bool = False) -> list[str]:
+def get_user_data_string(client: Client, is_admin: bool = False) -> list[str]:
     """Returns human-readable data about User. Recommended to use `parse_mode="HTML"`.
+
+    Args:
+        client (Client): `Client` object
+        is_admin (bool): Whether to display information available to bot administrators
 
     Note:
         Telegram has a limit of 512 bytes for a single message, so text is separated into two parts:
@@ -42,11 +46,12 @@ def get_user_data_string(client: Client, show_peer_ids: bool = False) -> list[st
     """
     peers = client.get_all_peers(protocol_specific=True)
     peers_str = ""
+    org_str = ""
     time_limitation = core_cfg.is_time_limit_disabled()
     has_xray_peers = any(peer.type == ProtocolType.XRAY for peer in peers)
 
     for peer in peers:
-        if show_peer_ids:
+        if is_admin:
             peers_str += f"({peer.peer_id}) "
         match peer.type:
             case ProtocolType.WIREGUARD | ProtocolType.AMNEZIA_WIREGUARD:
@@ -84,10 +89,13 @@ def get_user_data_string(client: Client, show_peer_ids: bool = False) -> list[st
     else:
         link = "Нет доступных конфигураций!"
 
+    if (org := client.is_org_member()) and is_admin:
+        org_str = f"🏢 <b>Организация</b>: <code>{org.name}</code> (ID: <code>{org.org_id}</code>)"
 
     return [f"""ℹ️ <b>Информация об аккаунте</b>:
 <b>ID</b>: <code>{client.userdata.user_id}</code>
 📅 <b>Дата регистрации</b>: {client.userdata.registered_at.strftime("%d.%m.%Y в %H:%M")}
+{org_str}
 """,
 f"""<b>Текущий статус</b>: {ClientStatusChoices.to_string(client.userdata.status)}
 🕓 <b>Статус оплаты</b>:
