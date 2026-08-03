@@ -89,7 +89,7 @@ async def select_peer_callback(callback: CallbackQuery, callback_data: PeerCallb
                 continue
 
     if built_media := media_group.build():
-        await bot_instance.send_media_group(callback.from_user.id, media=built_media)
+        await callback.bot.send_media_group(callback.from_user.id, media=built_media)
     if xray_strings:
         await callback.message.answer("🔗 Ссылки на конфиги XRay (можно скопировать, нажав):\n" + xray_strings)
 
