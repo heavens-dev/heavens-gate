@@ -186,7 +186,7 @@ class XrayWorker:
 
     def remnawave_get_subscription_link(self, user: User) -> str:
         try:
-            uuid = user.remnawave_user_uuid or generate_deterministic_uuid_string(user.user_id)
+            uuid = user.remnawave_user_uuid or generate_deterministic_uuid_string(str(user.user_id))
 
             sub: GetSubscriptionByUUIDResponseDto = self._run_async(self.remnawave.subscriptions.get_subscription_by_uuid(
                 uuid=uuid

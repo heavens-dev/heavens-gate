@@ -23,7 +23,7 @@ from bot.utils.pagination.orgs_inline_paginator import \
 from bot.utils.pagination.users_inline_paginator import \
     UsersInlineKeyboardPaginator
 from bot.utils.states import AddPeerStates, AddUserStates, WhisperStates
-from bot.utils.user_helper import get_user_data_string
+from bot.utils.user_helper import get_user_data_string, is_valid_user_id
 from config.loader import (bot_cfg, cfg, connections_observer, db_cfg,
                            ip_queue, wghub, xray_worker)
 from core.db.db_works import Client, ClientFactory, OrganizationFactory
@@ -331,7 +331,7 @@ async def create_user(message: Message, state: FSMContext):
         user_id = user_id_raw.strip()
         name = name_raw.strip()
 
-        if not user_id.isdigit():
+        if not is_valid_user_id(user_id):
             await message.answer("❌ Неверный формат данных: ID должен быть числом.")
             return
 
@@ -365,7 +365,7 @@ async def set_remnawave_uuid(message: Message):
     user_id = user_id_raw.strip()
     uuid = uuid_raw.strip()
 
-    if not user_id.isdigit():
+    if not is_valid_user_id(user_id):
         await message.answer("❌ Неверный формат данных: ID должен быть числом.")
         return
 

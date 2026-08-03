@@ -12,7 +12,8 @@ from bot.utils.states import (AddPeerStates, AddUserStates, ContactAdminStates,
                               OrgContactOrgStates, OrgExtendSubStates,
                               OrgRemoveMemberStates, OrgRemoveOwnerStates,
                               RenamePeerStates, WhisperStates)
-from bot.utils.user_helper import extend_users_subscription_time
+from bot.utils.user_helper import (extend_users_subscription_time,
+                                   is_valid_user_id)
 from config.loader import (bot_cfg, bot_instance, ip_queue, wghub, xray_cfg,
                            xray_worker)
 from core.db.db_works import ClientFactory, OrganizationFactory
@@ -153,7 +154,7 @@ async def verify_user_credentials(message: Message, state: FSMContext):
     user_id = user_id_raw.strip()
     name = name_raw.strip()
 
-    if not user_id.isdigit():
+    if not is_valid_user_id(user_id):
         await message.answer("❌ ID пользователя должен быть числом.")
         await state.clear()
         return
@@ -179,7 +180,7 @@ async def verify_user_credentials(message: Message, state: FSMContext):
 
 @router.message(OrgAddMemberStates.member_id_entering)
 async def org_add_member(message: Message, state: FSMContext):
-    if not message.text.isdigit():
+    if not is_valid_user_id(message.text):
         await message.answer("❌ ID пользователя должен быть числом.")
         await state.clear()
         return
@@ -200,7 +201,7 @@ async def org_add_member(message: Message, state: FSMContext):
 
 @router.message(OrgRemoveMemberStates.member_id_entering)
 async def org_remove_member(message: Message, state: FSMContext):
-    if not message.text.isdigit():
+    if not is_valid_user_id(message.text):
         await message.answer("❌ ID пользователя должен быть числом.")
         await state.clear()
         return
@@ -232,7 +233,7 @@ async def org_remove_member(message: Message, state: FSMContext):
 
 @router.message(OrgAddOwnerStates.owner_id_entering)
 async def org_add_owner(message: Message, state: FSMContext):
-    if not message.text.isdigit():
+    if not is_valid_user_id(message.text):
         await message.answer("❌ ID пользователя должен быть числом.")
         await state.clear()
         return
@@ -264,7 +265,7 @@ async def org_add_owner(message: Message, state: FSMContext):
 
 @router.message(OrgRemoveOwnerStates.owner_id_entering)
 async def org_remove_owner(message: Message, state: FSMContext):
-    if not message.text.isdigit():
+    if not is_valid_user_id(message.text):
         await message.answer("❌ ID пользователя должен быть числом.")
         await state.clear()
         return

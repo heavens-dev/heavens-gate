@@ -13,7 +13,27 @@ from core.db.enums import (ClientStatusChoices, PeerStatusChoices,
 from core.db.model_serializer import WireguardPeer, XrayPeer
 from core.logs import bot_logger
 from core.wg.wgconfig_helper import get_peer_config_str
-from core.xray.xray_worker import XrayWorker
+
+
+def is_valid_user_id(user_id: Union[str, int]) -> bool:
+    """Checks whether a value can be used as a user id.
+
+    User ids are typically positive integers, but the core also supports
+    manually-created "managed" users with negative ids (users regulated only
+    by admins, e.g. organization members that are not real accounts).
+    This validator accepts **both**.
+
+    Args:
+        user_id (Union[str, int]): Raw value to validate.
+
+    Returns:
+        bool: True if the value is a non-empty integer (optionally signed), False otherwise.
+    """
+    if isinstance(user_id, int):
+        return True
+    if not isinstance(user_id, str) or not user_id:
+        return False
+    return user_id.isdigit() or (user_id.startswith("-") and user_id[1:].isdigit())
 
 
 # TODO: make this function accept ip addresses again
