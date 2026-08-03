@@ -3,9 +3,11 @@ import datetime
 import os
 import sys
 import tempfile
+from contextlib import suppress
 from pathlib import Path
 
 from aiogram import F, Router
+from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import BufferedInputFile, Message
@@ -127,11 +129,12 @@ async def ban(message: Message, client: Client):
     await message.answer(
         f"✅ Пользователь <code>{client.userdata.name}:{client.userdata.user_id}</code> заблокирован."
     )
-    await message.bot.send_message(
-        client.userdata.user_id,
-        f"🔒❗ Твой аккаунт был заблокирован. Если тебе необходима информация или ты считаешь, что это ошибка, "
-        "свяжись с нами для дальшейшего разбирательства."
-    )
+    with suppress(TelegramForbiddenError, TelegramBadRequest):
+        await message.bot.send_message(
+            client.userdata.user_id,
+            f"🔒❗ Твой аккаунт был заблокирован. Если тебе необходима информация или ты считаешь, что это ошибка, "
+            "свяжись с нами для дальшейшего разбирательства."
+        )
 
 @router.message(Command("unban", "mercy", "pardon"))
 async def unban(message: Message, client: Client):
@@ -141,10 +144,11 @@ async def unban(message: Message, client: Client):
     await message.answer(
         f"✅ Пользователь <code>{client.userdata.name}:{client.userdata.user_id}</code> разблокирован."
     )
-    await message.bot.send_message(
-        client.userdata.user_id,
-        f"🔓❗ Твой аккаунт был разблокирован. Если у тебя были доступные пиры, они станут доступны в ближайшее время."
-    )
+    with suppress(TelegramForbiddenError, TelegramBadRequest):
+        await message.bot.send_message(
+            client.userdata.user_id,
+            f"🔓❗ Твой аккаунт был разблокирован. Если у тебя были доступные пиры, они станут доступны в ближайшее время."
+        )
 
 @router.message(Command("get_user"))
 async def get_user(message: Message, client: Client):
@@ -195,10 +199,11 @@ async def disable_peer_command(message: Message):
             return
     client.set_peer_status(peer.peer_id, PeerStatusChoices.STATUS_BLOCKED)
     await message.answer("✅ Пир отключён.")
-    await message.bot.send_message(
-        client.userdata.user_id,
-        f"‼️ Пир {peer.name} был принудительно заблокирован. Обратись к администрации, чтобы уточнить детали."
-    )
+    with suppress(TelegramForbiddenError, TelegramBadRequest):
+        await message.bot.send_message(
+            client.userdata.user_id,
+            f"‼️ Пир {peer.name} был принудительно заблокирован. Обратись к администрации, чтобы уточнить детали."
+        )
 
     with bot_logger.contextualize(peer=peer):
         bot_logger.info(f"Peer was blocked by {message.from_user.username}.")
@@ -232,10 +237,11 @@ async def enable_peer_command(message: Message):
             return
     client.set_peer_status(peer.peer_id, PeerStatusChoices.STATUS_DISCONNECTED)
     await message.answer("✅ Пир включён.")
-    await message.bot.send_message(
-        client.userdata.user_id,
-        f"‼️ Пир {peer.name} был разблокирован. Можешь начать пользоваться в течение короткого времени."
-    )
+    with suppress(TelegramForbiddenError, TelegramBadRequest):
+        await message.bot.send_message(
+            client.userdata.user_id,
+            f"‼️ Пир {peer.name} был разблокирован. Можешь начать пользоваться в течение короткого времени."
+        )
 
     with bot_logger.contextualize(peer=peer):
         bot_logger.info(f"Peer was unblocked by {message.from_user.username}.")

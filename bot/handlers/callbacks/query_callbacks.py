@@ -42,7 +42,7 @@ from bot.utils.states import (AddPeerStates, AddUserStates, ContactAdminStates,
 from bot.utils.user_helper import (extend_users_subscription_time,
                                    get_peer_as_input_file,
                                    get_user_data_string)
-from config.loader import bot_cfg, bot_instance, wghub, xray_worker
+from config.loader import bot_cfg, wghub, xray_worker
 from core.db.db_works import ClientFactory, OrganizationFactory
 from core.db.enums import ClientStatusChoices, ProtocolType, SubscriptionType
 from core.logs import bot_logger
@@ -474,12 +474,13 @@ async def org_add_member_confirm_callback(callback: CallbackQuery, callback_data
             )
 
         await callback.message.answer(f"✅ Пользователь с ID {member_id} был добавлен в организацию <code>{org.orgdata.name}</code>.")
-        await bot_instance.send_message(
-            chat_id=member_id,
-            text=f"ℹ️ Вы были добавлены в организацию <code>{org.orgdata.name}</code>. "
-            "Подписка и доступ к сервисам будут предоставлены в соответствии с политикой вашей организации.\n\n"
-            "Если вы считаете, что это произошло по ошибке, пожалуйста, свяжитесь с администрацией."
-        )
+        with suppress(TelegramForbiddenError, TelegramBadRequest):
+            await callback.bot.send_message(
+                chat_id=member_id,
+                text=f"ℹ️ Вы были добавлены в организацию <code>{org.orgdata.name}</code>. "
+                "Подписка и доступ к сервисам будут предоставлены в соответствии с политикой вашей организации.\n\n"
+                "Если вы считаете, что это произошло по ошибке, пожалуйста, свяжитесь с администрацией."
+            )
         bot_logger.info(f"User (ID: {member_id}) was added to organization {org.orgdata.name} (ID: {org.orgdata.org_id}) by admin {callback.from_user.id}.")
     else:
         await callback.message.answer(f"❌ Не удалось добавить пользователя в организацию. Возможно, он уже является членом организации.")
@@ -582,12 +583,13 @@ async def org_remove_member_confirm_callback(callback: CallbackQuery, callback_d
             )
 
         await callback.message.answer(f"✅ Пользователь с ID {member_id} был удалён из организации <code>{org.orgdata.name}</code>.")
-        await bot_instance.send_message(
-            chat_id=member_id,
-            text=f"ℹ️ Вы были исключены из организации <code>{org.orgdata.name}</code>. "
-            "Вам более не предоставляется доступ к сервисам Heaven's Gate без подписки.\n\n"
-            "Если вы считаете, что это произошло по ошибке, пожалуйста, свяжитесь с администрацией или ответственным представителем организации."
-        )
+        with suppress(TelegramForbiddenError, TelegramBadRequest):
+            await callback.bot.send_message(
+                chat_id=member_id,
+                text=f"ℹ️ Вы были исключены из организации <code>{org.orgdata.name}</code>. "
+                "Вам более не предоставляется доступ к сервисам Heaven's Gate без подписки.\n\n"
+                "Если вы считаете, что это произошло по ошибке, пожалуйста, свяжитесь с администрацией или ответственным представителем организации."
+            )
         bot_logger.info(f"User (ID: {member_id}) was removed from organization {org.orgdata.name} (ID: {org.orgdata.org_id}) by admin {callback.from_user.id}.")
     else:
         await callback.message.answer(f"❌ Не удалось удалить пользователя из организации. Возможно, он не является членом организации.")
@@ -682,12 +684,13 @@ async def org_add_owner_confirm_callback(callback: CallbackQuery, callback_data:
 
     if org.add_owner(owner_id):
         await callback.message.answer(f"✅ Пользователь с ID {owner_id} назначен владельцем организации <code>{org.orgdata.name}</code>.")
-        await bot_instance.send_message(
-            chat_id=owner_id,
-            text=f"👑 Вы были назначены владельцем организации <code>{org.orgdata.name}</code>. "
-            "Теперь вы можете просматривать информацию об организации командой /org.\n\n"
-            "Если вы считаете, что это произошло по ошибке, пожалуйста, свяжитесь с администрацией."
-        )
+        with suppress(TelegramForbiddenError, TelegramBadRequest):
+            await callback.bot.send_message(
+                chat_id=owner_id,
+                text=f"👑 Вы были назначены владельцем организации <code>{org.orgdata.name}</code>. "
+                "Теперь вы можете просматривать информацию об организации командой /org.\n\n"
+                "Если вы считаете, что это произошло по ошибке, пожалуйста, свяжитесь с администрацией."
+            )
         bot_logger.info(f"User (ID: {owner_id}) was added as owner of organization {org.orgdata.name} (ID: {org.orgdata.org_id}) by admin {callback.from_user.id}.")
     else:
         await callback.message.answer(f"❌ Не удалось назначить владельца. Возможно, он уже является владельцем другой организации.")
@@ -780,11 +783,12 @@ async def org_remove_owner_confirm_callback(callback: CallbackQuery, callback_da
 
     if org.remove_owner(owner_id):
         await callback.message.answer(f"✅ Пользователь с ID {owner_id} снят с должности владельца организации <code>{org.orgdata.name}</code>.")
-        await bot_instance.send_message(
-            chat_id=owner_id,
-            text=f"ℹ️ Вы были сняты с должности владельца организации <code>{org.orgdata.name}</code>.\n\n"
-            "Если вы считаете, что это произошло по ошибке, пожалуйста, свяжитесь с администрацией."
-        )
+        with suppress(TelegramForbiddenError, TelegramBadRequest):
+            await callback.bot.send_message(
+                chat_id=owner_id,
+                text=f"ℹ️ Вы были сняты с должности владельца организации <code>{org.orgdata.name}</code>.\n\n"
+                "Если вы считаете, что это произошло по ошибке, пожалуйста, свяжитесь с администрацией."
+            )
         bot_logger.info(f"User (ID: {owner_id}) was removed as owner of organization {org.orgdata.name} (ID: {org.orgdata.org_id}) by admin {callback.from_user.id}.")
     else:
         await callback.message.answer(f"❌ Не удалось снять владельца. Возможно, он не является владельцем этой организации.")
@@ -910,11 +914,12 @@ async def org_contact_admins_confirm_callback(callback: CallbackQuery, callback_
     keyboard.inline_keyboard.append(build_reply_to_org_message_keyboard(org_id).inline_keyboard[0])
 
     for admin_id in bot_cfg.admins:
-        await bot_instance.send_message(
-            chat_id=admin_id,
-            text=f"📩 <b>Сообщение от организации <code>{org.orgdata.name}</code> (ID: {org.orgdata.org_id}):</b>\n\n"
-            f"{message}\n\n"
-            f"📬 <b>Отправитель</b> (владелец): {callback.from_user.username or callback.from_user.first_name} ({callback.from_user.id})\n\n"
+        with suppress(TelegramForbiddenError, TelegramBadRequest):
+            await callback.bot.send_message(
+                chat_id=admin_id,
+                text=f"📩 <b>Сообщение от организации <code>{org.orgdata.name}</code> (ID: {org.orgdata.org_id}):</b>\n\n"
+                f"{message}\n\n"
+                f"📬 <b>Отправитель</b> (владелец): {callback.from_user.username or callback.from_user.first_name} ({callback.from_user.id})\n\n"
 
             f"Ответить на сообщение отправителю или всем владельцам организации можно по кнопке ниже.",
             reply_markup=keyboard
@@ -958,11 +963,12 @@ async def org_contact_org_confirm_callback(callback: CallbackQuery, callback_dat
         return
 
     for owner in owners:
-        await bot_instance.send_message(
-            chat_id=owner.user_id,
-            text=f"📩 <b>Сообщение от администрации Heaven's Gate для организации <code>{org.orgdata.name}</code>:</b>\n\n"
-            f"{message}"
-        )
+        with suppress(TelegramForbiddenError, TelegramBadRequest):
+            await callback.bot.send_message(
+                chat_id=owner.user_id,
+                text=f"📩 <b>Сообщение от администрации Heaven's Gate для организации <code>{org.orgdata.name}</code>:</b>\n\n"
+                f"{message}"
+            )
     bot_logger.info(f"Message for organization {org.orgdata.name} (ID: {org.orgdata.org_id}) was sent to owners by admin {callback.from_user.id}.")
     await callback.message.answer("✅ Сообщение отправлено владельцам организации.")
 
