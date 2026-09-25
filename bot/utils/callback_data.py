@@ -2,6 +2,7 @@ from enum import StrEnum
 
 from aiogram.filters.callback_data import CallbackData
 
+from bot.utils.enums.broadcast import BroadcastEnum
 from core.db.enums import ProtocolType, SubscriptionType
 
 
@@ -111,3 +112,11 @@ class OrgTimeExtenderCallbackData(CallbackData, prefix="org_time_extender"):
     """
     org_id: int
     extend_for: str
+
+class BroadcastCallbackData(CallbackData, prefix="broadcast"):
+    """Broadcast callback data for keyboards.
+
+    Args:
+        whom (BroadcastEnum): the recipients of the broadcast
+    """
+    whom: BroadcastEnum

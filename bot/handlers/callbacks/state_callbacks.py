@@ -1,17 +1,18 @@
 from aiogram import Router
 from aiogram.fsm.context import FSMContext
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import Message
 
 from bot.handlers.keyboards import (build_reply_to_message_keyboard,
                                     preview_keyboard)
 from bot.utils.message_utils import preview_message
 from bot.utils.orgs_helper import extend_organization_subscription_time
-from bot.utils.states import (AddPeerStates, AddUserStates, ContactAdminStates,
-                              ExtendTimeStates, OrgAddMemberStates,
-                              OrgAddOwnerStates, OrgContactAdminsStates,
-                              OrgContactOrgStates, OrgExtendSubStates,
-                              OrgRemoveMemberStates, OrgRemoveOwnerStates,
-                              RenamePeerStates, WhisperStates)
+from bot.utils.states import (AddPeerStates, AddUserStates, BroadcastStates,
+                              ContactAdminStates, ExtendTimeStates,
+                              OrgAddMemberStates, OrgAddOwnerStates,
+                              OrgContactAdminsStates, OrgContactOrgStates,
+                              OrgExtendSubStates, OrgRemoveMemberStates,
+                              OrgRemoveOwnerStates, RenamePeerStates,
+                              WhisperStates)
 from bot.utils.user_helper import (extend_users_subscription_time,
                                    is_valid_user_id)
 from config.loader import (bot_cfg, bot_instance, ip_queue, wghub, xray_cfg,
@@ -347,3 +348,15 @@ async def org_contact_org_preview_message(message: Message, state: FSMContext):
     )
     await state.update_data({"message": message.text})
     await state.set_state(OrgContactOrgStates.confirm)
+
+@router.message(BroadcastStates.message_entering)
+async def broadcast_preview_message(message: Message, state: FSMContext):
+    if message.text.lower() in ["отмена", "cancel"]:
+        await message.answer("❌ Действие отменено.")
+        await state.clear()
+        return
+
+    data = await state.get_data()
+    recipients = data["recipients"]
+
+    await preview_message(message.text, message.from_user.id, state, recipients)

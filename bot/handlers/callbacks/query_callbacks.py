@@ -18,7 +18,8 @@ from bot.handlers.keyboards import (build_org_actions_keyboard,
                                     build_user_actions_keyboard,
                                     cancel_keyboard, extend_time_keyboard,
                                     preview_keyboard)
-from bot.utils.callback_data import (GetOrgCallbackData, GetUserCallbackData,
+from bot.utils.callback_data import (BroadcastCallbackData, GetOrgCallbackData,
+                                     GetUserCallbackData,
                                      OrgActionsCallbackData, OrgActionsEnum,
                                      OrgMemberSelectionCallbackData,
                                      OrgTimeExtenderCallbackData,
@@ -28,17 +29,18 @@ from bot.utils.callback_data import (GetOrgCallbackData, GetUserCallbackData,
                                      TimeExtenderCallbackData,
                                      UserActionsCallbackData, UserActionsEnum,
                                      YesOrNoEnum)
+from bot.utils.enums.broadcast import BroadcastEnum
 from bot.utils.orgs_helper import (build_organization_info,
                                    extend_organization_subscription_time)
 from bot.utils.pagination.orgs_inline_paginator import \
     OrgMembersInlineKeyboardPaginator
-from bot.utils.states import (AddPeerStates, AddUserStates, ContactAdminStates,
-                              ExtendTimeStates, OrgAddMemberStates,
-                              OrgAddOwnerStates, OrgContactAdminsStates,
-                              OrgContactOrgStates, OrgExtendSubStates,
-                              OrgRemoveMemberStates, OrgRemoveOwnerStates,
-                              PreviewMessageStates, RenamePeerStates,
-                              WhisperStates)
+from bot.utils.states import (AddPeerStates, AddUserStates, BroadcastStates,
+                              ContactAdminStates, ExtendTimeStates,
+                              OrgAddMemberStates, OrgAddOwnerStates,
+                              OrgContactAdminsStates, OrgContactOrgStates,
+                              OrgExtendSubStates, OrgRemoveMemberStates,
+                              OrgRemoveOwnerStates, PreviewMessageStates,
+                              RenamePeerStates, WhisperStates)
 from bot.utils.user_helper import (extend_users_subscription_time,
                                    get_peer_as_input_file,
                                    get_user_data_string)
@@ -659,7 +661,7 @@ async def select_org_owner_to_add_callback(callback: CallbackQuery, callback_dat
         "owner_id": client.userdata.user_id
     })
     await state.set_state(OrgAddOwnerStates.confirm)
-    await callback.message.answer(
+    await callback.message.edit_text(
         f"⚠️ <b>Подтверди назначение пользователя {client.userdata.name} "
         f"(<code>{client.userdata.user_id}</code>) владельцем организации.</b>",
         reply_markup=preview_keyboard()
@@ -674,16 +676,16 @@ async def org_add_owner_confirm_callback(callback: CallbackQuery, callback_data:
     await callback.answer()
     await state.clear()
     if callback_data.answer == YesOrNoEnum.ANSWER_NO:
-        await callback.message.answer("❌ Назначение владельца отменено.")
+        await callback.message.edit_text("❌ Назначение владельца отменено.")
         return
 
     org = OrganizationFactory.get_by_id(org_id)
     if not org:
-        await callback.message.answer("❌ Организация не найдена.")
+        await callback.message.edit_text("❌ Организация не найдена.")
         return
 
     if org.add_owner(owner_id):
-        await callback.message.answer(f"✅ Пользователь с ID {owner_id} назначен владельцем организации <code>{org.orgdata.name}</code>.")
+        await callback.message.edit_text(f"✅ Пользователь с ID {owner_id} назначен владельцем организации <code>{org.orgdata.name}</code>.")
         with suppress(TelegramForbiddenError, TelegramBadRequest):
             await callback.bot.send_message(
                 chat_id=owner_id,
@@ -757,7 +759,7 @@ async def select_org_owner_to_remove_callback(callback: CallbackQuery, callback_
         "owner_id": client.userdata.user_id
     })
     await state.set_state(OrgRemoveOwnerStates.confirm)
-    await callback.message.answer(
+    await callback.message.edit_text(
         f"⚠️ <b>Подтверди снятие пользователя {client.userdata.name} "
         f"(<code>{client.userdata.user_id}</code>) с должности владельца организации.</b>",
         reply_markup=preview_keyboard()
@@ -773,16 +775,16 @@ async def org_remove_owner_confirm_callback(callback: CallbackQuery, callback_da
     await callback.message.delete()
     await state.clear()
     if callback_data.answer == YesOrNoEnum.ANSWER_NO:
-        await callback.message.answer("❌ Снятие владельца отменено.")
+        await callback.message.edit_text("❌ Снятие владельца отменено.")
         return
 
     org = OrganizationFactory.get_by_id(org_id)
     if not org:
-        await callback.message.answer("❌ Организация не найдена.")
+        await callback.message.edit_text("❌ Организация не найдена.")
         return
 
     if org.remove_owner(owner_id):
-        await callback.message.answer(f"✅ Пользователь с ID {owner_id} снят с должности владельца организации <code>{org.orgdata.name}</code>.")
+        await callback.message.edit_text(f"✅ Пользователь с ID {owner_id} снят с должности владельца организации <code>{org.orgdata.name}</code>.")
         with suppress(TelegramForbiddenError, TelegramBadRequest):
             await callback.bot.send_message(
                 chat_id=owner_id,
@@ -791,7 +793,7 @@ async def org_remove_owner_confirm_callback(callback: CallbackQuery, callback_da
             )
         bot_logger.info(f"User (ID: {owner_id}) was removed as owner of organization {org.orgdata.name} (ID: {org.orgdata.org_id}) by admin {callback.from_user.id}.")
     else:
-        await callback.message.answer(f"❌ Не удалось снять владельца. Возможно, он не является владельцем этой организации.")
+        await callback.message.edit_text(f"❌ Не удалось снять владельца. Возможно, он не является владельцем этой организации.")
 
 @router.callback_query(
     OrgActionsCallbackData.filter(F.action == OrgActionsEnum.VIEW_MEMBERS)
@@ -1001,3 +1003,40 @@ async def get_org_callback(callback: CallbackQuery, callback_data: GetOrgCallbac
         org_info,
         reply_markup=build_org_actions_keyboard(org.orgdata.org_id, is_admin=True)
     )
+
+@router.callback_query(BroadcastCallbackData.filter())
+async def select_broadcast_recipients(callback: CallbackQuery, callback_data: BroadcastCallbackData, state: FSMContext):
+    await callback.answer()
+
+    clients = []
+    match callback_data.whom:
+        case BroadcastEnum.SEND_TO_ALL:
+            clients = [client.userdata.user_id for client in ClientFactory.select_clients()]
+        case BroadcastEnum.SEND_TO_ACTIVE_USERS:
+            # ? client status is not a reliable indicator of subscription status by now.
+            clients = [
+                client.userdata.user_id for client in ClientFactory.select_clients()
+                if client.userdata.subscription_expiry
+                and client.userdata.subscription_expiry > datetime.datetime.now()
+            ]
+        case BroadcastEnum.SEND_TO_CLEAR_USERS:
+            clients = [
+                client.userdata.user_id for client in ClientFactory.select_clients()
+                if client.userdata.subscription_expiry
+                and client.userdata.subscription_expiry > datetime.datetime.now()
+                and client.userdata.subscription_type == SubscriptionType.CLEAR
+            ]
+        case _:
+            ...
+
+    if not clients:
+        await callback.message.answer("❌ Нет пользователей, которым можно отправить сообщение.")
+        await callback.message.delete()
+        return
+
+    await state.set_data({
+        "recipients": clients,
+        "whom": callback_data.whom
+    })
+    await state.set_state(BroadcastStates.message_entering)
+    await callback.message.edit_text("✏️ Введи сообщение для рассылки:", reply_markup=cancel_keyboard())

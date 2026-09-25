@@ -4,11 +4,24 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 
 from bot.handlers.keyboards import preview_keyboard
-from bot.utils.states import PreviewMessageStates
+from bot.utils.enums.broadcast import BroadcastEnum
+from bot.utils.states import BroadcastStates, PreviewMessageStates
 from config.loader import bot_cfg, bot_instance
 
 
 async def preview_message(msg: str, chat_id: int, state: FSMContext, clients_list: list[int]):
+    current_state = await state.get_state()
+    data = await state.get_data()
+    additional_context_message = ""
+    if current_state == BroadcastStates.message_entering.state:
+        match data["whom"]:
+            case BroadcastEnum.SEND_TO_ALL:
+                additional_context_message = "Получатели: <b>Все пользователи</b>"
+            case BroadcastEnum.SEND_TO_ACTIVE_USERS:
+                additional_context_message = "Получатели: <b>Активные пользователи</b>"
+            case BroadcastEnum.SEND_TO_CLEAR_USERS:
+                additional_context_message = "Получатели: <b>Пользователи с подпиской ☀️ Clear</b>"
+            case _: ...
     await state.set_state(PreviewMessageStates.preview)
     await state.set_data(data=dict(message=msg, user_ids=clients_list))
 
@@ -17,6 +30,7 @@ async def preview_message(msg: str, chat_id: int, state: FSMContext, clients_lis
         + "\n--------------------------------------------\n"
         + msg
         + "\n--------------------------------------------"
+        + "\n" + additional_context_message
         + "\n<b>Отправить?</b>",
         reply_markup=preview_keyboard()
     )

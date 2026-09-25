@@ -54,3 +54,7 @@ class OrgContactAdminsStates(StatesGroup):
 class OrgContactOrgStates(StatesGroup):
     message_entering = State()
     confirm = State()
+
+class BroadcastStates(StatesGroup):
+    message_entering = State()
+    preview = State()

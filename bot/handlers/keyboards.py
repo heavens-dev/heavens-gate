@@ -1,7 +1,8 @@
 from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from bot.utils.callback_data import (OrgActionsCallbackData, OrgActionsEnum,
+from bot.utils.callback_data import (BroadcastCallbackData,
+                                     OrgActionsCallbackData, OrgActionsEnum,
                                      OrgTimeExtenderCallbackData,
                                      PeerCallbackData, PreviewCallbackData,
                                      ProtocolChoiceCallbackData,
@@ -9,6 +10,7 @@ from bot.utils.callback_data import (OrgActionsCallbackData, OrgActionsEnum,
                                      TimeExtenderCallbackData,
                                      UserActionsCallbackData, UserActionsEnum,
                                      YesOrNoEnum)
+from bot.utils.enums.broadcast import BroadcastEnum
 from core.db.db_works import Client
 from core.db.enums import ClientStatusChoices, ProtocolType, SubscriptionType
 from core.db.model_serializer import BasePeer
@@ -415,6 +417,25 @@ def build_org_extend_time_keyboard(org_id: int) -> InlineKeyboardMarkup:
         callback_data=OrgTimeExtenderCallbackData(org_id=org_id, extend_for="custom")
     )
 
+    builder.adjust(1, repeat=True)
+
+    return builder.as_markup()
+
+def build_broadcast_keyboard() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+
+    builder.button(
+        text="📧 Отправить всем",
+        callback_data=BroadcastCallbackData(whom=BroadcastEnum.SEND_TO_ALL)
+    )
+    builder.button(
+        text="👥 Отправить активным пользователям",
+        callback_data=BroadcastCallbackData(whom=BroadcastEnum.SEND_TO_ACTIVE_USERS)
+    )
+    builder.button(
+        text="☀️ Отправить с подпиской Clear",
+        callback_data=BroadcastCallbackData(whom=BroadcastEnum.SEND_TO_CLEAR_USERS)
+    )
     builder.adjust(1, repeat=True)
 
     return builder.as_markup()

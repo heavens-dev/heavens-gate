@@ -12,7 +12,8 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import BufferedInputFile, Message
 
-from bot.handlers.keyboards import (build_protocols_keyboard,
+from bot.handlers.keyboards import (build_broadcast_keyboard,
+                                    build_protocols_keyboard,
                                     build_user_actions_keyboard,
                                     cancel_keyboard, preview_keyboard)
 from bot.middlewares.client_getters_middleware import ClientGettersMiddleware
@@ -75,36 +76,11 @@ async def dump_clients(message: Message):
         bot_logger.exception(f"Couldn't create clients dump: {exc}")
         await status_message.edit_text("❌ Не удалось создать дамп. Проверь логи ядра.")
 
-
-@router.message(Command("reboot"))
-async def reboot(message: Message) -> None:
-    await message.answer("Бот перезапускается...")
-
-    await message.chat.do("choose_sticker")
-
-    with open(".reboot", "w", encoding="utf-8") as f:
-        f.write(str(message.chat.id))
-
-    os.execv(sys.executable, ['python'] + sys.argv)
-
 @router.message(Command("broadcast"))
-async def broadcast(message: Message, state: FSMContext):
-    args = message.html_text.split()
-
-    if len(args) <= 1:
-        await message.answer("❌ Сообщение должно содержать хотя бы какой-то текст для отправки.")
-        return
-
-    clients_list = []
-    all_clients = ClientFactory.select_clients()
-    msg = message.html_text.split(maxsplit=1)[1]
-
-    for client in all_clients:
-        if message.chat.id == client.userdata.user_id:
-            continue
-        clients_list.append(client.userdata.user_id)
-
-    await preview_message(msg, message.chat.id, state, clients_list)
+async def broadcast(message: Message):
+    keyboard = build_broadcast_keyboard()
+    keyboard.inline_keyboard.append(cancel_keyboard().inline_keyboard[0])
+    await message.answer("Кому транслировать сообщение?", reply_markup=keyboard)
 
 @router.message(Command("whisper"))
 async def whisper(message: Message, client: Client, state: FSMContext):
