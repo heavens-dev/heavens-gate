@@ -184,7 +184,16 @@ class XrayWorker:
 
         return self.api.inbound.get_by_id(inbound_id)
 
-    def remnawave_get_subscription_link(self, user: User) -> str:
+    def remnawave_get_subscription_link(self, user: User) -> Optional[str]:
+        """Retrieve the subscription link for a given user from Remnawave.
+
+        Args:
+            user (User): The user for whom to retrieve the subscription link.
+
+        Returns:
+            Optional[str]: The subscription link if available, otherwise None.
+        """
+
         try:
             uuid = user.remnawave_user_uuid or generate_deterministic_uuid_string(str(user.user_id))
 

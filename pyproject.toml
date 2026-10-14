@@ -3,13 +3,12 @@ name = "heavens-gate"
 version = "0.1.0"
 description = ""
 authors = ["CreativeeBlackWolf <maksim271202@gmail.com>"]
-readme = "README.md"
 package-mode = false
 
 [tool.poetry.dependencies]
 python = ">=3.12, <3.14"
 pydantic = "^2.8.2"
-aiogram = "^3.10.0"
+aiogram = "^3.29.0"
 wgconfig = "^1.0.4"
 peewee = "^3.17.6"
 peewee-migrate = "^1.13.0"

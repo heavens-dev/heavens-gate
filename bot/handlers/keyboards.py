@@ -1,4 +1,4 @@
-from aiogram.types import InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot.utils.callback_data import (BroadcastCallbackData,
@@ -11,6 +11,7 @@ from bot.utils.callback_data import (BroadcastCallbackData,
                                      UserActionsCallbackData, UserActionsEnum,
                                      YesOrNoEnum)
 from bot.utils.enums.broadcast import BroadcastEnum
+from config.loader import xray_worker
 from core.db.db_works import Client
 from core.db.enums import ClientStatusChoices, ProtocolType, SubscriptionType
 from core.db.model_serializer import BasePeer
@@ -53,7 +54,10 @@ def build_peer_configs_keyboard(
             text = f"[XRay] {peer.name or peer.peer_id}"
         builder.button(
             text=text,
-            callback_data=PeerCallbackData(user_id=user_id, peer_id=peer.peer_id)
+            callback_data=PeerCallbackData(
+                user_id=user_id,
+                peer_id=peer.peer_id
+            )
         )
         builder.adjust(1)
 
@@ -61,6 +65,7 @@ def build_peer_configs_keyboard(
 
 def build_user_actions_keyboard(client: Client, is_admin=True) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
+    has_connection_button = False
 
     if is_admin:
         if client.userdata.status == ClientStatusChoices.STATUS_ACCOUNT_BLOCKED:
@@ -128,6 +133,14 @@ def build_user_actions_keyboard(client: Client, is_admin=True) -> InlineKeyboard
         )
 
     if not is_admin:
+        if sub_url := xray_worker.remnawave_get_subscription_link(client.userdata):
+            has_connection_button = True
+            builder.button(
+                text="🌐 Подключиться",
+                url=sub_url,
+                style="primary",
+            )
+
         builder.button(
             text="✏️ Переименовать конфиги",
             callback_data=UserActionsCallbackData(
@@ -163,74 +176,80 @@ def build_user_actions_keyboard(client: Client, is_admin=True) -> InlineKeyboard
         )
     )
 
-    builder.adjust(2, repeat=True)
+    if has_connection_button:
+        builder.adjust(1, 2)
+    else:
+        builder.adjust(2, repeat=True)
 
     return builder.as_markup()
 
 def preview_keyboard() -> InlineKeyboardMarkup:
     """A simple inline keyboard with Yes/No buttons for confirmation of an action."""
-
-    builder = InlineKeyboardBuilder()
-
-    builder.button(
-        text="✅ Да",
-        callback_data=PreviewCallbackData(
-            answer=YesOrNoEnum.ANSWER_YES,
-        )
-    )
-
-    builder.adjust(1)
-
-    builder.button(
-        text="❌ Нет",
-        callback_data=PreviewCallbackData(
-            answer=YesOrNoEnum.ANSWER_NO,
-        )
-    )
-
-    return builder.as_markup()
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(
+            text="✅ Да",
+            callback_data=PreviewCallbackData(
+                answer=YesOrNoEnum.ANSWER_YES,
+            ).pack(),
+            style="success"
+        )],
+        [InlineKeyboardButton(
+            text="❌ Нет",
+            callback_data=PreviewCallbackData(
+                answer=YesOrNoEnum.ANSWER_NO,
+            ).pack(),
+            style="danger"
+        )],
+    ])
 
 def cancel_keyboard() -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-
-    builder.button(
-        text="❌ Отмена",
-        callback_data="cancel_action"
-    )
-
-    return builder.as_markup()
+    return InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(
+            text="❌ Отмена",
+            callback_data="cancel_action",
+            style="danger"
+        )
+    ]])
 
 def extend_time_keyboard(user_id: int) -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-
-    builder.button(
-        text="Продлить на 1 день",
-        callback_data=TimeExtenderCallbackData(user_id=user_id, extend_for="1d")
-    )
-    builder.button(
-        text="Продлить на 1 неделю",
-        callback_data=TimeExtenderCallbackData(user_id=user_id, extend_for="1w")
-    )
-    builder.button(
-        text="Продлить на 1 месяц",
-        callback_data=TimeExtenderCallbackData(user_id=user_id, extend_for="1M")
-    )
-    builder.button(
-        text="Продлить на 3 месяца",
-        callback_data=TimeExtenderCallbackData(user_id=user_id, extend_for="3M")
-    )
-    builder.button(
-        text="Продлить на 6 месяцев",
-        callback_data=TimeExtenderCallbackData(user_id=user_id, extend_for="6M")
-    )
-    builder.button(
-        text="Ввести время",
-        callback_data=TimeExtenderCallbackData(user_id=user_id, extend_for="custom")
-    )
-
-    builder.adjust(1, repeat=True)
-
-    return builder.as_markup()
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(
+            text="Продлить на 1 день",
+            callback_data=TimeExtenderCallbackData(
+                user_id=user_id, extend_for="1d"
+            ).pack()
+        )],
+        [InlineKeyboardButton(
+            text="Продлить на 1 неделю",
+            callback_data=TimeExtenderCallbackData(
+                user_id=user_id, extend_for="1w"
+            ).pack()
+        )],
+        [InlineKeyboardButton(
+            text="Продлить на 1 месяц",
+            callback_data=TimeExtenderCallbackData(
+                user_id=user_id, extend_for="1M"
+            ).pack()
+        )],
+        [InlineKeyboardButton(
+            text="Продлить на 3 месяца",
+            callback_data=TimeExtenderCallbackData(
+                user_id=user_id, extend_for="3M"
+            ).pack()
+        )],
+        [InlineKeyboardButton(
+            text="Продлить на 6 месяцев",
+            callback_data=TimeExtenderCallbackData(
+                user_id=user_id, extend_for="6M"
+            ).pack()
+        )],
+        [InlineKeyboardButton(
+            text="Ввести время",
+            callback_data=TimeExtenderCallbackData(
+                user_id=user_id, extend_for="custom"
+            ).pack()
+        )],
+    ])
 
 def build_protocols_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
@@ -262,32 +281,28 @@ def build_subscription_type_keyboard(user_id: int) -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 def build_reply_to_message_keyboard(user_id: int) -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-
-    builder.button(
-        text="📨 Ответить пользователю",
-        callback_data=UserActionsCallbackData(
-            user_id=user_id,
-            action=UserActionsEnum.WHISPER_USER,
-            is_admin=True
+    return InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(
+            text="📨 Ответить пользователю",
+            callback_data=UserActionsCallbackData(
+                user_id=user_id,
+                action=UserActionsEnum.WHISPER_USER,
+                is_admin=True
+            ).pack()
         )
-    )
-
-    return builder.as_markup()
+    ]])
 
 def build_reply_to_org_message_keyboard(org_id: int) -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-
-    builder.button(
-        text="📨 Ответить организации",
-        callback_data=OrgActionsCallbackData(
-            org_id=org_id,
-            action=OrgActionsEnum.CONTACT_ORG,
-            is_admin=True
+    return InlineKeyboardMarkup(inline_keyboard=[[
+        InlineKeyboardButton(
+            text="📨 Ответить организации",
+            callback_data=OrgActionsCallbackData(
+                org_id=org_id,
+                action=OrgActionsEnum.CONTACT_ORG,
+                is_admin=True
+            ).pack()
         )
-    )
-
-    return builder.as_markup()
+    ]])
 
 def build_org_actions_keyboard(org_id: int, is_admin: bool) -> InlineKeyboardMarkup:
     """Build an inline keyboard markup for organization actions.
@@ -390,52 +405,63 @@ def build_org_actions_keyboard(org_id: int, is_admin: bool) -> InlineKeyboardMar
     return builder.as_markup()
 
 def build_org_extend_time_keyboard(org_id: int) -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-
-    builder.button(
-        text="Продлить на 1 день",
-        callback_data=OrgTimeExtenderCallbackData(org_id=org_id, extend_for="1d")
-    )
-    builder.button(
-        text="Продлить на 1 неделю",
-        callback_data=OrgTimeExtenderCallbackData(org_id=org_id, extend_for="1w")
-    )
-    builder.button(
-        text="Продлить на 1 месяц",
-        callback_data=OrgTimeExtenderCallbackData(org_id=org_id, extend_for="1M")
-    )
-    builder.button(
-        text="Продлить на 3 месяца",
-        callback_data=OrgTimeExtenderCallbackData(org_id=org_id, extend_for="3M")
-    )
-    builder.button(
-        text="Продлить на 6 месяцев",
-        callback_data=OrgTimeExtenderCallbackData(org_id=org_id, extend_for="6M")
-    )
-    builder.button(
-        text="Ввести время",
-        callback_data=OrgTimeExtenderCallbackData(org_id=org_id, extend_for="custom")
-    )
-
-    builder.adjust(1, repeat=True)
-
-    return builder.as_markup()
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(
+            text="Продлить на 1 день",
+            callback_data=OrgTimeExtenderCallbackData(
+                org_id=org_id, extend_for="1d"
+            ).pack()
+        )],
+        [InlineKeyboardButton(
+            text="Продлить на 1 неделю",
+            callback_data=OrgTimeExtenderCallbackData(
+                org_id=org_id, extend_for="1w"
+            ).pack()
+        )],
+        [InlineKeyboardButton(
+            text="Продлить на 1 месяц",
+            callback_data=OrgTimeExtenderCallbackData(
+                org_id=org_id, extend_for="1M"
+            ).pack()
+        )],
+        [InlineKeyboardButton(
+            text="Продлить на 3 месяца",
+            callback_data=OrgTimeExtenderCallbackData(
+                org_id=org_id, extend_for="3M"
+            ).pack()
+        )],
+        [InlineKeyboardButton(
+            text="Продлить на 6 месяцев",
+            callback_data=OrgTimeExtenderCallbackData(
+                org_id=org_id, extend_for="6M"
+            ).pack()
+        )],
+        [InlineKeyboardButton(
+            text="Ввести время",
+            callback_data=OrgTimeExtenderCallbackData(
+                org_id=org_id, extend_for="custom"
+            ).pack()
+        )],
+    ])
 
 def build_broadcast_keyboard() -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-
-    builder.button(
-        text="📧 Отправить всем",
-        callback_data=BroadcastCallbackData(whom=BroadcastEnum.SEND_TO_ALL)
-    )
-    builder.button(
-        text="👥 Отправить активным пользователям",
-        callback_data=BroadcastCallbackData(whom=BroadcastEnum.SEND_TO_ACTIVE_USERS)
-    )
-    builder.button(
-        text="☀️ Отправить с подпиской Clear",
-        callback_data=BroadcastCallbackData(whom=BroadcastEnum.SEND_TO_CLEAR_USERS)
-    )
-    builder.adjust(1, repeat=True)
-
-    return builder.as_markup()
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(
+            text="📧 Отправить всем",
+            callback_data=BroadcastCallbackData(
+                whom=BroadcastEnum.SEND_TO_ALL
+            ).pack()
+        )],
+        [InlineKeyboardButton(
+            text="👥 Отправить активным пользователям",
+            callback_data=BroadcastCallbackData(
+                whom=BroadcastEnum.SEND_TO_ACTIVE_USERS
+            ).pack()
+        )],
+        [InlineKeyboardButton(
+            text="☀️ Отправить с подпиской Clear",
+            callback_data=BroadcastCallbackData(
+                whom=BroadcastEnum.SEND_TO_CLEAR_USERS
+            ).pack()
+        )],
+    ])
