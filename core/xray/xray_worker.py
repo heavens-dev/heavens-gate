@@ -15,6 +15,7 @@ from remnawave.models import (CreateUserRequestDto,
                               GetSubscriptionByUUIDResponseDto,
                               UpdateUserRequestDto)
 from requests.exceptions import HTTPError, JSONDecodeError
+from unidecode import unidecode
 
 from core.db.enums import PeerStatusChoices
 from core.db.model_serializer import User, XrayPeer
@@ -486,13 +487,26 @@ class XrayWorker:
                     new_users_count += 1
         return new_users_count
 
+    @staticmethod
+    def _remnawave_username(name: str, user_id: int | str) -> str:
+        username = unidecode(name)
+        username = re.sub(r"\s+", "_", username)
+        username = re.sub(r"[^A-Za-z0-9_-]+", "_", username)
+        username = re.sub(r"_+", "_", username).strip("_-")[:36]
+
+        if len(username) < 3:
+            fallback = re.sub(r"[^A-Za-z0-9_-]+", "_", f"user_{user_id}")
+            username = fallback[:36].strip("_-")
+
+        return username
+
     def remnawave_create_user(self, userdata: User) -> bool:
         try:
             uuid = userdata.remnawave_user_uuid or generate_deterministic_uuid_string(str(userdata.user_id))
 
             self._run_async(self.remnawave.users.create_user(
                 CreateUserRequestDto(
-                    username=userdata.name,
+                    username=self._remnawave_username(userdata.name, userdata.user_id),
                     expire_at=userdata.subscription_expiry or datetime.datetime.now(),
                     uuid=uuid,
                     active_internal_squads=remnawave_squads_list(userdata.subscription_type)
