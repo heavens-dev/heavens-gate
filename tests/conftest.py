@@ -138,6 +138,7 @@ def config_path(tmp_path):
 token=1234567890:ABCDEF
 admins=272727, 282828
 faq_url=https://example.com/faq
+proxy=socks5://127.0.0.1:1080
 
 [db]
 path=db.sqlite

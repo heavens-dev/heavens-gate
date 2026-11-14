@@ -13,7 +13,7 @@ from bot.commands import (get_admin_commands, get_default_commands,
 from bot.handlers import get_handlers_router
 from config.loader import (bot_cfg, bot_dispatcher, bot_instance, cfg,
                            connections_observer, db_instance,
-                           interval_observer, ip_queue, wghub, xray_worker)
+                           interval_observer, wghub, xray_worker)
 from core.db.db_works import ClientFactory
 from core.logs import bot_logger
 

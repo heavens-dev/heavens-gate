@@ -1,6 +1,7 @@
 import humanize.i18n
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
+from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
 
@@ -41,6 +42,7 @@ RESERVED_IP_ADDRESSES = [
 
 bot_instance = Bot(
     token=bot_cfg.token,
+    session=AiohttpSession(proxy=bot_cfg.proxy),
     default=DefaultBotProperties(parse_mode=ParseMode.HTML)
 )
 bot_dispatcher = Dispatcher(storage=MemoryStorage())

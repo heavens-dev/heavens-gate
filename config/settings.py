@@ -23,7 +23,8 @@ class Config:
             config_instance=self,
             token=self.cfg.get("TelegramBot", "token", fallback=None),
             admins=self.cfg.get("TelegramBot", "admins", fallback=""),
-            faq_url=self.cfg.get("TelegramBot", "faq_url", fallback=None)
+            faq_url=self.cfg.get("TelegramBot", "faq_url", fallback=None),
+            proxy=self.cfg.get("TelegramBot", "proxy", fallback=None)
         )
 
     def get_database_config(self):
@@ -79,12 +80,20 @@ class Config:
         return True
 
     class Bot:
-        def __init__(self, config_instance: Type["Config"], token: str, admins: str, faq_url: Optional[str]):
+        def __init__(
+            self,
+            config_instance: Type["Config"],
+            token: str,
+            admins: str,
+            faq_url: Optional[str],
+            proxy: Optional[str]
+            ):
             if not token or token.lower() == "none":
                 raise ValueError("Token MUST be specified in config file. For God's sake!")
 
             self.token = token
             self.faq_url = faq_url
+            self.proxy = proxy if proxy and proxy.lower() != "none" else None
 
             if self.faq_url and not self.faq_url.startswith("http"):
                 warnings.warn("FAQ URL should start with http or https", UserWarning)

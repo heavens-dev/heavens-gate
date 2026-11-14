@@ -63,3 +63,22 @@ def test_remnawave_config_falls_back_to_3xui_mock_when_login_route_breaks(monkey
     api_instance.login.assert_called_once()
     assert worker._3xui_mock_enabled is True
     assert worker.api.login() is True
+
+
+@pytest.mark.parametrize(
+    ("name", "user_id", "expected"),
+    [
+        ("Сынша Лавы", 27, "Synsha_Lavy"),
+        ("Иван Петров", 42, "Ivan_Petrov"),
+        ("John Doe", 42, "John_Doe"),
+        ("Jöhn !!!", 42, "John"),
+        ("x", 42, "user_42"),
+    ],
+)
+def test_remnawave_username_is_ascii_and_valid(name, user_id, expected):
+    username = XrayWorker._remnawave_username(name, user_id)
+
+    assert username == expected
+    assert 3 <= len(username) <= 36
+    assert username.replace("_", "").replace("-", "").isalnum()
+    assert username.isascii()

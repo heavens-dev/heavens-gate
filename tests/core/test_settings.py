@@ -14,6 +14,7 @@ def test_bot_settings(config_path):
     assert bot_cfg.token == "1234567890:ABCDEF"
     assert bot_cfg.admins == [272727, 282828]
     assert bot_cfg.faq_url == "https://example.com/faq"
+    assert bot_cfg.proxy == "socks5://127.0.0.1:1080"
 
 def test_faq_url_empty_string(config_path):
     cfg = ConfigParser()
