@@ -165,13 +165,41 @@ class ConnectionEvents:
         await self.disconnected.trigger(client, peer)
 
     def update_client_peers(self, client: Client):
-        self.clients[
-            next((i for i, v in enumerate(self.clients) if v[0].userdata.user_id == client.userdata.user_id), None)
-        ] = (
+        index = next(
+            (i for i, item in enumerate(self.clients)
+             if str(item[0].userdata.user_id) == str(client.userdata.user_id)),
+            None
+        )
+
+        if index is None:
+            core_logger.warning(
+                f"Client {client.userdata.user_id} is not tracked by the observer. "
+                "Skipping peers update."
+            )
+            return
+
+        self.clients[index] = (
             client, client.get_all_peers(protocol_specific=True)
         )
 
         core_logger.debug(f"Updated client {client.userdata.user_id} peers.")
+
+    async def remove_client(self, user_id: Union[int, str]) -> None:
+        """Removes a client from the tracked list.
+
+        Must be called after the client is deleted from the database, otherwise
+        the observer keeps checking its peers until the next clients list update.
+
+        Args:
+            user_id (Union[int, str]): ID of the client to remove.
+        """
+        async with self.__clients_lock:
+            self.clients = [
+                item for item in self.clients
+                if str(item[0].userdata.user_id) != str(user_id)
+            ]
+
+        core_logger.debug(f"Removed client {user_id} from the observer.")
 
     def update_clients_list(self):
         """Updates the list of clients and their peers.
