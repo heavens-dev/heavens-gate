@@ -527,6 +527,30 @@ class XrayWorker:
             core_logger.error(f"Failed to create user in Remnawave: {e}")
             return False
 
+    def remnawave_delete_user(self, user: User) -> bool:
+        """Delete a user from Remnawave.
+
+        **A user that is already absent counts as deleted.**
+
+        Args:
+            user (User): The user whose Remnawave record should be deleted.
+
+        Returns:
+            bool: True if the user was deleted or was not found, False otherwise.
+        """
+        try:
+            uuid = user.remnawave_user_uuid or generate_deterministic_uuid_string(str(user.user_id))
+
+            self._run_async(self.remnawave.users.delete_user(uuid=uuid))
+            core_logger.info(f"Successfully deleted user {user.user_id} in Remnawave.")
+            return True
+        except NotFoundError:
+            core_logger.info(f"User {user.user_id} was already absent in Remnawave.")
+            return True
+        except Exception as e:
+            core_logger.error(f"Failed to delete user in Remnawave: {e}")
+            return False
+
     def remnawave_update_user(self, user: User, **kwargs) -> bool:
         """Update a user in Remnawave with given kwargs.
         As refernce to what can be updated - see `UpdateUserRequestDto` in Remnawave SDK.

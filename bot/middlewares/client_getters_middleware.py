@@ -14,6 +14,7 @@ class ClientGettersMiddleware(BaseMiddleware):
         "whisper", # broadcast
         "get_user", # get_user
         "add_peer", # add_peer
+        "delete_user", # delete_user
     ]
 
     async def __call__(

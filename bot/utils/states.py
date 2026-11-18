@@ -25,6 +25,10 @@ class AddUserStates(StatesGroup):
     credentials_entering = State()
     preview_entering = State()
 
+class DeleteUserStates(StatesGroup):
+    confirm = State()         # regular "Yes/No" confirmation
+    confirm_active = State()  # second "Yes/No" for a user with an active subscription
+
 class OrgCreateStates(StatesGroup):
     name_entering = State()
 

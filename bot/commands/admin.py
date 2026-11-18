@@ -25,6 +25,7 @@ def get_admin_commands() -> list[BotCommand]:
         BotCommand(command="/disable_peer", description="Disables peer (wow)."),
         BotCommand(command="/enable_peer", description="Enables peer (wow)."),
         BotCommand(command="/delete_peer", description="Deletes peer."),
+        BotCommand(command="/delete_user", description="Deletes user with all their peers. Format: telegram ID."),
         BotCommand(command="/users", description="Get all users in paginated message."),
         BotCommand(command="/dump", description="Export clients dump as CSV file."),
         BotCommand(command="/syncconfig", description="Syncs config file with WG."),

@@ -18,10 +18,12 @@ from bot.handlers.keyboards import (build_broadcast_keyboard,
                                     cancel_keyboard, preview_keyboard)
 from bot.middlewares.client_getters_middleware import ClientGettersMiddleware
 from bot.middlewares.logging_middleware import LoggingMiddleware
+from bot.utils.delete_user import delete_preview_text, is_bot_admin
 from bot.utils.message_utils import preview_message
 from bot.utils.pagination.orgs_inline_paginator import \
     OrgsInlineKeyboardPaginator
-from bot.utils.states import AddPeerStates, AddUserStates, WhisperStates
+from bot.utils.states import (AddPeerStates, AddUserStates, DeleteUserStates,
+                              WhisperStates)
 from bot.utils.user_helper import get_user_data_string, is_valid_user_id
 from config.loader import (bot_cfg, cfg, connections_observer, db_cfg,
                            ip_queue, wghub, xray_worker)
@@ -244,6 +246,21 @@ async def delete_peer(message: Message):
     await message.answer("✅ Пир был успешно удалён.")
     with bot_logger.contextualize(peer=peer):
         bot_logger.info(f"Peer was deleted by {message.from_user.username}")
+
+@router.message(Command("delete_user"))
+async def delete_user(message: Message, client: Client, state: FSMContext):
+    await state.clear()
+
+    if is_bot_admin(client.userdata.user_id, bot_cfg.admins):
+        await message.answer("❌ Охуел? Нельзя удалить администратора бота.")
+        return
+
+    await state.set_data({"user_id": client.userdata.user_id})
+    await state.set_state(DeleteUserStates.confirm)
+    await message.answer(
+        delete_preview_text(client),
+        reply_markup=preview_keyboard()
+    )
 
 @router.message(Command("syncconfig"))
 async def syncconfig(message: Message):

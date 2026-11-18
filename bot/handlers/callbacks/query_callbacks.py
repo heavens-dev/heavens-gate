@@ -29,23 +29,26 @@ from bot.utils.callback_data import (BroadcastCallbackData, GetOrgCallbackData,
                                      TimeExtenderCallbackData,
                                      UserActionsCallbackData, UserActionsEnum,
                                      YesOrNoEnum)
+from bot.utils.delete_user import delete_preview_text, purge_client
 from bot.utils.enums.broadcast import BroadcastEnum
 from bot.utils.orgs_helper import (build_organization_info,
                                    extend_organization_subscription_time)
 from bot.utils.pagination.orgs_inline_paginator import \
     OrgMembersInlineKeyboardPaginator
 from bot.utils.states import (AddPeerStates, AddUserStates, BroadcastStates,
-                              ContactAdminStates, ExtendTimeStates,
-                              OrgAddMemberStates, OrgAddOwnerStates,
-                              OrgContactAdminsStates, OrgContactOrgStates,
-                              OrgExtendSubStates, OrgRemoveMemberStates,
-                              OrgRemoveOwnerStates, PreviewMessageStates,
-                              RenamePeerStates, WhisperStates)
+                              ContactAdminStates, DeleteUserStates,
+                              ExtendTimeStates, OrgAddMemberStates,
+                              OrgAddOwnerStates, OrgContactAdminsStates,
+                              OrgContactOrgStates, OrgExtendSubStates,
+                              OrgRemoveMemberStates, OrgRemoveOwnerStates,
+                              PreviewMessageStates, RenamePeerStates,
+                              WhisperStates)
 from bot.utils.user_helper import (extend_users_subscription_time,
                                    get_peer_as_input_file,
                                    get_user_data_string)
-from config.loader import bot_cfg, wghub, xray_worker
-from core.db.db_works import ClientFactory, OrganizationFactory
+from config.loader import (bot_cfg, connections_observer, ip_queue, wghub,
+                           xray_worker)
+from core.db.db_works import Client, ClientFactory, OrganizationFactory
 from core.db.enums import ClientStatusChoices, ProtocolType, SubscriptionType
 from core.logs import bot_logger
 from core.utils.date_utils import parse_time
@@ -375,6 +378,103 @@ async def add_user_callback(callback: CallbackQuery, callback_data: PreviewCallb
         xray_worker.remnawave_create_user(client.userdata)
     else:
         await callback.message.answer(f"ℹ️ Пользователь <code>{client.userdata.name}:{client.userdata.user_id}</code> уже существует.")
+
+@router.callback_query(
+    PreviewCallbackData.filter(),
+    DeleteUserStates.confirm,
+    F.from_user.id.in_(bot_cfg.admins)
+)
+async def delete_user_confirm_callback(
+    callback: CallbackQuery,
+    callback_data: PreviewCallbackData,
+    state: FSMContext
+):
+    await callback.answer()
+
+    user_id = (await state.get_data()).get("user_id")
+    if user_id is None:
+        await state.clear()
+        await callback.message.edit_text("⌛ Сессия подтверждения устарела. Начни заново с /delete_user.")
+        return
+
+    if callback_data.answer == YesOrNoEnum.ANSWER_NO:
+        await state.clear()
+        await callback.message.edit_text("❌ Удаление отменено.")
+        return
+
+    client = ClientFactory(user_id=user_id).get_client()
+    if not client:
+        await state.clear()
+        await callback.message.edit_text("❌ Пользователь не найден или уже удалён.")
+        return
+
+    expiry = client.userdata.subscription_expiry
+    if expiry and expiry > datetime.datetime.now():
+        await state.set_state(DeleteUserStates.confirm_active)
+        # ! edit the same message: a new one would leave the first preview with live buttons
+        await callback.message.edit_text(
+            delete_preview_text(client, warning=True),
+            reply_markup=preview_keyboard()
+        )
+        return
+
+    await finalize_delete_user(callback, state, client)
+
+@router.callback_query(
+    PreviewCallbackData.filter(),
+    DeleteUserStates.confirm_active,
+    F.from_user.id.in_(bot_cfg.admins)
+)
+async def delete_user_confirm_active_callback(
+    callback: CallbackQuery,
+    callback_data: PreviewCallbackData,
+    state: FSMContext
+):
+    await callback.answer()
+
+    if callback_data.answer == YesOrNoEnum.ANSWER_NO:
+        await state.clear()
+        await callback.message.edit_text("❌ Удаление отменено.")
+        return
+
+    user_id = (await state.get_data()).get("user_id")
+    client = ClientFactory(user_id=user_id).get_client() if user_id is not None else None
+    if not client:
+        await state.clear()
+        await callback.message.edit_text("❌ Пользователь не найден или уже удалён.")
+        return
+
+    await finalize_delete_user(callback, state, client)
+
+async def finalize_delete_user(
+    callback: CallbackQuery,
+    state: FSMContext,
+    client: Client,
+):
+    name = client.userdata.name
+    user_id = client.userdata.user_id
+    await state.clear()
+
+    if not await purge_client(
+        client,
+        wghub=wghub,
+        xray_worker=xray_worker,
+        ip_queue=ip_queue,
+        connections_observer=connections_observer
+    ):
+        await callback.message.edit_text("❌ Не удалось удалить пользователя. Проверь логи ядра.")
+        return
+
+    with suppress(TelegramForbiddenError, TelegramBadRequest):
+        await callback.bot.send_message(
+            user_id,
+            "🗑 <b>Твой аккаунт был удалён администрацией.</b> Если ты захочешь использовать сервис, "
+            "тебе необходимо будет ввести /start для создания нового аккаунта."
+        )
+
+    await callback.message.edit_text(f"✅ Пользователь <code>{name}</code> удалён.")
+    with bot_logger.contextualize(deleted_user_id=user_id, admin_id=callback.from_user.id):
+        bot_logger.info("User was deleted by admin.")
 
 @router.callback_query(
     OrgActionsCallbackData.filter(F.action == OrgActionsEnum.ADD_MEMBER)
