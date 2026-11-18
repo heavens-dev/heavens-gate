@@ -11,6 +11,7 @@ test.*
 get-pip.py
 *.back
 *.csv
+*.sqlite-*
 
 # Folders
 .vscode

@@ -11,6 +11,13 @@ from core.logs import core_logger
 
 db = SqliteExtDatabase(None, regexp_function=True)
 
+
+@db.collation("ci_unicode")
+def _(left: str, right: str) -> int:
+    left, right = left.casefold(), right.casefold()
+    return (left > right) - (left < right)
+
+
 class BaseModel(Model):
     class Meta:
         database = db
@@ -124,7 +131,12 @@ class XrayPeerModel(BaseModel):
 
 
 def init_db(path: str):
-    db.init(database=path, pragmas={"foreign_keys": 1})
+    db.init(database=path, pragmas={
+        "foreign_keys": 1,
+        "journal_mode": "wal",
+        "synchronous": "normal",
+        "busy_timeout": 5000,
+    })
     db.connect()
     db.create_tables((
         UserModel,

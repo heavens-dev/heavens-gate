@@ -1,7 +1,5 @@
 import asyncio
 import datetime
-import os
-import sys
 import tempfile
 from contextlib import suppress
 from pathlib import Path
@@ -12,6 +10,8 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import BufferedInputFile, Message
 
+from bot.handlers.callbacks.clients_list import (get_last_view,
+                                                 render_client_list)
 from bot.handlers.keyboards import (build_broadcast_keyboard,
                                     build_protocols_keyboard,
                                     build_user_actions_keyboard,
@@ -21,8 +21,6 @@ from bot.middlewares.logging_middleware import LoggingMiddleware
 from bot.utils.message_utils import preview_message
 from bot.utils.pagination.orgs_inline_paginator import \
     OrgsInlineKeyboardPaginator
-from bot.utils.pagination.users_inline_paginator import \
-    UsersInlineKeyboardPaginator
 from bot.utils.states import AddPeerStates, AddUserStates, WhisperStates
 from bot.utils.user_helper import get_user_data_string, is_valid_user_id
 from config.loader import (bot_cfg, cfg, connections_observer, db_cfg,
@@ -255,11 +253,8 @@ async def syncconfig(message: Message):
 
 @router.message(Command("users"))
 async def users(message: Message):
-    all_clients = ClientFactory.select_clients()
-    paginator = UsersInlineKeyboardPaginator(all_clients, router, chat_id=message.chat.id)
-    msg = await message.answer("👥 Список всех пользователей:", reply_markup=paginator.markup)
-    await asyncio.sleep(60)
-    await msg.delete()
+    text, markup = render_client_list(get_last_view(message.from_user.id))
+    await message.answer(text, reply_markup=markup)
 
 @router.message(Command("listen_clients"))
 async def listen_clients(message: Message):

@@ -1,8 +1,10 @@
 from enum import StrEnum
+from typing import Optional
 
 from aiogram.filters.callback_data import CallbackData
 
 from bot.utils.enums.broadcast import BroadcastEnum
+from core.db.client_queries import ClientSort, StatusFilter
 from core.db.enums import ProtocolType, SubscriptionType
 
 
@@ -61,6 +63,15 @@ class ProtocolChoiceCallbackData(CallbackData, prefix="protocol_choice"):
 class SubscriptionChoiceCallbackData(CallbackData, prefix="subscription_choice"):
     user_id: int
     subscription: SubscriptionType
+
+
+class ClientListCallbackData(CallbackData, prefix="cl"):
+    sort: ClientSort = ClientSort.REGISTERED
+    descending: bool = True
+    sub: Optional[SubscriptionType] = None
+    status: StatusFilter = StatusFilter.ANY
+    page: int = 1
+    page_size: int = 5
 
 
 class OrgActionsEnum(StrEnum):
